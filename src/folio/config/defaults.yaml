@@ -1,0 +1,73 @@
+# folio built-in defaults — merged with user's folio.yaml
+#
+# Users override these values in their project-level folio.yaml.
+# This file provides sensible defaults for a Canadian artist-run centre.
+
+project:
+  name: "My Grant Archive"
+  description: ""
+
+# ── Organization ──────────────────────────────────────────────────
+org:
+  name: "My Organization"
+  abbreviation: "ORG"
+
+# ── Funders ───────────────────────────────────────────────────────
+funders: {}
+  # Example:
+  #   "OAC": "Ontario Arts Council"
+  #   "TAC": "Toronto Arts Council"
+  #   "CCA": "Canada Council for the Arts"
+
+# ── Document types ────────────────────────────────────────────────
+doc_types:
+  - application
+  - report
+  - budget
+  - notification
+  - activity_list
+  - staff_board
+  - support_material
+  - agreement
+
+# ── Paths ─────────────────────────────────────────────────────────
+paths:
+  raw_archive: "./_raw_archive/"
+  raw_md: "./raw_md/"
+  clean_md: "./clean_md/"
+  rewrite_md: "./rewrite_md/"
+  wiki_project: "./wiki/"
+
+# ── Converter ─────────────────────────────────────────────────────
+converter:
+  type: "datalab"               # datalab | marker | docling | pandoc
+  datalab:
+    pipeline_id: ""
+    api_key_env: "DATALAB_API_KEY"
+
+# ── Wiki backend ──────────────────────────────────────────────────
+wiki:
+  type: "sage-wiki"             # sage-wiki | null
+  sage_wiki:
+    binary_path: "sage-wiki"
+    pack: "arts-org"
+
+# ── LLM provider ──────────────────────────────────────────────────
+llm:
+  provider: "openai_compatible"
+  base_url: "https://api.deepseek.com"
+  api_key_env: "DEEPSEEK_API_KEY"
+  models:
+    fast: "deepseek-v4-flash"
+    quality: "deepseek-v4-pro"
+  pricing:
+    input_per_million: 0.14
+    cached_input_per_million: 0.0028
+    output_per_million: 0.28
+
+# ── Processing ────────────────────────────────────────────────────
+processing:
+  max_workers: 10
+  requests_per_second: 5
+  max_retries: 3
+  resume: true
