@@ -32,7 +32,7 @@ dev = [
 ]
 
 [project.scripts]
-folio = "folio.cli.pipeline:main"
+folio = "folio.cli.main:main"
 folio-pipeline = "folio.cli.pipeline:main"
 folio-clean = "folio.cli.clean:main"
 folio-classify = "folio.cli.classify:main"
