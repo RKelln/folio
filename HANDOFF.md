@@ -14,9 +14,53 @@ This document is for the next AI agent taking over work on `folio`. Read it full
 
 ## Current state
 
-**Phase 1 is complete.** All 20 core pipeline tasks are ported from the prototype. The code is in `src/folio/`. Every hardcoded InterAccess-specific value has been removed from Python — all org-specific config now lives in YAML files.
+**Phase 1 is complete. Code reviewed. 93 findings, 10 P0 bugs await fixing.**
 
-**What works (ported from prototype, verified):**
+All 20 core pipeline tasks are ported from the prototype. Every hardcoded InterAccess-specific value has been removed from Python. However, a full code review (`CODE_REVIEW.md`) found 93 issues — the port was done by parallel agents and the integration layer has bugs from cross-module mismatches. **Fix the P0 bugs before writing tests or deploying.**
+
+**Key files to read FIRST (in order):**
+1. **`HANDOFF.md`** — this file
+2. **`CODE_REVIEW.md`** — full review report (93 findings, prioritized)
+3. **`BUGS.md`** — tracked issues with fix suggestions (includes P0s from review)
+4. **`TASKS.md`** — 47 tasks, Phase 1 done, Phase 2+ remaining
+5. **`AGENTS.md`** — conventions for all code in this repo
+6. **`PLAN.md`** — design rationale (optional, for deeper context)
+
+## Code review summary
+
+Full review of 48 source files (~9,500 lines) found:
+
+| Severity | Count | Key areas |
+|----------|-------|-----------|
+| Critical (P0) | 10 | Wrong function signatures, type errors, silent exception swallowing, race conditions, broken retry, dead code, provider bypass |
+| High (P1) | 9 | 3 duplicate manifest implementations, 2 duplicate rate-limiters, regex-on-YAML, fragile paths |
+| Medium (P2) | 20+ | Hardcoded constants, missing validation, fragile regex |
+| Low | 30+ | Style nits, dead imports, naming issues |
+
+**Verdict: BLOCK MERGE.** The core algorithmic logic (DSL, dedup, cleanup) is sound but the integration layer needs fixes. See `CODE_REVIEW.md` for full details with file:line references and fix suggestions.
+
+## What to do next (updated priority order)
+
+### Step 0: Fix the 10 P0 bugs
+
+These are all in `BUGS.md` with file:line and fix suggestions. Order roughly by impact:
+
+1. **#018** — `_run_rewrite` wrong function signature → runtime crash
+2. **#022** — `_validate_priorities` wrong return types → runtime crash
+3. **#025** — broken retry logic → silent failures
+4. **#026** — manifest race condition → data corruption
+5. **#020** — silent exception swallowing in classifier → silently wrong results
+6. **#023** — DeepSeek params sent to all providers → API errors
+7. **#028** — missing `response.usage` null check → AttributeError crash
+8. **#024** — `rewrite_file` bypasses LLMProvider → encapsulation break
+9. **#027** — `thinking_enabled` None coercion → wrong behavior
+10. **#029** — `ingester` imports non-existent function → dead code
+
+### Step 1: Write tests (Phase 2)
+_After P0s are fixed._ Priority order in TASKS.md.
+
+### Step 2: InterAccess deployment (Phase 5)
+Configure and validate against real IA archive data.
 - `core/frontmatter.py` — YAML frontmatter parsing, generation, sanitization, field normalization
 - `core/cleaner.py` — deterministic markdown cleanup (strip images, normalize whitespace, fix corruption, remove form chrome)
 - `core/canonicalizer.py` — version detection, draft scoring, near-duplicate detection via SequenceMatcher
@@ -50,17 +94,7 @@ This document is for the next AI agent taking over work on `folio`. Read it full
 - No integration test run against the InterAccess archive
 - No CI/CD configuration
 
-## Key files to read first
-
-1. **`AGENTS.md`** — conventions for all code in this repo
-2. **`TASKS.md`** — 47 tracked tasks, Phase 1 marked complete
-3. **`BUGS.md`** — 17 issues discovered during porting (3 P0 fixed, rest P1-P2)
-4. **`PLAN.md`** — full design rationale, architecture decisions, migration plan
-5. **`pyproject.toml`** — dependencies, entry points, dev tooling config
-
-## What to do next (Phase 2 + Phase 5)
-
-### Immediate: Run a smoke test
+## Immediate: Run a smoke test
 
 Before doing anything else, verify the package imports work:
 
