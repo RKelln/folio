@@ -16,6 +16,7 @@ import json
 import sys
 from pathlib import Path
 
+from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.prioritizer import prioritize_directory, prioritize_file
 
@@ -76,6 +77,10 @@ def main(argv: list[str] | None = None) -> None:
         "--no-resume",
         action="store_true",
         help="Score all files even if already present in manifest",
+    )
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s v{__version__}",
     )
 
     args = parser.parse_args(argv)
@@ -150,7 +155,15 @@ def main(argv: list[str] | None = None) -> None:
             print(f"  Year filter: {args.year}")
         if args.limit:
             print(f"  Limit: {args.limit} groups")
-        print(f"  Estimated cost: ~${len(md_files) * 0.002:.2f}")
+        try:
+            total_chars = sum(f.stat().st_size for f in md_files if f.is_file())
+            est_tokens = int(total_chars / 3.5)
+            input_ppm = config.llm.input_price_per_m
+            output_ppm = config.llm.output_price_per_m
+            est_cost = est_tokens / 1_000_000 * input_ppm + est_tokens / 1_000_000 * output_ppm
+        except (AttributeError, KeyError):
+            est_cost = len(md_files) * 0.002
+        print(f"  Estimated cost: ~${est_cost:.2f}")
         return
 
     result = prioritize_directory(

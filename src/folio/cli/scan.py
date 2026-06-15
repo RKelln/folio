@@ -15,6 +15,7 @@ import json
 import sys
 from pathlib import Path
 
+from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.scanner import scan_archive
 
@@ -41,6 +42,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument(
         "--source", "-s",
+        type=Path,
         required=True,
         help="Path to raw archive directory",
     )
@@ -60,10 +62,14 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Preview scan source without running scan",
     )
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s v{__version__}",
+    )
 
     args = parser.parse_args(argv)
 
-    source_path = Path(args.source)
+    source_path = args.source
     if not source_path.is_dir():
         print(f"Error: Source directory not found: {args.source}", file=sys.stderr)
         sys.exit(1)

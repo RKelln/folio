@@ -60,7 +60,7 @@ def generate_skills(
     return {"files_written": files_written, "warnings": warnings}
 
 
-def _build_context(config: ProjectConfig) -> dict:
+def build_context(config: ProjectConfig) -> dict:
     """Build the template context dict from project config."""
     org = config.org
     funders = config.funders
@@ -172,7 +172,7 @@ def _generate_opencode(
 
     Writes to: {output_dir}/.opencode/skills/grant-writing/SKILL.md
     """
-    ctx = _build_context(config)
+    ctx = build_context(config)
     description = (
         f"Search and draft grant applications using {config.org.name}'s historical "
         f"grant archive. Find precedent applications, extract boilerplate text, "
@@ -218,7 +218,7 @@ def _generate_claude(
     Writes to: {output_dir}/.claude/commands/grant-search.md
               {output_dir}/.claude/commands/grant-draft.md
     """
-    ctx = _build_context(config)
+    ctx = build_context(config)
 
     search_body = _fill_core("archive-search.md", ctx)
     search_content = f"# /grant-search\n\n{search_body}"
@@ -252,7 +252,7 @@ def _generate_openclaw(
     Writes to: {output_dir}/openclaw/system-prompt.md
               {output_dir}/openclaw/tools.yaml
     """
-    ctx = _build_context(config)
+    ctx = build_context(config)
 
     system_prompt = (
         "You are a grant-writing assistant for {org_name}. "

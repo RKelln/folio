@@ -14,6 +14,7 @@ import json
 import sys
 from pathlib import Path
 
+from folio import __version__
 from folio.core.init import AVAILABLE_PROFILES, init_project
 
 
@@ -79,6 +80,10 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         dest="json_output",
         help="Output generated configuration as JSON",
+    )
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s v{__version__}",
     )
 
     args = parser.parse_args(argv)

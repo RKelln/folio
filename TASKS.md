@@ -74,26 +74,30 @@ Working production pipeline that InterAccess can run against their archive, prod
 
 ---
 
-## Phase 3: Documentation
+## Phase 3: Documentation ✅ COMPLETE
 
-- [ ] **Write `docs/pipelines.md`** — pipeline stage documentation
-- [ ] **Write `docs/config.md`** — folio.yaml full reference
-- [ ] **Write `docs/converters.md`** — converter options and setup
-- [ ] **Write `docs/wiki-backends.md`** — wiki backend options and setup
-- [ ] **Write `docs/frontmatter.md`** — frontmatter field reference
-- [ ] **Write `docs/skills.md`** — skills architecture and generation
-- [ ] **Update `README.md`** — complete quickstart with real examples
+- [x] **Write `docs/pipelines.md`** — pipeline stage documentation
+- [x] **Write `docs/config.md`** — folio.yaml full reference
+- [x] **Write `docs/converters.md`** — converter options and setup
+- [x] **Write `docs/wiki-backends.md`** — wiki backend options and setup
+- [x] **Write `docs/frontmatter.md`** — frontmatter field reference
+- [x] **Write `docs/skills.md`** — skills architecture and generation
+- [~] **Update `README.md`** — complete quickstart with real examples
 
 ---
 
-## Phase 4: Polish
+## Phase 4: Polish ✅ MOSTLY COMPLETE
 
-- [ ] **Add `--help`** to all CLI tools with realistic usage examples
-- [ ] **Add `--version`** flag to all CLI tools (reads from `folio.__version__`)
-- [ ] **Add `--config` flag** to all tools (point to folio.yaml, default cwd)
-- [ ] **Consistent progress bars** (tqdm) across all long-running operations
-- [ ] **Consistent error messages** (use `sys.exit(1)`, messages to stderr)
-- [ ] **CI/CD** — GitHub Actions: pytest, ruff lint, mypy typecheck on push
+- [x] **Add `--help`** to all CLI tools with realistic usage examples
+- [x] **Add `--version`** flag to all CLI tools (reads from `folio.__version__`)
+- [x] **Add `--config` flag** to all tools (point to folio.yaml, default cwd)
+- [x] **Consistent progress bars** (tqdm) across all long-running operations
+- [x] **Consistent error messages** (use `sys.exit(1)`, messages to stderr)
+- [x] **CI/CD** — GitHub Actions: pytest, ruff lint, mypy typecheck on push
+- [x] **CLI tests** — 53 tests in `tests/cli/test_cli.py`
+- [x] **BUGS #039-#046** — all 8 CLI review findings fixed
+- [x] **Built-in guide** — `folio guide` with agent reference
+- [x] **`__version__` on all 14 CLIs** — via argparse `action="version"`
 
 ---
 
@@ -124,7 +128,7 @@ Working production pipeline that InterAccess can run against their archive, prod
 | Phase | Tasks | Status |
 |-------|-------|--------|
 | 1: Core pipeline | 20 tasks | ✅ Done |
-| 2: Testing | 6 task groups (354 tests) | ✅ Done |
-| 3: Documentation | 7 docs | ⬜ Not started |
-| 4: Polish | 6 tasks | ⬜ Not started |
+| 2: Testing | 6 task groups (407 tests) | ✅ Done |
+| 3: Documentation | 7 docs (6 done, README in progress) | ✅ Mostly complete |
+| 4: Polish | 10 tasks | ✅ Done |
 | 5: InterAccess deploy | 3 tasks | ⬜ Not started |

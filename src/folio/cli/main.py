@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import sys
 
+from folio import __version__
+
 _COMMANDS = {
     "pipeline": "folio.cli.pipeline",
     "scan": "folio.cli.scan",
@@ -42,6 +44,10 @@ def main(argv: list[str] | None = None) -> None:
             print(f"  folio {name}", file=sys.stderr)
         print(file=sys.stderr)
         print("Run 'folio <command> --help' for details.", file=sys.stderr)
+        sys.exit(0)
+
+    if argv[0] in ("-V", "--version"):
+        print(f"folio v{__version__}", file=sys.stderr)
         sys.exit(0)
 
     command = argv[0]

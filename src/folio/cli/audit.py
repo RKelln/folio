@@ -13,6 +13,7 @@ import json
 import sys
 from pathlib import Path
 
+from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.auditor import audit_wiki
 
@@ -58,6 +59,10 @@ def main(argv: list[str] | None = None) -> None:
         "--dry-run", "-n",
         action="store_true",
         help="Preview what would be audited without running audit",
+    )
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s v{__version__}",
     )
 
     args = parser.parse_args(argv)

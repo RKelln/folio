@@ -13,8 +13,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import traceback
 from pathlib import Path
 
+from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.canonicalizer import DEFAULT_CANONICALIZE_CONFIG, canonicalize_directory
 
@@ -68,6 +70,10 @@ def main(argv: list[str] | None = None) -> None:
         dest="json_output",
         help="Output canonicalization result as JSON",
     )
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s v{__version__}",
+    )
 
     args = parser.parse_args(argv)
 
@@ -93,8 +99,9 @@ def main(argv: list[str] | None = None) -> None:
         from folio.adapters.llm import get_llm_provider
         try:
             llm_provider = get_llm_provider(config)
-        except Exception as exc:
+        except (ValueError, ImportError, RuntimeError) as exc:
             print(f"Warning: Could not create LLM provider: {exc}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
             print("  Falling back to heuristic-only mode.", file=sys.stderr)
             args.use_llm = False
 

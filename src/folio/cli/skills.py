@@ -5,8 +5,12 @@ OpenClaw, Hermes) from the project configuration and the
 platform-agnostic skill templates in skills/core/.
 """
 
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
+
+from folio import __version__
 
 
 def main(argv: list[str] | None = None):
@@ -48,6 +52,10 @@ def main(argv: list[str] | None = None):
         action="store_true",
         help="Output structured JSON",
     )
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s v{__version__}",
+    )
     args = parser.parse_args(argv)
 
     from folio.config import load_project_config
@@ -62,9 +70,9 @@ def main(argv: list[str] | None = None):
     if args.dry_run:
         import json
 
-        from folio.core.skills import _build_context
+        from folio.core.skills import build_context
 
-        ctx = _build_context(config)
+        ctx = build_context(config)
         result = {
             "platform": args.platform,
             "context_keys": sorted(ctx.keys()),

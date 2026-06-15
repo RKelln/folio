@@ -17,6 +17,8 @@ import json
 import re
 import sys
 
+from folio import __version__
+
 _GUIDE = """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                        folio — Agent Usage Guide                            ║
@@ -414,6 +416,10 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         dest="json_output",
         help="Output guide structure as JSON",
+    )
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s v{__version__}",
     )
 
     args = parser.parse_args(argv)

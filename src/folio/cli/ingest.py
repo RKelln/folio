@@ -15,6 +15,7 @@ import json
 import sys
 from pathlib import Path
 
+from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.ingester import ingest_document
 
@@ -90,6 +91,10 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         dest="json_output",
         help="Output ingestion result as JSON",
+    )
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s v{__version__}",
     )
 
     args = parser.parse_args(argv)

@@ -16,6 +16,7 @@ import json
 import sys
 from pathlib import Path
 
+from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.rewriter import rewrite_directory, rewrite_file
 
@@ -86,6 +87,10 @@ def main(argv: list[str] | None = None) -> None:
         "--manifest",
         type=Path,
         help="Path to manifest.json for tier/status lookup (default: rewrite_md/manifest.json)",
+    )
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s v{__version__}",
     )
 
     args = parser.parse_args(argv)
@@ -177,8 +182,8 @@ def main(argv: list[str] | None = None) -> None:
         print(f"  Limit: {args.limit or 'all'}")
         total_chars = sum(f.stat().st_size for f in md_files if f.is_file())
         est_tokens = int(total_chars / 3.5)
-        est_cost_input = est_tokens / 1_000_000 * config.llm.pricing.get("input_per_million", 0.14)
-        output_ppm = config.llm.pricing.get("output_per_million", 1.10)
+        est_cost_input = est_tokens / 1_000_000 * config.llm.input_price_per_m
+        output_ppm = config.llm.output_price_per_m
         est_cost_output = est_tokens / 1_000_000 * output_ppm
         result = {
             "files": len(args.limit or md_files),

@@ -291,56 +291,56 @@ Review of 12 CLI stub files. 24 findings: 0 critical, 5 high, 7 medium, 12 low. 
 
 ### [#039] No `--version` flag on any CLI tool
 - **Priority**: P2
-- **Status**: Open
+- **Status**: Fixed (2026-06-15)
 - **Where**: All CLI entry points
 - **What**: AGENTS.md Phase 4 requires `--version` flag on all CLI tools reading from `folio.__version__`. Currently no CLI supports this.
-- **Fix**: Add `--version` to argparse in each CLI (or common helper) that prints `folio.__version__`.
+- **Fix**: Added `--version` to argparse in every CLI (14 files). Uses `action="version"` with `from folio import __version__`.
 
 ### [#040] No CLI tests
 - **Priority**: P2
-- **Status**: Open
+- **Status**: Fixed (2026-06-15)
 - **Where**: `tests/` directory
 - **What**: All 15 CLI files are untested. The `main(argv=...)` pattern makes table-driven tests possible without subprocess spawning.
-- **Fix**: Write tests under `tests/cli/` covering `--help` output, `--dry-run` mode, `--json` output, and error handling for each CLI.
+- **Fix**: 53 CLI tests in `tests/cli/test_cli.py` covering --help, --version, --dry-run, --json, missing args, and dispatcher.
 
 ### [#041] `classify.py` config-merging leaks business logic into CLI
 - **Priority**: P2
-- **Status**: Open
+- **Status**: Fixed (2026-06-15)
 - **Where**: `cli/classify.py:81-90`
 - **What**: Building `classify_config` from `DEFAULT_CLASSIFY_CONFIG` + `config.funders` + `config.classification` keys + `config.doc_types` is business logic duplicated from `pipeline.py:_run_classify`. AGENTS.md Rule 7 says CLIs should be thin wrappers.
-- **Fix**: Extract into `config/` or `core/classifier.py` as `build_classify_config(project_config)`.
+- **Fix**: Extracted into `core/classifier.py:build_classify_config(project_config)`. Both `cli/classify.py` and `core/pipeline.py` now call this shared function.
 
 ### [#042] `skills.py` imports private `_build_context`
 - **Priority**: P2
-- **Status**: Open
+- **Status**: Fixed (2026-06-15)
 - **Where**: `cli/skills.py:65`
 - **What**: `from folio.core.skills import _build_context` — imports a private function across module boundaries.
-- **Fix**: Make `_build_context` public or have `generate_skills()` expose the context in its return value.
+- **Fix**: Renamed `_build_context` to `build_context` (public) in `core/skills.py`. Updated all references.
 
 ### [#043] `canonicalize.py` — broad `except Exception` on LLM provider setup
 - **Priority**: P2
-- **Status**: Open
+- **Status**: Fixed (2026-06-15)
 - **Where**: `cli/canonicalize.py:96`
 - **What**: `except Exception as exc:` catches all exceptions. Should catch specific types (`ValueError`, `ConnectionError`, `ImportError`).
-- **Fix**: Narrow the except clause to expected exception types.
+- **Fix**: Narrowed to `except (ValueError, ImportError, RuntimeError)`. Added `traceback.print_exc()` for diagnostics.
 
 ### [#044] `priority.py` hardcoded dry-run cost estimate
 - **Priority**: P2
-- **Status**: Open
+- **Status**: Fixed (2026-06-15)
 - **Where**: `cli/prioritize.py:153`
 - **What**: `len(md_files) * 0.002` hardcoded instead of deriving from `config.llm.pricing`. AGENTS.md Rule 1: "Configuration drives behavior."
-- **Fix**: Use `config.llm.pricing` to compute cost estimate, matching `rewrite.py` pattern.
+- **Fix**: Replaced with pricing-driven estimate using config.llm input/output prices, matching rewrite.py pattern. Falls back to 0.002 default.
 
 ### [#045] `scan.py` `--source` arg type inconsistency
 - **Priority**: P3
-- **Status**: Open
+- **Status**: Fixed (2026-06-15)
 - **Where**: `cli/scan.py:43`
 - **What**: `--source` uses `type=str` (default), but later wrapped with `Path(args.source)`. Other CLIs use `type=Path`. Inconsistent.
-- **Fix**: Change to `type=Path`.
+- **Fix**: Changed to `type=Path`.
 
 ### [#046] Missing `from __future__ import annotations` in skills.py, teach.py
 - **Priority**: P3
-- **Status**: Open
+- **Status**: Fixed (2026-06-15)
 - **Where**: `cli/skills.py`, `cli/teach.py`
 - **What**: Minor inconsistency with the other 11 CLI files.
-- **Fix**: Add the import.
+- **Fix**: Added the import.

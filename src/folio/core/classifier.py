@@ -65,6 +65,30 @@ DEFAULT_CLASSIFY_CONFIG: dict = {
     "tier_rules": [],
 }
 
+def build_classify_config(project_config) -> dict:
+    """Merge project configuration into a classify-ready config dict.
+
+    Starts from :data:`DEFAULT_CLASSIFY_CONFIG` and overlays funders,
+    classification rules, and document types from a project config object
+    (or a YAML-loaded dict).  Returns a flat dict ready to pass to
+    :func:`classify_file` / :func:`classify_directory`.
+
+    If *project_config* is ``None`` the defaults are returned unchanged.
+    """
+    classify_config = dict(DEFAULT_CLASSIFY_CONFIG)
+    if project_config is None:
+        return classify_config
+    classify_config["funders"] = project_config.funders
+    if project_config.classification:
+        for key in ("doc_types", "form_chrome", "draft_markers", "corruption",
+                     "thresholds", "skip_rules", "tier_rules", "word_count_pattern"):
+            if key in project_config.classification:
+                classify_config[key] = project_config.classification[key]
+    if project_config.doc_types and "doc_types" not in classify_config:
+        classify_config["doc_types"] = {dt: [r'(?i)\b' + dt + r'\b'] for dt in project_config.doc_types}
+    return classify_config
+
+
 # ── Safe Condition DSL ────────────────────────────────────────────────────────
 
 

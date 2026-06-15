@@ -530,7 +530,7 @@ def _run_canonicalize(config: ProjectConfig) -> dict:
 
 
 def _run_classify(config: ProjectConfig) -> dict:
-    from folio.core.classifier import classify_directory, DEFAULT_CLASSIFY_CONFIG
+    from folio.core.classifier import classify_directory, build_classify_config
 
     clean_dir = Path(config.paths.clean_md)
 
@@ -555,15 +555,7 @@ def _run_classify(config: ProjectConfig) -> dict:
 
     print(f"  Classifying {len(md_files)} files...")
 
-    classify_config = dict(DEFAULT_CLASSIFY_CONFIG)
-    classify_config["funders"] = config.funders
-    if config.classification:
-        for key in ("doc_types", "form_chrome", "draft_markers", "corruption",
-                     "thresholds", "skip_rules", "tier_rules", "word_count_pattern"):
-            if key in config.classification:
-                classify_config[key] = config.classification[key]
-    if config.doc_types and "doc_types" not in classify_config:
-        classify_config["doc_types"] = {dt: [r'(?i)\b' + dt + r'\b'] for dt in config.doc_types}
+    classify_config = build_classify_config(config)
 
     manifest = classify_directory(clean_dir, classify_config)
     summary = manifest.get("summary", {})
