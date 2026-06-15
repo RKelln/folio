@@ -37,5 +37,6 @@ wiki/
 .coverage
 htmlcov/
 
-# Node (for opencode skills)
-node_modules/
+# Org-specific archive deployments (separate repos)
+ia-library/
+

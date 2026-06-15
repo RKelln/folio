@@ -50,8 +50,10 @@ def _load_defaults() -> dict:
         return yaml.safe_load(f) or {}
 
 
-def _build_config(data: dict) -> ProjectConfig:
-    """Build a ProjectConfig from a merged configuration dict (YAML structure)."""
+def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
+    """Build a ProjectConfig from a merged configuration dict, resolving relative paths."""
+    if config_dir is None:
+        config_dir = Path.cwd()
     org_data = data.get("org", {})
     org = OrgConfig(
         name=org_data.get("name", "My Organization"),
@@ -60,12 +62,15 @@ def _build_config(data: dict) -> ProjectConfig:
     )
 
     paths_data = data.get("paths", {})
+    def _resolve_path(key: str, fallback: str) -> str:
+        p = paths_data.get(key, fallback)
+        return str(config_dir / p)
     paths = PathsConfig(
-        raw_archive=paths_data.get("raw_archive", "./_raw_archive/"),
-        raw_md=paths_data.get("raw_md", "./raw_md/"),
-        clean_md=paths_data.get("clean_md", "./clean_md/"),
-        rewrite_md=paths_data.get("rewrite_md", "./rewrite_md/"),
-        wiki_project=paths_data.get("wiki_project", "./wiki/"),
+        raw_archive=_resolve_path("raw_archive", "./_raw_archive/"),
+        raw_md=_resolve_path("raw_md", "./raw_md/"),
+        clean_md=_resolve_path("clean_md", "./clean_md/"),
+        rewrite_md=_resolve_path("rewrite_md", "./rewrite_md/"),
+        wiki_project=_resolve_path("wiki_project", "./wiki/"),
     )
 
     converter_data = data.get("converter", {})
@@ -210,6 +215,7 @@ def load_project_config(config_path: str | Path | None = None) -> ProjectConfig:
     if config_path is None:
         load_dotenv()
         merged = defaults
+        config_dir = Path.cwd()
     else:
         config_path = Path(config_path)
         if not config_path.exists():
@@ -217,11 +223,12 @@ def load_project_config(config_path: str | Path | None = None) -> ProjectConfig:
                 f"Config file not found: {config_path}\n"
                 f'Run "folio init" to create one.'
             )
-        load_dotenv(config_path.parent / ".env")
+        config_dir = config_path.parent.resolve()
+        load_dotenv(config_dir / ".env")
         with open(config_path) as f:
             user_config = yaml.safe_load(f) or {}
         merged = _deep_merge(defaults, user_config)
 
-    config = _build_config(merged)
+    config = _build_config(merged, config_dir)
     _validate(config)
     return config
