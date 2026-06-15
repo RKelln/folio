@@ -60,3 +60,7 @@ class ProjectConfig:
     wiki: WikiConfig = field(default_factory=WikiConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
     processing: ProcessingConfig = field(default_factory=ProcessingConfig)
+    classification: dict = field(default_factory=dict)
+    headings: dict = field(default_factory=dict)
+    rewrite: dict = field(default_factory=dict)
+    prioritize: dict = field(default_factory=dict)

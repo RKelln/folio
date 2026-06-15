@@ -271,3 +271,14 @@ Full review of all 48 source files. 93 findings: 13 critical, 21 high, 28 medium
 - **Status**: Open
 - **What**: 10 modules use it, 10 modules don't. No clear pattern.
 - **Fix**: Standardize: either all modules or none.
+
+---
+
+## Deployment Findings (2026-06-15)
+
+### [#038] Tier rule evaluation fails with KeyError 'type' on ~170 files
+- **Priority**: P2
+- **Status**: Open
+- **Where**: `core/classifier.py` `_evaluate_tier_rules`
+- **What**: During InterAccess classification (1255 files), ~170 tier rule evaluations fail with `KeyError: 'type'`. Affected files get the default `minimal` tier instead of the correct tier. The legacy condition parser may produce conditions missing the `type` key for certain edge cases in compound `or`/`and` expressions.
+- **Fix**: Debug the legacy parser output for failing conditions. Ensure all condition dicts have `type` key. Possible cause: deeply nested `or` chains or mixed `and`/`or` with parenthesized groups.
