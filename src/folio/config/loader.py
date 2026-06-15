@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 
 from folio.config.schema import (
     ConverterConfig,
@@ -207,6 +208,7 @@ def load_project_config(config_path: str | Path | None = None) -> ProjectConfig:
     defaults = _load_defaults()
 
     if config_path is None:
+        load_dotenv()
         merged = defaults
     else:
         config_path = Path(config_path)
@@ -215,6 +217,7 @@ def load_project_config(config_path: str | Path | None = None) -> ProjectConfig:
                 f"Config file not found: {config_path}\n"
                 f'Run "folio init" to create one.'
             )
+        load_dotenv(config_path.parent / ".env")
         with open(config_path) as f:
             user_config = yaml.safe_load(f) or {}
         merged = _deep_merge(defaults, user_config)
