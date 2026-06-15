@@ -126,6 +126,12 @@ folio/
 └── docker/
 ```
 
+## Commit conventions
+
+- Use [Conventional Commits](https://www.conventionalcommits.org/) format: `type(scope): description`
+- Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+- Append `Generated-by: <model-name>` trailer to every commit (e.g. `Generated-by: deepseek-v4-pro`)
+
 ## Customizing for a new organization
 
 1. Run `folio init --guided` (or `folio init --profile canadian-artist-run-centre`)
