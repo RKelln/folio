@@ -137,70 +137,70 @@ Full review of all 48 source files. 93 findings: 13 critical, 21 high, 28 medium
 
 ### [#018] Pipeline `_run_rewrite` calls `rewrite_directory` with wrong signature
 - **Priority**: P0
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/pipeline.py:582`
 - **What**: `rewrite_directory(clean_dir, rewrite_dir, config)` passes `rewrite_dir` as the `manifest_path` parameter. The function signature is `rewrite_directory(directory, config, manifest_path=None, ...)`. This will crash at runtime.
 - **Fix**: Use keyword arguments: `rewrite_directory(clean_dir, config, manifest_path=manifest_path)`.
 
 ### [#019] `prioritizer._validate_priorities` returns wrong types on error
 - **Priority**: P0
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/prioritizer.py:375`
 - **What**: Returns `(priorities, {})` when raw_priorities is not a dict, but the caller unpacks as `priorities, errors`. If errors becomes an empty dict, `.append()` will crash.
 - **Fix**: Always return `(priorities, errors)` with proper list type for errors.
 
 ### [#020] `classifier._evaluate_skip_rules` and `_evaluate_tier_rules` silently swallow all exceptions
 - **Priority**: P0
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/classifier.py:630-632, 648-650`
 - **What**: `except Exception: continue` swallows ValueError, KeyError, TypeError, etc. A misconfigured rule produces no results silently.
 - **Fix**: Log exceptions at WARNING level, or only catch expected exception types.
 
 ### [#021] Broken retry logic in `rewrite_directory`
 - **Priority**: P0
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/rewriter.py` thread pool section
 - **What**: The retry loop calls `future.result()` in a loop, but a completed future caches its result. Only the first call returns the fresh result; subsequent calls return the same cached value. `max_retries` has no effect for the concurrent path.
 - **Fix**: Re-submit the task on retry instead of re-reading the completed future.
 
 ### [#022] Manifest mutation race condition in `rewrite_directory`
 - **Priority**: P0
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/rewriter.py:951-958`
 - **What**: `update_file` and `recalculate_summary` mutate `manifest["files"]` from multiple threads simultaneously. `recalculate_summary` iterates `files.values()` while another thread may be adding entries — non-atomic.
 - **Fix**: Add a `threading.Lock` around manifest mutations.
 
 ### [#023] `_call_llm` sends DeepSeek-specific params to all providers
 - **Priority**: P0
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/rewriter.py:518-521`
 - **What**: `reasoning_effort` and `thinking` extra_body are DeepSeek-specific. Sending them to OpenAI, Anthropic, or other providers will cause API errors.
 - **Fix**: Gate behind provider check, or catch API errors and retry without them.
 
 ### [#024] Missing null check on `response.usage` in `_call_llm`
 - **Priority**: P0
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/rewriter.py:526-528`
 - **What**: `response.usage.prompt_tokens` — some providers don't include `usage`. Will crash with `AttributeError`.
 - **Fix**: Use `getattr(response, 'usage', None)` with safe defaults.
 
 ### [#025] `rewrite_file` bypasses LLMProvider, reads private attrs
 - **Priority**: P0
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/rewriter.py:731-737`
 - **What**: Reads `llm_provider._base_url` and `_api_key` (private attributes) to construct a new OpenAI client, discarding the provider. Violates encapsulation.
 - **Fix**: Extend `LLMProvider.complete()` to return `(text, usage_dict)` and use it directly.
 
 ### [#026] `thinking_enabled` None coercion bug
 - **Priority**: P0
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/rewriter.py:638`
 - **What**: `str(thinking_raw).lower() != "disabled"` converts `None` to `"none"` → `True`, enabling thinking mode when user didn't request it.
 - **Fix**: Check `thinking_raw is not False` or `thinking_raw is True`.
 
 ### [#027] `ingester` imports non-existent function `rewrite_documents`
 - **Priority**: P0
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/ingester.py:263`
 - **What**: `from folio.core.rewriter import rewrite_documents` — this function doesn't exist. Import always fails, caught by `except ImportError`. Dead code branch.
 - **Fix**: Replace with `rewrite_file` or remove the feature until implemented.
@@ -215,53 +215,53 @@ Full review of all 48 source files. 93 findings: 13 critical, 21 high, 28 medium
 
 ### [#029] Three separate manifest implementations
 - **Priority**: P1
-- **Status**: Open
+- **Status**: Fixed
 - **What**: `core/manifest.py`, `core/pipeline.py` (private `_load_manifest`), and `core/prioritizer.py` (private `_load_manifest`) each define their own manifest schema and load/save functions. Three different key conventions for the same concept.
 - **Fix**: Unify into `core/manifest.py` with a shared schema.
 
 ### [#030] Duplicate rate-limiting implementations
 - **Priority**: P1
-- **Status**: Open
+- **Status**: Fixed
 - **What**: `core/rewriter.py:865-877` and `core/prioritizer.py:854-865` implement identical rate-limiting logic.
 - **Fix**: Extract into `core/throttle.py` shared utility.
 
 ### [#031] Duplicate `_deep_merge` functions
 - **Priority**: P1
-- **Status**: Open
+- **Status**: Fixed
 - **What**: `core/init.py:215-222` and `config/loader.py:30-38` have identical `_deep_merge` functions.
 - **Fix**: Import from `config.loader` or move to shared utility.
 
 ### [#032] `canonicalize_directory` swallows JSON parse errors from LLM
 - **Priority**: P1
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/canonicalizer.py:546-549`
 - **What**: `json.loads()` on untrusted LLM output with fragile code-fence regex stripping. Parse failures silently skipped via bare `except:`.
 - **Fix**: Use `_parse_llm_response()` from prioritizer.py. Log parse failures.
 
 ### [#033] `sage_wiki` backend: search/query don't check subprocess success
 - **Priority**: P1
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `adapters/wiki/sage_wiki.py:63-69, 74-80`
 - **What**: `subprocess.run()` without `check=True`. Failed search returns empty string silently — caller can't distinguish "no results" from "sage-wiki crashed."
 - **Fix**: Add `check=True` and handle `CalledProcessError`.
 
 ### [#034] Config `base_url` validation rejects `http://` localhost URLs
 - **Priority**: P1
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `config/loader.py:141-144`
 - **What**: Validates for `https://` only. Local dev proxies (Ollama, LM Studio, localhost) use `http://`.
 - **Fix**: Also allow `http://` for localhost/private IPs.
 
 ### [#035] `frontmatter.update_frontmatter` uses regex on raw YAML text
 - **Priority**: P1
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/frontmatter.py:140-142`
 - **What**: `re.sub` on YAML text can match colons in quoted values, multi-line strings, or comments. Example: if a description value contains `funder: OAC`, the regex will match and corrupt it.
 - **Fix**: Parse YAML, update dict, serialize back. Don't regex-replace on YAML text.
 
 ### [#036] Skills template path uses 4-level `.parent` — breaks when installed
 - **Priority**: P1
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/skills.py:15`
 - **What**: `Path(__file__).resolve().parent.parent.parent.parent / "skills"` — if the package is installed in `site-packages/`, the skills directory won't be found.
 - **Fix**: Use `importlib.resources` or package skills templates with the package data.
