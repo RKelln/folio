@@ -63,46 +63,14 @@ Working production pipeline that InterAccess can run against their archive, prod
 
 ---
 
-## Phase 2: Testing
+## Phase 2: Testing ✅ COMPLETE
 
-- [ ] **Write `tests/test_frontmatter.py`**
-  - Port all tests from `fm_utils._run_tests()`
-  - Test all parsing, generation, update, sanitize, normalize functions
-  - Test Pydantic validation (valid frontmatter passes, invalid fields rejected)
-  - Test field alias normalization edge cases
-  - Test empty/malformed frontmatter handling
-
-- [ ] **Write `tests/test_config.py`**
-  - Test loading minimal valid config
-  - Test loading config with all optional sections
-  - Test validation errors on missing required fields
-  - Test validation errors on invalid funder names, paths, etc.
-  - Test defaults merging
-
-- [ ] **Write `tests/test_classifier.py`**
-  - Test condition DSL evaluation (all operators, all functions)
-  - Test skip rules against known-bad files
-  - Test tier assignment against known file profiles
-  - Test that removed eval()-style conditions produce same results as DSL conditions
-
-- [ ] **Write `tests/test_cleaner.py`**
-  - Test base64 image stripping
-  - Test whitespace normalization
-  - Test form chrome removal
-  - Test HTML entity decoding
-  - Test corruption fix (split words)
-
-- [ ] **Write `tests/test_adapters.py`**
-  - Test converter factory returns correct type
-  - Test wiki backend factory returns correct type
-  - Test LLM provider factory returns correct type
-  - Test sage-wiki backend with a mock subprocess
-
-- [ ] **Write integration tests**
-  - `tests/integration/test_pipeline.py` — run full pipeline on small fixture archive
-  - Verify all stages produce expected output
-  - Verify manifest tracks file states correctly
-  - Verify costs are tracked
+- [x] **Write `tests/test_frontmatter.py`** (77 tests)
+- [x] **Write `tests/test_config.py`** (30 tests)
+- [x] **Write `tests/test_classifier.py`** (117 tests)
+- [x] **Write `tests/test_cleaner.py`** (74 tests)
+- [x] **Write `tests/test_adapters.py`** (42 tests)
+- [x] **Write integration tests** — `tests/integration/test_pipeline.py` (17 tests)
 
 ---
 
@@ -153,10 +121,10 @@ Working production pipeline that InterAccess can run against their archive, prod
 
 ## Summary
 
-| Phase | Tasks | Est. effort |
-|-------|-------|-------------|
-| 1: Core pipeline | 20 tasks | ~3-5 days of agent work |
-| 2: Testing | 6 task groups | ~1-2 days |
-| 3: Documentation | 7 docs | ~1 day |
-| 4: Polish | 6 tasks | ~0.5 day |
-| 5: InterAccess deploy | 3 tasks | ~0.5 day |
+| Phase | Tasks | Status |
+|-------|-------|--------|
+| 1: Core pipeline | 20 tasks | ✅ Done |
+| 2: Testing | 6 task groups (354 tests) | ✅ Done |
+| 3: Documentation | 7 docs | ⬜ Not started |
+| 4: Polish | 6 tasks | ⬜ Not started |
+| 5: InterAccess deploy | 3 tasks | ⬜ Not started |

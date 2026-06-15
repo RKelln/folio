@@ -14,9 +14,9 @@ This document is for the next AI agent taking over work on `folio`. Read it full
 
 ## Current state
 
-**Phase 1 is complete. Code reviewed. 93 findings, 10 P0 bugs await fixing.**
+**Phase 1 complete. Code reviewed. All 10 P0 and 11 P1 bugs fixed. 354 tests passing.**
 
-All 20 core pipeline tasks are ported from the prototype. Every hardcoded InterAccess-specific value has been removed from Python. However, a full code review (`CODE_REVIEW.md`) found 93 issues — the port was done by parallel agents and the integration layer has bugs from cross-module mismatches. **Fix the P0 bugs before writing tests or deploying.**
+All 20 core pipeline tasks are ported from the prototype. Every hardcoded InterAccess-specific value has been removed from Python. The code review (`CODE_REVIEW.md`) found 93 issues — all critical and high-severity items are resolved. 354 pytest tests cover frontmatter, config, classifier, cleaner, adapters, and integration.
 
 **Key files to read FIRST (in order):**
 1. **`HANDOFF.md`** — this file
@@ -39,27 +39,15 @@ Full review of 48 source files (~9,500 lines) found:
 
 **Verdict: BLOCK MERGE.** The core algorithmic logic (DSL, dedup, cleanup) is sound but the integration layer needs fixes. See `CODE_REVIEW.md` for full details with file:line references and fix suggestions.
 
-## What to do next (updated priority order)
+## What to do next
 
-### Step 0: Fix the 10 P0 bugs
+### Step 0: Fix P0 bugs ✅ DONE
+10 P0 bugs fixed (pipeline signature, return types, exception swallowing, retry logic, race conditions, DeepSeek params, null checks, encapsulation, None coercion, dead imports).
 
-These are all in `BUGS.md` with file:line and fix suggestions. Order roughly by impact:
+### Step 1: Write tests ✅ DONE
+354 pytest tests across 6 files (frontmatter, config, classifier, cleaner, adapters, integration). Run with `uv run pytest tests/ -v`.
 
-1. **#018** — `_run_rewrite` wrong function signature → runtime crash
-2. **#022** — `_validate_priorities` wrong return types → runtime crash
-3. **#025** — broken retry logic → silent failures
-4. **#026** — manifest race condition → data corruption
-5. **#020** — silent exception swallowing in classifier → silently wrong results
-6. **#023** — DeepSeek params sent to all providers → API errors
-7. **#028** — missing `response.usage` null check → AttributeError crash
-8. **#024** — `rewrite_file` bypasses LLMProvider → encapsulation break
-9. **#027** — `thinking_enabled` None coercion → wrong behavior
-10. **#029** — `ingester` imports non-existent function → dead code
-
-### Step 1: Write tests (Phase 2)
-_After P0s are fixed._ Priority order in TASKS.md.
-
-### Step 2: InterAccess deployment (Phase 5)
+### Step 2: InterAccess deployment (Phase 5) ← NEXT
 Configure and validate against real IA archive data.
 - `core/frontmatter.py` — YAML frontmatter parsing, generation, sanitization, field normalization
 - `core/cleaner.py` — deterministic markdown cleanup (strip images, normalize whitespace, fix corruption, remove form chrome)
@@ -87,12 +75,15 @@ Configure and validate against real IA archive data.
 **CLI entry points registered in pyproject.toml:**
 `folio`, `folio-pipeline`, `folio-clean`, `folio-classify`, `folio-rewrite`, `folio-prioritize`, `folio-canonicalize`, `folio-ingest`, `folio-audit`, `folio-scan`, `folio-skills`, `folio-init`
 
-**NOT done (Phase 2+):**
-- No pytest tests written (test scaffolding exists in `tests/`, fixtures in `conftest.py`)
-- No documentation beyond README, AGENTS.md, and PLAN.md
+**NOT done:**
+- No documentation beyond README, AGENTS.md, PLAN.md, and test files
 - CLI stubs exist but are minimal — many just print "not yet implemented"
 - No integration test run against the InterAccess archive
 - No CI/CD configuration
+
+**NEW since Phase 1:**
+- `core/throttle.py` — thread-safe `RateLimiter` for API calls (extracted from duplicate implementations)
+- 354 pytest tests in `tests/` covering frontmatter, config, classifier, cleaner, adapters, pipeline integration
 
 ## Immediate: Run a smoke test
 
