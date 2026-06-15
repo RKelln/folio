@@ -105,7 +105,7 @@ CONFIGURATION (folio.yaml)
   org:
     name: "My Organization"        # Full organization name
     abbreviation: "ORG"            # Short code
-    mission: ""                    # Mission statement (appears in skills)
+    description: ""                # Optional description (appears in skills)
 
   paths:
     raw_archive: ./archive/        # Raw PDF/DOCX/XLSX files
@@ -127,12 +127,14 @@ CONFIGURATION (folio.yaml)
     - support_material
 
   llm:
-    provider: deepseek             # LLM provider
-    model: deepseek-v4-flash       # Model name
+    provider: openai_compatible    # LLM provider (openai_compatible | openai)
+    models:
+      fast: deepseek-v4-flash      # Fast/cheap model
+      quality: deepseek-v4-pro     # Quality model for complex documents
     base_url: https://api.deepseek.com
     pricing:
       input_per_million: 0.14
-      output_per_million: 1.10
+      output_per_million: 0.28
 
   converter:
     type: datalab                  # Or: marker, docling, null
@@ -271,8 +273,8 @@ classification section (all optional, deep-merged with defaults):
     - condition:
         type: and
         conditions:
-          - {type: content_lines_gt, value: 40}
-          - {type: corruption_lt, value: 0.5}
+          - {type: field_gt, field: content_lines, value: 40}
+          - {type: field_lt, field: corruption_score, value: 0.5}
       tier: full
 
   thresholds:
@@ -307,35 +309,39 @@ headings section (per-funder canonical heading taxonomy):
       "Support Material": []
       "Assessment Summary": []
 
-12 CONDITION TYPES
-──────────────────
-  Simple:
-    has_doc_type VALUE       file has this document type tag
-    has_funder VALUE         file's detected funder matches
-    content_lines_gt N       content lines > N
-    content_lines_lt N       content lines < N
-    corruption_gt N          corruption score > N
-    corruption_lt N          corruption score < N
-    is_draft                 file is marked as draft
-    filename_contains VALUE  filename contains substring (case-insensitive)
+ 12 CONDITION TYPES
+ ──────────────────
+   Simple:
+     has_doc_type VALUE       file has this document type tag
+     has_any_type [VALUE...]  file has any of these type tags
+     field_gt FIELD VALUE     field > value (e.g. field: content_lines, value: 40)
+     field_lt FIELD VALUE     field < value
+     field_gte FIELD VALUE    field >= value
+     field_lte FIELD VALUE    field <= value
+     path_contains [VALUE...] file path contains any substring
+     filename_starts_with VAL filename starts with prefix
+     has_headings             file contains headings
+     has_tables               file contains tables
+     true                     always matches
 
-  Compound:
-    and [cond, cond, ...]    all conditions must match
-    or  [cond, cond, ...]    any condition must match
-    not CONDITION            invert condition result
+   Compound:
+     not_ CONDITION           negate another condition
+     and [cond, cond, ...]    all conditions must match
+     or  [cond, cond, ...]    any condition must match
 
 LLM PRICING
 ───────────
   llm:
+    models:
+      fast: deepseek-v4-flash
+      quality: deepseek-v4-pro
     pricing:
-      input_per_million: 0.14    # Cost per 1M input tokens
-      output_per_million: 1.10   # Cost per 1M output tokens
+      input_per_million: 0.14     # Cost per 1M input tokens
+      output_per_million: 0.28    # Cost per 1M output tokens
 
-  Common models and pricing (June 2026):
-    deepseek-v4-flash:  $0.14 in / $1.10 out
-    deepseek-v4-pro:    $0.27 in / $2.19 out
-    gpt-4o-mini:        $0.15 in / $0.60 out
-    gpt-4o:             $2.50 in / $10.00 out
+  Default models (pricing verified from defaults.yaml):
+    deepseek-v4-flash:  $0.14 in / $0.28 out
+    deepseek-v4-pro:    ~$0.27 in / ~$1.10 out (approximate)
 
   Set DEEPSEEK_API_KEY or OPENAI_API_KEY in .env (loaded automatically).
 
