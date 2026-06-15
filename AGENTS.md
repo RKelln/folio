@@ -94,6 +94,34 @@ Any shared mutable state accessed from multiple threads needs a `threading.Lock`
 
 Every function, class, or workflow must have exactly one canonical home. When you need something that might already exist (rate limiter, manifest loader, YAML parser, config merger, LLM response parser), check the module table above. If you find yourself writing the same logic a second time, extract it to a shared module — do not copy-paste. Duplicate implementations cause divergence bugs, dead code, and force orgs to fix the same bug in multiple places when customizing.
 
+## How to use folio (for agents)
+
+folio is installed as a CLI tool. Run it from an org library directory
+and it auto-discovers `folio.yaml`.
+
+```bash
+folio                  # Show available commands
+folio pipeline         # Run all 8 pipeline stages
+folio pipeline --dry-run  # Estimate costs without executing
+folio scan             # Scan the archive
+folio init --guided    # Interactive org setup
+folio skills --platform opencode  # Generate agent skills
+```
+
+**Org library convention** — each org has its own directory (often a repo):
+
+```
+org-library/
+├── folio.yaml    # Org config (funders, doc types, paths, LLM)
+├── .env          # API keys
+├── archive/      # Raw source files (PDF, DOCX, XLSX)
+├── markdown/     # Final LLM-rewritten output
+├── wiki/         # Sage-wiki searchable knowledge base
+└── .folio/       # Pipeline intermediates (hidden)
+```
+
+Run `folio <command> --help` for subcommand details. See `README.md` for the full command list.
+
 ## Project Structure
 
 ```
