@@ -15,13 +15,13 @@ import json
 import sys
 from pathlib import Path
 
+from folio.config.loader import load_project_config
 from folio.core.pipeline import (
     AVAILABLE_STAGES,
-    _format_pipeline_report,
     _estimate_pipeline,
+    _format_pipeline_report,
     run_pipeline,
 )
-from folio.config.loader import load_project_config
 
 
 def main(argv: list[str] | None = None) -> None:

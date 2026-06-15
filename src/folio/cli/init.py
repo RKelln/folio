@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -30,6 +31,8 @@ def main(argv: list[str] | None = None) -> None:
             "  folio init --profile canadian-artist-run-centre  # Use a profile\n"
             "  folio init --from-scan scan-results.yaml  # From scan report\n"
             "  folio init --name \"My Org\" --funders OAC,TAC,CCA  # Quick setup\n"
+            "  folio init --profile generic --dry-run   # Preview config without writing\n"
+            "  folio init --profile generic --json      # Output config as JSON\n"
         ),
     )
 
@@ -66,6 +69,17 @@ def main(argv: list[str] | None = None) -> None:
         default="folio.yaml",
         help="Output config file path (default: folio.yaml)",
     )
+    parser.add_argument(
+        "--dry-run", "-n",
+        action="store_true",
+        help="Preview configuration without writing files",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Output generated configuration as JSON",
+    )
 
     args = parser.parse_args(argv)
 
@@ -91,7 +105,36 @@ def main(argv: list[str] | None = None) -> None:
         org_name=args.name,
         funders=funders,
         raw_archive=args.raw_archive,
+        dry_run=args.dry_run or args.json_output,
     )
+
+    if args.json_output:
+        print(json.dumps(result.get("merged_config", {}), indent=2, default=str))
+        return
+
+    if args.dry_run:
+        if args.guided:
+            mode = "guided"
+        elif args.profile:
+            mode = f"profile:{args.profile}"
+        elif args.from_scan:
+            mode = f"from-scan:{args.from_scan}"
+        else:
+            mode = "minimal"
+        print(f"Would write configuration to {result['config_path']}")
+        print(f"  Mode: {mode}")
+        merged = result.get("merged_config", {})
+        org_name = merged.get("org", {}).get("name", "N/A")
+        print(f"  Organization: {org_name}")
+        funders_cfg = merged.get("funders", {})
+        if funders_cfg:
+            print(f"  Funders: {', '.join(funders_cfg)}")
+        doc_types = merged.get("doc_types", [])
+        if doc_types:
+            print(f"  Doc types: {', '.join(doc_types)}")
+        for w in result.get("warnings", []):
+            print(f"  Warning: {w}")
+        return
 
     print(f"Configuration written to {result['config_path']}")
     if result.get("profile"):

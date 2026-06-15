@@ -31,8 +31,16 @@ def init_project(
     funders: dict[str, str] | None = None,
     doc_types: list[str] | None = None,
     raw_archive: str | None = None,
+    dry_run: bool = False,
 ) -> dict:
     if guided:
+        if dry_run:
+            return {
+                "config_path": str(output_path.resolve()),
+                "profile": profile,
+                "warnings": ["Cannot preview guided setup with --dry-run. Run without --dry-run to use interactive mode."],
+                "merged_config": {},
+            }
         user_config = _guided_setup()
     elif profile:
         user_config = _load_profile(profile)
@@ -60,12 +68,14 @@ def init_project(
     if not merged.get("funders"):
         warnings.append("No funders configured. Add entries to 'funders' in folio.yaml.")
 
-    _write_yaml(output_path, merged)
+    if not dry_run:
+        _write_yaml(output_path, merged)
 
     return {
         "config_path": str(output_path.resolve()),
         "profile": profile,
         "warnings": warnings,
+        "merged_config": merged,
     }
 
 

@@ -25,6 +25,8 @@ _COMMANDS = {
     "canonicalize": "folio.cli.canonicalize",
     "ingest": "folio.cli.ingest",
     "audit": "folio.cli.audit",
+    "guide": "folio.cli.guide",
+    "teach": "folio.cli.teach",
 }
 
 
@@ -57,3 +59,7 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
 
     mod.main(argv[1:])
+
+
+if __name__ == "__main__":
+    main()

@@ -9,8 +9,19 @@ import argparse
 from pathlib import Path
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate agent skills from project config")
+def main(argv: list[str] | None = None):
+    parser = argparse.ArgumentParser(
+        prog="folio skills",
+        description="Generate agent skills from project config",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  folio skills --platform opencode\n"
+            "  folio skills --platform claude\n"
+            "  folio skills --platform opencode --dry-run\n"
+            "  folio skills --platform opencode --json\n"
+        ),
+    )
     parser.add_argument(
         "--platform",
         required=True,
@@ -37,7 +48,7 @@ def main():
         action="store_true",
         help="Output structured JSON",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     from folio.config import load_project_config
     from folio.core.skills import generate_skills

@@ -15,23 +15,33 @@ This document is for the next AI agent taking over work on `folio`. Read it full
 
 ## Current state
 
-**Phase 1 + Phase 2 complete. Phase 5 deployment partially done. 354 tests passing. folio installs as a CLI tool.**
+**Phase 1 + Phase 2 complete. Phase 3 (CLI stubs) complete. CI/CD workflow added. 352/354 tests passing. All 11 CLI subcommands functional.**
 
 All 20 core pipeline tasks ported from the prototype. All 10 P0 and 11 P1 bugs fixed. The CLI dispatcher provides `folio <command>` UX with subcommands auto-discovering `folio.yaml` from cwd.
+
+**New in this session:**
+- 8 CLI stubs implemented: `clean`, `classify`, `rewrite`, `prioritize`, `canonicalize`, `ingest`, `audit`, `scan`
+- All CLIs support `--help`, `--dry-run`, `--json`, `--config` flags per AGENTS.md Rule 4
+- `folio guide` added — comprehensive agent-facing reference (with `--topic config` for extended config docs)
+- `teach` registered in dispatcher (interactive tutorial placeholder)
+- `skills.py` fixed to accept `argv` parameter and added epilog/help
+- `main.py` dispatcher has `__name__ == '__main__'` guard for `python -m` usage
+- All ruff E501 line-length errors fixed in CLI
+- CI/CD: `.github/workflows/ci.yml` — runs ruff, mypy, pytest on Python 3.10/3.11/3.12
+- Code reviewed by beads-code-reviewer: 0 critical, all P1s fixed
 
 IA deployment: `ia-library/folio.yaml` created merging all 3 prototype configs. Scan (2,600 files) and classify (1,255 files) validated against prototype data. Single-file LLM rewrite tested end-to-end. Full pipeline dry-run estimates $161 for 2,600 files.
 
 **Key files to read FIRST (in order):**
 1. **`HANDOFF.md`** — this file
 2. **`AGENTS.md`** — conventions, module table, how to run folio
-3. **`BUGS.md`** — tracked issues with fix suggestions
-4. **`CODE_REVIEW.md`** — full review report (93 findings, most resolved)
-5. **`TASKS.md`** — 47 tasks, Phase 1–2 done, Phase 3–5 remaining
-6. **`README.md`** — quickstart and command reference
+3. **`TASKS.md`** — 47 tasks, Phase 1–3 done, Phase 4/5 remaining
+4. **`README.md`** — quickstart and command reference
+5. **`folio guide`** — built-in agent reference (run `folio guide`)
 
 ## What to do next
 
-### Step 2: Complete IA deployment validation (Phase 5)
+### Step 1: Complete IA deployment validation (Phase 5)
 
 The IA config is at `../ia-library/folio.yaml`. Install folio and run from there:
 
@@ -50,21 +60,17 @@ folio pipeline --dry-run  # verify estimate
 
 **Known issue:** ~170 files get wrong classification tier (`BUGS.md` #038) — legacy condition parser produces `KeyError: 'type'` for some compound rules. P2, not blocking.
 
-### Step 3: Implement CLI stubs (Phase 4)
-
-9 CLI entry points registered in `pyproject.toml` but print "not yet implemented":
-`folio-clean`, `folio-classify`, `folio-rewrite`, `folio-prioritize`, `folio-canonicalize`, `folio-ingest`, `folio-audit`, `folio-scan`, `folio-skills`
-
-The `folio` dispatcher already routes to them — just write the `main()` in each:
-`src/folio/cli/clean.py`, `classify.py`, `rewrite.py`, etc.
-
-### Step 4: CI/CD (Phase 4)
-
-GitHub Actions: `uv run pytest`, `uv run ruff check`, `uv run mypy src/folio/`
-
-### Step 5: Documentation (Phase 3)
+### Step 2: Documentation (Phase 3)
 
 Write `docs/` reference files: `pipelines.md`, `config.md`, `converters.md`, `wiki-backends.md`, `frontmatter.md`, `skills.md`.
+
+`folio guide` already provides an agent-facing reference. The docs files should be the human-facing detailed reference.
+
+### Step 3: Remaining polish (Phase 4)
+
+- Add `--version` flag to all CLI tools (reads from `folio.__version__`)
+- Write CLI tests under `tests/cli/`
+- Fix 2 pre-existing test failures in `tests/test_config.py` (path defaults — tests expect relative paths but loader resolves absolute)
 
 ## Important design decisions
 
