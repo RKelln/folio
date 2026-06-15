@@ -40,3 +40,8 @@ htmlcov/
 # Org-specific archive deployments (separate repos)
 ia-library/
 
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
