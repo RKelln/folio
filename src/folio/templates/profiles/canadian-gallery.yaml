@@ -1,0 +1,110 @@
+# Profile: canadian-gallery
+# For public and commercial art galleries in Canada
+#
+# Focuses on exhibition programming, curatorial practice, and public engagement.
+# Omits studio/membership and festival-specific headings present in the
+# artist-run-centre profile. Includes gallery-specific sections like
+# Curatorial Vision, Collection Management, and Installation.
+
+org:
+  name: "My Gallery"
+  abbreviation: "GAL"
+
+funders:
+  OAC: "Ontario Arts Council"
+  TAC: "Toronto Arts Council"
+  CCA: "Canada Council for the Arts"
+  BCAH: "Canadian Heritage"
+
+doc_types:
+  - application
+  - report
+  - budget
+  - notification
+  - staff_board
+  - support_material
+  - agreement
+  - planning
+  - exhibition
+  - press
+  - catalogue
+
+headings:
+  OAC:
+    display: "Ontario Arts Council (OAC)"
+    headings:
+      "Organization Information": ["Organization Information", "Organization Information Updates"]
+      "Governance and Organizational Structure": ["Governance and Organizational Structure", "Governance"]
+      "Board and Staff": ["Board and Staff", "Staff List", "Board of Directors"]
+      "Pay, Benefits, and Working Conditions": ["Pay, Benefits", "Supports for Staff", "Fee Policies"]
+      "Last Completed and Current Years": ["Last Completed Year", "Current Year"]
+      "Operations and Human Resources": ["Operations", "Operations & HR", "Human Resources"]
+      "Exhibitions and Programming": ["Exhibitions", "Programs", "Public Programming", "Exhibitions & Programs"]
+      "Curatorial Vision": ["Curatorial Vision", "Curatorial Mandate", "Programming Philosophy"]
+      "Education and Public Programs": ["Education", "Workshops", "Public Programs", "Talks"]
+      "Outreach and Communication": ["Outreach", "Communication", "Outreach & Communication"]
+      "Request Year Plans": ["Request Year", "Plans for Request Year"]
+      "Organizational Expectations": ["Organizational Expectations"]
+      "Projected Financial State": ["Projected Financial State", "Financial Projections"]
+      "Financial Deficits and Reserve Funds": ["Financial Deficits", "Reserve Funds"]
+      "Activity Lists": ["Activity Lists", "Activity List", "Activities"]
+      "Cost Pressures": ["Cost Pressures"]
+      "Optimal Funding": ["Optimal Funding", "Funding Priorities"]
+      "Board Approval": ["Board Approval"]
+      "Application Contacts": ["Application Contacts"]
+      "Supporting Documents": ["Supporting Documents", "Support Material"]
+
+  TAC:
+    display: "Toronto Arts Council (TAC)"
+    headings:
+      "Overview": ["Overview"]
+      "Long-Term Plan": ["Long-Term Plan", "Strategic Plan"]
+      "Organization History and Mandate": ["Organization History", "Mandate", "Mission Statement"]
+      "Current Leadership": ["Current Leadership", "Leadership", "Qualifications"]
+      "Artistic Report": ["Artistic Report", "Artistic Contribution"]
+      "Artistic Programming — Last Completed Year": ["Artistic Programming - Last Completed Year", "Programming - Last Completed"]
+      "Artistic Programming — Current Year": ["Artistic Programming - Current Year", "Programming - Current"]
+      "Artistic Programming — Request Years": ["Artistic Programming - Request Years", "Programming - Request"]
+      "Exhibitions": ["Exhibitions", "Exhibition"]
+      "Education and Workshops": ["Education", "Workshops", "Training"]
+      "Operations Report": ["Operations Report", "Organizational Activities"]
+      "Operations and Human Resources": ["Operations", "Operations & HR", "Human Resources"]
+      "Outreach and Communication": ["Outreach", "Communication", "Outreach & Communication"]
+      "Financial": ["Financial", "Financial Statements", "Finances"]
+      "Funding Request": ["Funding Request", "Request for Increase"]
+      "Public Impact and Audience": ["Public Impact", "Audience", "Describe your audience"]
+      "Equity Implementation": ["Equity Implementation", "Equity", "Diversity", "Inclusion"]
+      "Succession Planning": ["Succession Planning"]
+      "Organizational Development": ["Organizational Development", "Capacity Building"]
+      "Application Contacts": ["Application Contacts", "Applicant ID"]
+      "CADAC Statistical Form": ["CADAC", "Statistical Form"]
+
+  CCA:
+    display: "Canada Council for the Arts (CCA)"
+    headings:
+      "Organizational Profile": ["Organizational Profile", "Organization Details", "Grant Description"]
+      "Services and Activities": ["Services, Support Activities", "Public Events", "Ancillary Programming"]
+      "Activity List": ["Activity List", "Activities", "Activity Lists"]
+      "Exhibitions": ["Exhibitions", "Exhibition"]
+      "Education": ["Education", "Workshops", "Training"]
+      "Financial Overview": ["Financial", "Budget", "Financial Overview"]
+      "Annual Update Report": ["Annual Update", "Annual Report", "Interim Report"]
+      "Diversity and Inclusion": ["Diversity", "Inclusion"]
+      "Support Materials": ["Support Materials", "Support Material", "Documentation"]
+      "CADAC Forms": ["CADAC", "Financial Form", "Statistical Form"]
+
+  BCAH:
+    display: "Canadian Heritage (BCAH)"
+    headings:
+      "Exhibitions": ["Exhibitions", "Flagship Exhibition", "Exhibition Program"]
+      "Events": ["Events", "Opening", "Public Programming"]
+      "Workshops": ["Workshops", "Workshop"]
+      "Community Engagement": ["Community Engagement", "Local Community Partners"]
+      "Organizational Capacity": ["Organizational Capacity", "Applicant capacity"]
+      "Diversity and Inclusion": ["Diversity and inclusion", "Diversity", "Inclusion"]
+      "Budget and Financial": ["Budget", "Financial", "Budget Document"]
+      "Artist Fees": ["Artist Fees", "Artist Fee Detail"]
+      "Support Materials": ["Support Materials", "Supporting documents", "Promotional"]
+      "Final Report": ["Final Report", "Report"]
+      "Accessibility": ["Accessibility", "Accessibility Information"]
+      "About the Organization": ["About", "Organization Information"]

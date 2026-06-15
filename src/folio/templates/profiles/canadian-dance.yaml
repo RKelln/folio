@@ -1,0 +1,119 @@
+# Profile: canadian-dance
+# For dance companies and collectives in Canada (contemporary, ballet, etc.)
+#
+# Similar to the theatre profile but with dance-specific terminology:
+# choreography, repertoire, company structure, and touring. Includes
+# rehearsal/residency sections and dancer-specific working condition headings.
+# Suitable for Toronto Dance Theatre, Ballet Creole, Kaeja d'Dance, etc.
+
+org:
+  name: "My Dance Company"
+  abbreviation: "DANCE"
+
+funders:
+  OAC: "Ontario Arts Council"
+  TAC: "Toronto Arts Council"
+  CCA: "Canada Council for the Arts"
+  BCAH: "Canadian Heritage"
+
+doc_types:
+  - application
+  - report
+  - budget
+  - notification
+  - support_material
+  - agreement
+  - planning
+  - programme
+  - production
+  - press
+  - touring
+  - staff_board
+
+headings:
+  OAC:
+    display: "Ontario Arts Council (OAC)"
+    headings:
+      "Organization Information": ["Organization Information", "Organization Information Updates"]
+      "Governance and Organizational Structure": ["Governance and Organizational Structure", "Governance"]
+      "Board and Staff": ["Board and Staff", "Staff List", "Board of Directors"]
+      "Pay, Benefits, and Working Conditions": ["Pay, Benefits", "Supports for Staff", "Fee Policies", "Dancer Compensation"]
+      "Last Completed and Current Years": ["Last Completed Year", "Current Year"]
+      "Operations and Human Resources": ["Operations", "Operations & HR", "Human Resources"]
+      "Repertoire and Production History": ["Repertoire", "Production History", "Previous Works"]
+      "Current Season and Works": ["Current Season", "Current Productions", "Current Works"]
+      "Upcoming Season and Works": ["Upcoming Season", "Upcoming Productions", "Planned Works"]
+      "Choreographic Development": ["Choreographic Development", "Creation", "New Work", "Residencies"]
+      "Touring": ["Touring", "Tour Schedule", "Touring Productions"]
+      "Education and Outreach": ["Education", "Outreach", "Community Engagement", "Workshop Programs"]
+      "Outreach and Communication": ["Outreach", "Communication", "Marketing"]
+      "Request Year Plans": ["Request Year", "Plans for Request Year"]
+      "Organizational Expectations": ["Organizational Expectations"]
+      "Projected Financial State": ["Projected Financial State", "Financial Projections"]
+      "Financial Deficits and Reserve Funds": ["Financial Deficits", "Reserve Funds"]
+      "Activity Lists": ["Activity Lists", "Activity List", "Activities"]
+      "Cost Pressures": ["Cost Pressures"]
+      "Optimal Funding": ["Optimal Funding", "Funding Priorities"]
+      "Board Approval": ["Board Approval"]
+      "Application Contacts": ["Application Contacts"]
+      "Supporting Documents": ["Supporting Documents", "Support Material"]
+
+  TAC:
+    display: "Toronto Arts Council (TAC)"
+    headings:
+      "Overview": ["Overview"]
+      "Long-Term Plan": ["Long-Term Plan", "Strategic Plan"]
+      "Organization History and Mandate": ["Organization History", "Mandate", "Mission Statement"]
+      "Current Leadership": ["Current Leadership", "Leadership", "Qualifications"]
+      "Artistic Report": ["Artistic Report", "Artistic Contribution"]
+      "Repertoire — Last Completed Year": ["Repertoire - Last Completed Year", "Works - Last Completed"]
+      "Repertoire — Current Year": ["Repertoire - Current Year", "Works - Current"]
+      "Repertoire — Request Years": ["Repertoire - Request Years", "Works - Request"]
+      "Creation and Choreographic Development": ["Creation", "Choreography", "New Work", "Commissioning"]
+      "Touring and Remounts": ["Touring", "Remounts", "Co-Productions"]
+      "Community Outreach": ["Community Outreach", "Community Engagement", "Audience Development"]
+      "Education and Workshops": ["Education", "Workshops", "Training"]
+      "Operations Report": ["Operations Report", "Organizational Activities"]
+      "Operations and Human Resources": ["Operations", "Operations & HR", "Human Resources"]
+      "Financial": ["Financial", "Financial Statements", "Finances"]
+      "Funding Request": ["Funding Request", "Request for Increase"]
+      "Public Impact and Audience": ["Public Impact", "Audience", "Audience Numbers"]
+      "Equity Implementation": ["Equity Implementation", "Equity", "Diversity", "Inclusion"]
+      "Succession Planning": ["Succession Planning"]
+      "Organizational Development": ["Organizational Development", "Capacity Building"]
+      "Application Contacts": ["Application Contacts", "Applicant ID"]
+      "CADAC Statistical Form": ["CADAC", "Statistical Form"]
+
+  CCA:
+    display: "Canada Council for the Arts (CCA)"
+    headings:
+      "Organizational Profile": ["Organizational Profile", "Organization Details", "Grant Description"]
+      "Services and Activities": ["Services, Support Activities", "Public Events"]
+      "Activity List": ["Activity List", "Activities", "Performance Schedule"]
+      "Productions and Repertoire": ["Productions", "Repertoire", "Performances"]
+      "Creation and Development": ["Creation", "Choreography", "New Work"]
+      "Touring": ["Touring", "Tour Schedule"]
+      "Education": ["Education", "Workshops", "Training"]
+      "Financial Overview": ["Financial", "Budget", "Financial Overview"]
+      "Annual Update Report": ["Annual Update", "Annual Report", "Interim Report"]
+      "Diversity and Inclusion": ["Diversity", "Inclusion"]
+      "Support Materials": ["Support Materials", "Support Material", "Documentation"]
+      "CADAC Forms": ["CADAC", "Financial Form", "Statistical Form"]
+
+  BCAH:
+    display: "Canadian Heritage (BCAH)"
+    headings:
+      "Performance Description": ["Performance Description", "Proposed Performance", "Production Summary"]
+      "Performance Timeline": ["Performance timeline", "Performance Dates", "Show Dates"]
+      "Venue and Location": ["Venue", "Location", "Theatre"]
+      "Community Engagement": ["Community Engagement", "Local Community Partners"]
+      "Volunteer Engagement": ["Volunteer Engagement", "Volunteers"]
+      "Organizational Capacity": ["Organizational Capacity", "Applicant capacity"]
+      "Diversity and Inclusion": ["Diversity and inclusion", "Diversity", "Inclusion"]
+      "Budget and Financial": ["Budget", "Financial", "Budget Document"]
+      "Artist Fees": ["Artist Fees", "Artist Fee Detail"]
+      "Support Materials": ["Support Materials", "Supporting documents", "Promotional"]
+      "Final Report": ["Final Report", "Report"]
+      "Workshops": ["Workshops", "Workshop"]
+      "Accessibility": ["Accessibility", "Accessibility Information"]
+      "About the Organization": ["About", "Organization Information"]

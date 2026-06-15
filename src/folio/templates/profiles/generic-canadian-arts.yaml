@@ -1,0 +1,30 @@
+# Profile: generic-canadian-arts
+# Generic profile for Canadian arts organizations
+#
+# Includes all four major Canadian arts funders (OAC, TAC, CCA, BCAH)
+# but no heading taxonomies — the user fills in their own application
+# section headings as they process documents.
+# Good starting point for orgs that don't fit the other profiles
+# (music ensembles, literary organizations, service organizations, etc.).
+
+org:
+  name: "My Arts Organization"
+  abbreviation: "ARTS"
+
+funders:
+  OAC: "Ontario Arts Council"
+  TAC: "Toronto Arts Council"
+  CCA: "Canada Council for the Arts"
+  BCAH: "Canadian Heritage"
+
+doc_types:
+  - application
+  - report
+  - budget
+  - notification
+  - activity_list
+  - staff_board
+  - support_material
+  - agreement
+  - planning
+  - notes

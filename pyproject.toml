@@ -41,6 +41,7 @@ folio-prioritize = "folio.cli.prioritize:main"
 folio-canonicalize = "folio.cli.canonicalize:main"
 folio-ingest = "folio.cli.ingest:main"
 folio-audit = "folio.cli.audit:main"
+folio-init = "folio.cli.init:main"
 folio-scan = "folio.cli.scan:main"
 folio-skills = "folio.cli.skills:main"
 

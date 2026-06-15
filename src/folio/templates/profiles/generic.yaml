@@ -1,0 +1,10 @@
+# Profile: generic
+# Fully empty profile — no funders, no heading taxonomies.
+#
+# Use this when you want to configure everything from scratch,
+# or for non-Canadian organizations. The user manually defines
+# funders, document types, and section headings in their folio.yaml.
+
+org:
+  name: "My Organization"
+  abbreviation: "ORG"

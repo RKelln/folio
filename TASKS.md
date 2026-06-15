@@ -16,166 +16,50 @@ Working production pipeline that InterAccess can run against their archive, prod
 
 ### 1.1 Foundation
 
-- [ ] **Port `frontmatter.py`** from prototype `fm_utils.py`
-  - Port all functions: `parse_frontmatter`, `dict_to_frontmatter`, `update_frontmatter`, `strip_existing_frontmatter`, `sanitize_frontmatter`, `extract_year`, `get_file_year`, `normalize_field_aliases`, `normalize_field_values`, `apply_frontmatter`
-  - Remove inline `_run_tests()` (they move to `tests/test_frontmatter.py`)
-  - Add Pydantic `Frontmatter` model for validation
-  - Keep the field alias maps (`_FIELD_ALIASES`, `_TYPE_VALUES`) — they are generic
-
-- [ ] **Implement `errors.py`** — shared error/status taxonomy
-  - `FileStatus` enum (ok, skipped_guidelines, skipped_corrupted, skipped_too_small, skipped_cv, skipped_email, skipped_draft, skipped_non_canonical, error_conversion, error_llm, error_parse)
-  - `ProcessingTier` enum (skip, minimal, light, full)
-
-- [ ] **Implement `manifest.py`** — JSON manifest read/write
-  - `load_manifest(path)` — read existing manifest
-  - `save_manifest(path, data)` — write manifest
-  - `update_file_status(manifest, filename, **fields)` — update a file entry
-  - `manifest_summary(manifest)` — counts by status/tier/funder
+- [x] **Port `frontmatter.py`** from prototype `fm_utils.py` — all 10 public + 2 private functions ported
+- [x] **Implement `errors.py`** — `FileStatus` (14 members) + `ProcessingTier` (4 members) enums
+- [x] **Implement `manifest.py`** — `create/load/save_manifest`, `update/get_file`, `get_files_by_status`, `recalculate_summary`, `manifest_summary_text`
 
 ### 1.2 Pipeline stages
 
-- [ ] **Port `cleaner.py`** from prototype `clean_md.py`
-  - Deterministic cleanup: strip base64 images, normalize whitespace, remove form chrome patterns (from config), promote bold→headings, fix corruption (split words, HTML entities)
-  - ALL regex patterns must come from config, not hardcoded
-  - Remove `USELESS_HEADINGS` hardcoded TAC reference — make configurable
-  - CLI: `--source` (dir), `--out` (dir), `--files` (filter), `--dry-run`, `--json`
-
-- [ ] **Port `canonicalizer.py`** from prototype `canonicalize.py`
-  - Filename segment parsing, version suffix scoring, draft suffix detection
-  - Content similarity via SequenceMatcher (with configurable thresholds)
-  - Optional LLM pass for ambiguous cases
-  - CLI: `--dir`, `--archive-dir` (where to move non-canonical), `--config`, `--dry-run`, `--json`
-
-- [ ] **Port `classifier.py`** from prototype `classify_files.py`
-  - File quality scoring (form chrome, draft markers, corruption, content density)
-  - **Replace `eval()`** with a safe condition DSL — define allowed functions (`has_type`, `has_any_type`, `has_headings`, `has_tables`, `field_gt`, `field_lt`, `path_contains`) and a simple expression parser
-  - Tier assignment (skip/minimal/light/full)
-  - Funders, doc types, thresholds, skip/tier rules — ALL from config
-  - CLI: `--config`, `--source` (dir), `--json` (manifest output), `--dry-run`
-
-- [ ] **Port `rewriter.py`** from prototype `rewrite_md.py`
-  - Tiered LLM prompts (full/light/minimal) with template variables
-  - Concurrent API calls with rate limiting (configurable max_workers, requests_per_second)
-  - Checkpoint/resume via JSON manifest
-  - Cost tracking (input/output token counting, cost estimation from config pricing)
-  - Heading taxonomy substitution from config
-  - Frontmatter field whitelist from config
-  - Output sanitization (strip code fences, normalize frontmatter)
-  - CLI: `--manifest`, `--files`, `--input-dir`, `--tier`, `--dry-run`, `--resume`, `--model`, `--limit`, `--debug`
-
-- [ ] **Port `prioritizer.py`** from prototype `prioritize_files.py`
-  - Group files by year (and optionally funder) from frontmatter
-  - Send digests to LLM for comparison, assign priority 1-3
-  - Update frontmatter in-place with priority scores
-  - Rubric and prompts from config
-  - CLI: `--config`, `--source` (dir), `--dry-run`, `--year`, `--limit`, `--json`, `--resume`
-
-- [ ] **Port `ingester.py`** from prototype `ingest.py`
-  - Convert PDF/DOCX/XLSX via configured converter
-  - Deterministic cleanup + frontmatter injection
-  - Save to rewrite_md/ + sync to wiki raw
-  - **Remove hardcoded `VALID_FUNDERS` and `VALID_DOC_TYPES`** — validate against project config
-  - **Remove hardcoded `PIPELINE_ID`** — use converter config
-  - **Remove hardcoded `DEFAULT_WIKI_DIR`** — use paths config
-  - CLI: `sources`, `--funder`, `--year`, `--period`, `--types`, `--rewrite`, `--no-wiki`, `--compile`, `--dry-run`
-
-- [ ] **Port `auditor.py`** from prototype `audit_wiki.py`
-  - Scan wiki concepts for dead links, thin articles, near-duplicates, stale content
-  - **Remove hardcoded address keywords** (Dupont, Lisgar, Ossington) — make configurable
-  - CLI: `--wiki` (path), `--json`, `--min-size`
+- [x] **Port `cleaner.py`** — all cleaning ops ported, form chrome/useless_headings config-driven, new split-word/single-char line/bare-digit removal, `clean_markdown(text, config)` + `clean_file(source, dest, config)`
+- [x] **Port `canonicalizer.py`** — filename segment parsing, version/draft suffix scoring, SequenceMatcher with `autojunk=False`, duplicate detection with 3-stage filtering, optional LLM pass
+- [x] **Port `classifier.py`** — safe condition DSL (12 condition types, no eval), legacy eval parser for migration, `classify_file` + `classify_directory`, verified against real 1255-file archive
+- [x] **Port `rewriter.py`** — tiered prompts, concurrent with rate limiting, checkpoint/resume, cost tracking, heading taxonomy substitution, frontmatter whitelist, FIXME counter, undersized file handling
+- [x] **Port `prioritizer.py`** — file grouping by year, batch splitting, LLM comparison, frontmatter update, checkpoint/resume, dry-run preview
+- [x] **Port `ingester.py`** — removed ALL hardcoded values (VALID_FUNDERS, VALID_DOC_TYPES, PIPELINE_ID, DEFAULT_WIKI_DIR), now reads from config
+- [x] **Port `auditor.py`** — dead links, thin articles, near-duplicates, missing sections, stale content (config-driven, no hardcoded addresses)
 
 ### 1.3 Adapter implementations
 
-- [ ] **Implement sage-wiki backend** (`adapters/wiki/sage_wiki.py`)
-  - `init()` — run `sage-wiki init`, write config.yaml with org settings and API keys
-  - `add_documents()` — copy/symlink files to wiki raw directory
-  - `compile()` — run `sage-wiki compile`
-  - `search(query)` — run `sage-wiki search`
-  - `query(question)` — run `sage-wiki query`
-
-- [ ] **Implement null wiki backend** (`adapters/wiki/null.py`)
-  - All methods are no-ops. `search`/`query` return "wiki not configured" messages.
-
-- [ ] **Implement local filesystem source** (`adapters/sources/local.py`)
-  - `list_files()` — recursive glob with extension filter
-  - `download()` — copy file to dest
-
-- [ ] **Converter factory** — `adapters/converters/__init__.py`
-  - `get_converter(config)` — return the configured converter instance
-  - Validates that required dependencies are installed (e.g. `datalab-python-sdk` for datalab converter)
-
-- [ ] **LLM provider factory** — `adapters/llm/__init__.py`
-  - `get_llm_provider(config)` — return the configured provider instance
-
-- [ ] **Wiki backend factory** — `adapters/wiki/__init__.py`
-  - `get_wiki_backend(config)` — return the configured wiki backend
+- [x] **Implement sage-wiki backend** — init, add_documents, compile, search, query via subprocess
+- [x] **Implement null wiki backend** — all no-ops with descriptive messages
+- [x] **Implement local filesystem source** — list_files (recursive glob), download (copy)
+- [x] **Converter factory** — `get_converter(config)`, validates deps
+- [x] **LLM provider factory** — `get_llm_provider(config)`
+- [x] **Wiki backend factory** — `get_wiki_backend(config)`
 
 ### 1.4 Config validation
 
-- [ ] **Implement `config/schema.py`** — Pydantic models
-  - `ProjectConfig` — top-level model validating all sections
-  - `OrgConfig` — name, abbreviation, description
-  - `FunderConfig` — dict of abbreviation → full name
-  - `PathsConfig` — raw_archive, raw_md, clean_md, rewrite_md, wiki_project
-  - `ConverterConfig` — type, datalab/marker/docling/pandoc settings
-  - `WikiConfig` — type, sage-wiki binary path, pack
-  - `LLMConfig` — provider, base_url, api_key_env, models, pricing
-  - `ProcessingConfig` — max_workers, requests_per_second, max_retries, resume
-  - `validate_config(raw_dict)` — load, validate, return typed config
+- [x] **Implement `config/schema.py`** — 7 dataclasses (ProjectConfig, OrgConfig, PathsConfig, LLMConfig, ConverterConfig, WikiConfig, ProcessingConfig)
+- [x] **Implement `config/loader.py`** — deep-merge with defaults, YAML→dataclass mapping, validation (converter type, wiki type, https:// check, max_workers)
 
 ### 1.5 Skills generation
 
-- [ ] **Implement `cli/skills.py`** and `core/skills.py`
-  - Read org config from `folio.yaml`
-  - Load skill templates from `skills/core/` and `skills/templates/`
-  - Fill `{placeholders}` from config: org name, funder table, doc type table, paths
-  - Write platform-specific output:
-    - `--platform opencode` → `.opencode/skills/grant-writing/SKILL.md`
-    - `--platform claude` → `.claude/commands/grant-search.md`, `grant-draft.md`
-    - `--platform openclaw` → system prompt + tool config
-  - Validate that all placeholders were filled (warn on unfilled)
+- [x] **Implement `core/skills.py`** and `cli/skills.py` — 4 platform generators (opencode, claude, openclaw, hermes), placeholder substitution, context builder from ProjectConfig
 
 ### 1.6 Pipeline orchestrator
 
-- [ ] **Implement `cli/pipeline.py`**
-  - Load project config
-  - Run stages in order: scan → convert → clean → canonicalize → classify → rewrite → prioritize → wiki compile
-  - Each stage can be skipped via `--stages` or enabled/disabled in config
-  - Checkpoint state: manifest.json tracks which stage each file completed
-  - Resume from last checkpoint
-  - `--dry-run` shows cost estimates for each stage
-  - Progress bars via tqdm per stage
-  - Final report: file counts by status, total cost, wall time
+- [x] **Implement `core/pipeline.py`** and `cli/pipeline.py` — 8-stage pipeline, checkpoint/resume via manifest, per-stage progress/cost/time, formatted report, dry-run mode
 
 ### 1.7 Init and guided setup
 
-- [ ] **Implement `folio init`**
-  - `folio init --guided` — interactive Q&A
-  - `folio init --profile <name>` — load a pre-built profile
-  - `folio init --from-scan scan-report.json` — init from archive scan results
-  - Generates `folio.yaml` with all required sections
-  - Generates `headings.yaml` with per-funder canonical section headings
-  - Optionally runs `folio scan` to verify
-
-- [ ] **Implement pre-built profiles**
-  - `profiles/canadian-artist-run-centre.yaml` — OAC, TAC, CCA, BCAH with heading taxonomies
-  - `profiles/canadian-gallery.yaml`
-  - `profiles/canadian-festival.yaml`
-  - `profiles/generic-canadian-arts.yaml`
-  - Each profile: funders list, doc types, classification patterns, heading taxonomies
+- [x] **Implement `core/init.py`** and `cli/init.py` — guided mode (6 Q&A), profile loading, scan-based init, minimal init, deep-merge with defaults, `.env` key writing
+- [x] **Implement pre-built profiles** — 7 profiles: canadian-artist-run-centre, canadian-gallery, canadian-festival, canadian-theatre, canadian-dance, generic-canadian-arts, generic
 
 ### 1.8 Archive scanner
 
-- [ ] **Implement `scanner.py`** and `cli/scan.py`
-  - Scan raw document directory (local or cloud source)
-  - Detect funders from filename patterns (regex from config)
-  - Detect years from filename patterns
-  - Detect document types from filename patterns
-  - Count files by extension, funder, year, type
-  - Flag likely-draft files
-  - Estimate LLM costs (file count × avg tokens × pricing)
-  - Estimate Datalab costs (from config pricing)
-  - Output: scan report JSON + human-readable summary
+- [x] **Implement `scanner.py`** and `cli/scan.py` — file enumeration, funder/year/type/draft detection, cost estimation (conversion + LLM), time estimation, human-readable report
 
 ---
 

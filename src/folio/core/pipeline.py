@@ -1,0 +1,799 @@
+"""Pipeline orchestrator.
+
+Runs the full folio document processing pipeline:
+    scan → convert → clean → canonicalize → classify → rewrite → prioritize → wiki
+
+Supports checkpoint/resume via a manifest file, dry-run estimation,
+and per-stage cost/timing tracking.
+"""
+
+from __future__ import annotations
+
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+from tqdm import tqdm
+
+from folio.config.loader import load_project_config
+from folio.config.schema import ProjectConfig
+
+AVAILABLE_STAGES = [
+    "scan", "convert", "clean", "canonicalize", "classify",
+    "rewrite", "prioritize", "wiki",
+]
+
+
+def run_pipeline(
+    config_path: str | Path = "folio.yaml",
+    stages: list[str] | None = None,
+    dry_run: bool = False,
+    resume: bool = True,
+) -> dict:
+    """Run the full folio pipeline.
+
+    Stages (in order): scan, convert, clean, canonicalize, classify,
+    rewrite, prioritize, wiki.
+
+    Args:
+        config_path: Path to folio.yaml.
+        stages: List of stages to run (default: all enabled stages).
+        dry_run: Preview without making changes or API calls.
+        resume: Skip already-completed stages (from manifest).
+
+    Returns:
+        Pipeline report dict with per-stage results and aggregate stats.
+    """
+    config = load_project_config(config_path)
+
+    for path_attr in ["raw_md", "clean_md", "rewrite_md", "wiki_project"]:
+        p = Path(getattr(config.paths, path_attr))
+        p.mkdir(parents=True, exist_ok=True)
+
+    manifest_path = Path(config.paths.rewrite_md) / "manifest.json"
+    manifest = _load_manifest(manifest_path)
+
+    if stages is None:
+        enabled = list(AVAILABLE_STAGES)
+    else:
+        enabled = [s for s in AVAILABLE_STAGES if s in stages]
+
+    report: dict = {
+        "project": config.org.name,
+        "started": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "stages": {},
+        "total_cost_usd": 0.0,
+        "total_time_seconds": 0.0,
+    }
+
+    if "stages" not in manifest:
+        manifest["stages"] = {}
+
+    print(f"folio pipeline \u2014 {config.org.name} Grant Archive")
+    print("=" * 50)
+    print()
+
+    total_stages = len(AVAILABLE_STAGES)
+    total_cost = 0.0
+    total_time = 0.0
+
+    stage_index = {name: i for i, name in enumerate(AVAILABLE_STAGES)}
+
+    for stage_name in enabled:
+        stage_num = stage_index.get(stage_name, len(AVAILABLE_STAGES)) + 1
+
+        if resume and manifest["stages"].get(stage_name, {}).get("status") == "complete":
+            stage_data = manifest["stages"][stage_name]
+            print(
+                f"Stage {stage_num}/{total_stages}: {stage_name} \u2014 skipped"
+                f" (already complete)"
+            )
+            report["stages"][stage_name] = stage_data
+            total_cost += stage_data.get("cost_usd", 0.0)
+            total_time += stage_data.get("time_seconds", 0.0)
+            continue
+
+        print(f"Stage {stage_num}/{total_stages}: {stage_name}")
+
+        start = time.time()
+        result = _run_stage(stage_name, config, dry_run)
+        elapsed = time.time() - start
+
+        result["time_seconds"] = round(elapsed, 1)
+        result.setdefault("cost_usd", 0.0)
+
+        total_cost += result.get("cost_usd", 0.0)
+        total_time += elapsed
+
+        report["stages"][stage_name] = result
+
+        manifest["stages"][stage_name] = result
+        _save_manifest(manifest, manifest_path)
+
+        _print_stage_summary(stage_name, result)
+
+    report["completed"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    report["total_cost_usd"] = round(total_cost, 2)
+    report["total_time_seconds"] = round(total_time, 1)
+
+    print()
+    print("=" * 50)
+    print("Pipeline complete!")
+
+    total_files = sum(
+        s.get("files", 0) or s.get("converted", 0) or 0
+        for s in report["stages"].values()
+        if s.get("status") == "ok"
+        and s.get("stage") not in ("scan", "convert", "rewrite", "prioritize")
+    )
+    if total_files == 0 and "classify" in report["stages"]:
+        total_files = report["stages"]["classify"].get("files", 0)
+
+    total_files_est = 0
+    if "scan" in report["stages"]:
+        total_files_est = report["stages"]["scan"].get("files", 0)
+    if total_files == 0:
+        total_files = total_files_est
+
+    print(f"  Files processed: {total_files}")
+    print(f"  Total cost: ${report['total_cost_usd']:.2f}")
+    print(f"  Total time: {_format_time(report['total_time_seconds'])}")
+
+    return report
+
+
+def _estimate_pipeline(config: ProjectConfig) -> dict:
+    """Estimate costs for all pipeline stages (for dry-run).
+
+    Returns a report dict with estimated per-stage costs and timings,
+    without executing any stage.
+    """
+    enabled = list(AVAILABLE_STAGES)
+    report: dict = {
+        "project": config.org.name,
+        "started": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "stages": {},
+        "total_cost_usd": 0.0,
+        "total_time_seconds": 0.0,
+    }
+
+    total_cost = 0.0
+    total_time = 0.0
+
+    for stage_name in enabled:
+        result = _estimate_stage(stage_name, config)
+        report["stages"][stage_name] = result
+        total_cost += result.get("cost_usd", 0.0)
+        total_time += result.get("time_seconds", 0.0)
+
+    report["completed"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    report["total_cost_usd"] = round(total_cost, 2)
+    report["total_time_seconds"] = round(total_time, 1)
+    return report
+
+
+def _format_pipeline_report(report: dict) -> str:
+    """Format a pipeline report as human-readable text."""
+    lines: list[str] = []
+    project = report.get("project", "folio")
+    lines.append(f"folio pipeline \u2014 {project} Grant Archive")
+    lines.append("=" * 50)
+
+    stages = report.get("stages", {})
+    stage_order = [s for s in AVAILABLE_STAGES if s in stages]
+
+    for i, stage_name in enumerate(stage_order):
+        stage_data = stages[stage_name]
+        num = i + 1
+        total = len(stage_order)
+        status = stage_data.get("status", "?")
+
+        if status == "ok":
+            lines.append(f"Stage {num}/{total}: {stage_name}")
+            elapsed = stage_data.get("time_seconds", 0)
+            lines.append(f"  Complete ({_format_time(elapsed)})")
+            files = stage_data.get("files", stage_data.get("converted"))
+            if files is not None:
+                lines.append(f"  \u2192 {files} files")
+            cost = stage_data.get("cost_usd", 0)
+            if cost > 0:
+                lines.append(f"  \u2192 Cost: ${cost:.2f}")
+        elif status == "skipped":
+            lines.append(
+                f"Stage {num}/{total}: {stage_name} \u2014 skipped"
+            )
+        elif status == "warning":
+            lines.append(f"Stage {num}/{total}: {stage_name}")
+            lines.append(f"  Warning: {stage_data.get('warning', '')}")
+        else:
+            lines.append(f"Stage {num}/{total}: {stage_name}")
+            lines.append(f"  Error: {stage_data.get('error', 'Unknown error')}")
+
+        lines.append("")
+
+    lines.append("=" * 50)
+    lines.append("Pipeline complete!")
+    lines.append(f"  Total cost: ${report.get('total_cost_usd', 0):.2f}")
+    lines.append(f"  Total time: {_format_time(report.get('total_time_seconds', 0))}")
+
+    return "\n".join(lines)
+
+
+# ── Stage dispatch ──────────────────────────────────────────────────────────
+
+
+def _run_stage(stage_name: str, config: ProjectConfig, dry_run: bool) -> dict:
+    if dry_run:
+        return _estimate_stage(stage_name, config)
+
+    try:
+        if stage_name == "scan":
+            return _run_scan(config)
+        elif stage_name == "convert":
+            return _run_convert(config)
+        elif stage_name == "clean":
+            return _run_clean(config)
+        elif stage_name == "canonicalize":
+            return _run_canonicalize(config)
+        elif stage_name == "classify":
+            return _run_classify(config)
+        elif stage_name == "rewrite":
+            return _run_rewrite(config)
+        elif stage_name == "prioritize":
+            return _run_prioritize(config)
+        elif stage_name == "wiki":
+            return _run_wiki(config)
+        else:
+            return {"status": "error", "error": f"Unknown stage: {stage_name}"}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _estimate_stage(stage_name: str, config: ProjectConfig) -> dict:
+    """Produce a dry-run estimate for a single stage based on config."""
+    from folio.core.scanner import scan_archive
+
+    try:
+        scan = scan_archive(config.paths.raw_archive, config)
+    except Exception:
+        scan = {"total_files": 0, "estimated_costs": {"total_usd": 0.0}}
+
+    total_files = scan.get("total_files", 0)
+    est_cost = scan.get("estimated_costs", {})
+    est_time = scan.get("estimated_time_minutes", 0) * 60
+
+    if stage_name == "scan":
+        return {
+            "status": "ok",
+            "files": total_files,
+            "cost_usd": 0.0,
+            "time_seconds": 1.0,
+            "note": "scan is local; no LLM or conversion cost",
+        }
+    elif stage_name == "convert":
+        conv_cost = est_cost.get("conversion_usd", 0)
+        return {
+            "status": "ok",
+            "files": total_files,
+            "cost_usd": conv_cost,
+            "time_seconds": est_time * 0.6,
+            "note": "estimate based on file count and Datalab pricing",
+        }
+    elif stage_name == "clean":
+        return {
+            "status": "ok",
+            "files": total_files,
+            "cost_usd": 0.0,
+            "time_seconds": max(total_files * 0.01, 0.1),
+            "note": "deterministic cleanup; no API calls",
+        }
+    elif stage_name == "canonicalize":
+        return {
+            "status": "ok",
+            "files": total_files,
+            "cost_usd": est_cost.get("llm_rewrite_usd", 0) * 0.05,
+            "time_seconds": max(total_files * 0.02, 0.1),
+            "note": "filename scoring + content similarity; optional LLM pass",
+        }
+    elif stage_name == "classify":
+        return {
+            "status": "ok",
+            "files": total_files,
+            "cost_usd": 0.0,
+            "time_seconds": max(total_files * 0.005, 0.1),
+            "note": "deterministic rule evaluation; no API calls",
+        }
+    elif stage_name == "rewrite":
+        return {
+            "status": "ok",
+            "files": total_files,
+            "cost_usd": est_cost.get("llm_rewrite_usd", 0),
+            "time_seconds": est_time * 0.3,
+            "note": "LLM re-authoring; largest cost driver",
+        }
+    elif stage_name == "prioritize":
+        return {
+            "status": "ok",
+            "files": total_files,
+            "cost_usd": est_cost.get("llm_prioritize_usd", 0),
+            "time_seconds": est_time * 0.05,
+            "note": "LLM priority scoring; batched by year",
+        }
+    elif stage_name == "wiki":
+        return {
+            "status": "ok",
+            "files": total_files,
+            "cost_usd": est_cost.get("wiki_compile_usd", 0),
+            "time_seconds": est_time * 0.05,
+            "note": "wiki compilation (sage-wiki)",
+        }
+    return {"status": "error", "error": f"Unknown stage: {stage_name}"}
+
+
+# ── Stage implementations ───────────────────────────────────────────────────
+
+
+def _run_scan(config: ProjectConfig) -> dict:
+    from folio.core.scanner import scan_archive
+
+    raw_path = config.paths.raw_archive
+    print(f"  Scanning {raw_path}...", end=" ", flush=True)
+    report = scan_archive(raw_path, config)
+    total = report.get("total_files", 0)
+    funders = report.get("by_funder", {})
+    est = report.get("estimated_costs", {})
+
+    print(f"{total} files found")
+    if funders:
+        funder_list = ", ".join(
+            f"{abbrev} ({info['count']})"
+            for abbrev, info in sorted(funders.items())
+        )
+        print(f"  Funders: {funder_list}")
+
+    return {
+        "stage": "scan",
+        "status": "ok",
+        "files": total,
+        "funders_detected": len(funders),
+        "by_extension": report.get("by_extension", {}),
+        "by_funder": {k: {"count": v["count"], "years": v["years"]} for k, v in funders.items()},
+        "estimated_cost_usd": est.get("total_usd", 0),
+        "estimated_time_minutes": report.get("estimated_time_minutes", 0),
+        "cost_usd": 0.0,
+    }
+
+
+def _run_convert(config: ProjectConfig) -> dict:
+    from folio.adapters.converters import get_converter
+    from folio.adapters.sources import get_source
+
+    converter = get_converter(config)
+    source = get_source(config.paths.raw_archive)
+    out_dir = Path(config.paths.raw_md)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    raw_root = Path(config.paths.raw_archive).resolve()
+
+    files = source.list_files()
+    convertible_exts = {ext.lower() for ext in converter.supported_extensions}
+    convertible = [
+        ref
+        for ref in files
+        if Path(ref.name).suffix.lower() in convertible_exts
+    ]
+
+    if not convertible:
+        print(f"  No convertible files found in {config.paths.raw_archive}")
+        return {
+            "stage": "convert",
+            "status": "warning",
+            "warning": "No convertible files found",
+            "files": 0,
+            "converted": 0,
+            "failed": 0,
+            "cost_usd": 0.0,
+        }
+
+    print(f"  Converting {len(convertible)} files via {converter.name}...")
+
+    converted = 0
+    failed = 0
+    failed_files: list[str] = []
+
+    for ref in tqdm(convertible, desc="  Converting", unit="file"):
+        try:
+            src_path = raw_root / ref.path
+            if not src_path.exists():
+                src_path = raw_root / ref.name
+            md = converter.convert(src_path)
+            if md:
+                out_path = out_dir / (src_path.stem + ".md")
+                out_path.write_text(md, encoding="utf-8")
+                converted += 1
+            else:
+                failed += 1
+                failed_files.append(ref.name)
+        except Exception as exc:
+            failed += 1
+            failed_files.append(f"{ref.name}: {exc}")
+
+    result: dict = {
+        "stage": "convert",
+        "status": "ok" if failed == 0 else "warning",
+        "files": len(convertible),
+        "converted": converted,
+        "failed": failed,
+        "cost_usd": 0.0,
+    }
+    if failed_files:
+        result["failed_files"] = failed_files[:20]
+        result["warning"] = f"{failed} conversion failures"
+
+    return result
+
+
+def _run_clean(config: ProjectConfig) -> dict:
+    from folio.core.cleaner import clean_file
+
+    raw_md_dir = Path(config.paths.raw_md)
+    clean_md_dir = Path(config.paths.clean_md)
+
+    if not raw_md_dir.is_dir():
+        return {
+            "stage": "clean",
+            "status": "warning",
+            "warning": f"raw_md directory not found: {raw_md_dir}",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    md_files = list(raw_md_dir.glob("*.md"))
+    if not md_files:
+        return {
+            "stage": "clean",
+            "status": "warning",
+            "warning": f"No .md files in {raw_md_dir}",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    print(f"  Cleaning {len(md_files)} files...")
+    clean_file(raw_md_dir, clean_md_dir)
+
+    cleaned = len(list(clean_md_dir.glob("*.md")))
+    return {
+        "stage": "clean",
+        "status": "ok",
+        "files": cleaned,
+        "cost_usd": 0.0,
+    }
+
+
+def _run_canonicalize(config: ProjectConfig) -> dict:
+    from folio.core.canonicalizer import canonicalize_directory, DEFAULT_CANONICALIZE_CONFIG
+
+    clean_dir = Path(config.paths.clean_md)
+    archive_dir = Path(config.paths.rewrite_md) / ".non_canonical"
+
+    if not clean_dir.is_dir():
+        return {
+            "stage": "canonicalize",
+            "status": "warning",
+            "warning": f"clean_md directory not found: {clean_dir}",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    md_files = list(clean_dir.glob("*.md"))
+    if not md_files:
+        return {
+            "stage": "canonicalize",
+            "status": "warning",
+            "warning": f"No .md files in {clean_dir}",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    print(f"  Analyzing {len(md_files)} files for canonical versions...")
+
+    canonicalize_config = dict(DEFAULT_CANONICALIZE_CONFIG)
+
+    result = canonicalize_directory(
+        directory=clean_dir,
+        config=canonicalize_config,
+        archive_dir=archive_dir,
+        dry_run=False,
+        use_llm=False,
+    )
+
+    canonical = sum(1 for v in result.values() if v["status"] == "canonical")
+    non_canonical = sum(1 for v in result.values() if v["status"] == "non_canonical")
+
+    return {
+        "stage": "canonicalize",
+        "status": "ok",
+        "files": len(result),
+        "canonical": canonical,
+        "non_canonical": non_canonical,
+        "cost_usd": 0.0,
+    }
+
+
+def _run_classify(config: ProjectConfig) -> dict:
+    from folio.core.classifier import classify_directory, DEFAULT_CLASSIFY_CONFIG
+
+    clean_dir = Path(config.paths.clean_md)
+
+    if not clean_dir.is_dir():
+        return {
+            "stage": "classify",
+            "status": "warning",
+            "warning": f"clean_md directory not found: {clean_dir}",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    md_files = list(clean_dir.glob("*.md"))
+    if not md_files:
+        return {
+            "stage": "classify",
+            "status": "warning",
+            "warning": f"No .md files in {clean_dir}",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    print(f"  Classifying {len(md_files)} files...")
+
+    classify_config = dict(DEFAULT_CLASSIFY_CONFIG)
+    classify_config["funders"] = config.funders
+
+    manifest = classify_directory(clean_dir, classify_config)
+    summary = manifest.get("summary", {})
+
+    return {
+        "stage": "classify",
+        "status": "ok",
+        "files": summary.get("total_files", len(md_files)),
+        "by_tier": summary.get("by_tier", {}),
+        "by_status": summary.get("by_status", {}),
+        "by_funder": summary.get("by_funder", {}),
+        "cost_usd": 0.0,
+    }
+
+
+def _run_rewrite(config: ProjectConfig) -> dict:
+    try:
+        from folio.core.rewriter import rewrite_directory
+    except ImportError:
+        return {
+            "stage": "rewrite",
+            "status": "skipped",
+            "warning": "rewrite stage not yet implemented",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    clean_dir = Path(config.paths.clean_md)
+    rewrite_dir = Path(config.paths.rewrite_md)
+
+    try:
+        result = rewrite_directory(clean_dir, rewrite_dir, config)
+        files = len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0
+        return {
+            "stage": "rewrite",
+            "status": "ok",
+            "files": files,
+            "cost_usd": result.get("total_cost_usd", 0.0) if isinstance(result, dict) else 0.0,
+        }
+    except NotImplementedError:
+        return {
+            "stage": "rewrite",
+            "status": "skipped",
+            "warning": "rewrite stage not yet implemented",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+    except Exception as exc:
+        return {
+            "stage": "rewrite",
+            "status": "error",
+            "error": str(exc),
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+
+def _run_prioritize(config: ProjectConfig) -> dict:
+    try:
+        from folio.core.prioritizer import prioritize_directory
+    except ImportError:
+        return {
+            "stage": "prioritize",
+            "status": "skipped",
+            "warning": "prioritize stage not yet implemented",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    rewrite_dir = Path(config.paths.rewrite_md)
+
+    try:
+        result = prioritize_directory(rewrite_dir, config)
+        return {
+            "stage": "prioritize",
+            "status": "ok",
+            "files": len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0,
+            "cost_usd": result.get("total_cost_usd", 0.0) if isinstance(result, dict) else 0.0,
+        }
+    except NotImplementedError:
+        return {
+            "stage": "prioritize",
+            "status": "skipped",
+            "warning": "prioritize stage not yet implemented",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+    except Exception as exc:
+        return {
+            "stage": "prioritize",
+            "status": "error",
+            "error": str(exc),
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+
+def _run_wiki(config: ProjectConfig) -> dict:
+    from folio.adapters.wiki import get_wiki_backend
+
+    wiki_type = config.wiki.type if hasattr(config.wiki, "type") else "null"
+
+    if wiki_type == "null":
+        return {
+            "stage": "wiki",
+            "status": "skipped",
+            "warning": "Wiki backend is 'null'; markdown-only mode",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    try:
+        backend = get_wiki_backend(config)
+    except Exception as exc:
+        return {
+            "stage": "wiki",
+            "status": "error",
+            "error": f"Failed to initialize wiki backend: {exc}",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    wiki_dir = Path(config.paths.wiki_project)
+    rewrite_dir = Path(config.paths.rewrite_md)
+
+    print(f"  Initializing wiki project at {wiki_dir}...")
+    try:
+        wiki_config = {
+            "pack": config.wiki.sage_wiki_pack if hasattr(config.wiki, "sage_wiki_pack") else "arts-org",
+        }
+        backend.init(wiki_dir, wiki_config)
+    except Exception as exc:
+        return {
+            "stage": "wiki",
+            "status": "error",
+            "error": f"Failed to init wiki project: {exc}",
+            "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    if rewrite_dir.is_dir():
+        md_files = list(rewrite_dir.glob("*.md"))
+        if md_files:
+            print(f"  Adding {len(md_files)} documents to wiki...")
+            backend.add_documents(md_files)
+
+    print(f"  Compiling wiki...")
+    try:
+        backend.compile()
+        print(f"  Wiki compiled successfully")
+    except Exception as exc:
+        return {
+            "stage": "wiki",
+            "status": "error",
+            "error": f"Wiki compilation failed: {exc}",
+            "files": len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0,
+            "cost_usd": 0.0,
+        }
+
+    return {
+        "stage": "wiki",
+        "status": "ok",
+        "files": len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0,
+        "cost_usd": 0.0,
+    }
+
+
+# ── Manifest helpers ────────────────────────────────────────────────────────
+
+
+def _load_manifest(path: Path) -> dict:
+    import json
+
+    if path.exists():
+        with open(path) as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                pass
+    return {
+        "project": "folio",
+        "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "stages": {},
+    }
+
+
+def _save_manifest(manifest: dict, path: Path) -> None:
+    import json
+
+    manifest["updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(manifest, f, indent=2)
+
+
+# ── Formatting helpers ──────────────────────────────────────────────────────
+
+
+def _format_time(seconds: float) -> str:
+    if seconds < 0.5:
+        return f"{seconds * 1000:.0f}ms"
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    if seconds < 3600:
+        minutes = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{minutes}m {secs}s"
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    return f"{hours}h {minutes}m"
+
+
+def _print_stage_summary(stage_name: str, result: dict) -> None:
+    status = result.get("status", "?")
+    elapsed = result.get("time_seconds", 0)
+
+    if status == "ok":
+        print(f"  Complete ({_format_time(elapsed)})")
+        files = result.get("files", result.get("converted"))
+        if files is not None:
+            extras = []
+            if stage_name == "scan":
+                funders = result.get("funders_detected", 0)
+                extras.append(f"{funders} funders detected")
+                est = result.get("estimated_cost_usd", 0)
+                if est:
+                    extras.append(f"estimated LLM cost: ${est:.2f}")
+            elif stage_name == "convert":
+                failed = result.get("failed", 0)
+                if failed:
+                    extras.append(f"{failed} failed")
+            elif stage_name == "canonicalize":
+                extras.append(f"{result.get('canonical', 0)} canonical")
+                extras.append(f"{result.get('non_canonical', 0)} non-canonical")
+            elif stage_name == "classify":
+                by_tier = result.get("by_tier", {})
+                if by_tier:
+                    tier_str = ", ".join(f"{t}={c}" for t, c in sorted(by_tier.items()))
+                    extras.append(f"tiers: {tier_str}")
+            if extras:
+                print(f"  \u2192 {', '.join(extras)}")
+            else:
+                print(f"  \u2192 {files} files")
+    elif status == "skipped":
+        print(f"  Skipped — {result.get('warning', 'not implemented')}")
+    elif status == "warning":
+        print(f"  Warning — {result.get('warning', '')}")
+    else:
+        print(f"  Error — {result.get('error', 'Unknown error')}")

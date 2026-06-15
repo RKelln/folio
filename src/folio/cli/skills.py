@@ -5,10 +5,88 @@ OpenClaw, Hermes) from the project configuration and the
 platform-agnostic skill templates in skills/core/.
 """
 
+import argparse
+from pathlib import Path
+
 
 def main():
-    print("folio skills — not yet implemented")
+    parser = argparse.ArgumentParser(description="Generate agent skills from project config")
+    parser.add_argument(
+        "--platform",
+        required=True,
+        choices=["opencode", "claude", "openclaw", "hermes"],
+        help="Target platform",
+    )
+    parser.add_argument(
+        "--config",
+        default="folio.yaml",
+        help="Path to folio.yaml (default: folio.yaml)",
+    )
+    parser.add_argument(
+        "--output",
+        default=".",
+        help="Output directory (default: current directory)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview without writing files",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output structured JSON",
+    )
+    args = parser.parse_args()
+
+    from folio.config import load_project_config
+    from folio.core.skills import generate_skills
+
+    config_path = args.config
+    if args.dry_run and not Path(config_path).exists():
+        config = load_project_config(None)
+    else:
+        config = load_project_config(config_path)
+
+    if args.dry_run:
+        import json
+
+        from folio.core.skills import _build_context
+
+        ctx = _build_context(config)
+        result = {
+            "platform": args.platform,
+            "context_keys": sorted(ctx.keys()),
+            "dry_run": True,
+        }
+        if args.json:
+            print(json.dumps(result, indent=2))
+            return
+        print(f"Would generate skills for platform: {args.platform}")
+        print(f"Context keys available: {', '.join(sorted(ctx.keys()))}")
+        return
+
+    result = generate_skills(config, args.platform, Path(args.output))
+
+    if args.json:
+        import json
+
+        print(
+            json.dumps(
+                {
+                    "files_written": [str(f) for f in result["files_written"]],
+                    "warnings": result.get("warnings", []),
+                },
+                indent=2,
+            )
+        )
+        return
+
+    for f in result["files_written"]:
+        print(f"  Wrote: {f}")
+    for w in result.get("warnings", []):
+        print(f"  Warning: {w}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

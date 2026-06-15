@@ -1,0 +1,108 @@
+# Profile: canadian-festival
+# For festival organizations in Canada (film, music, arts, multi-disciplinary)
+#
+# Emphasizes BCAH (Canadian Heritage) and festival-specific application sections.
+# Includes programming timelines, venue/location details, volunteer management,
+# community engagement, and previous-edition reporting.
+# Suitable for TIFF, Luminato, Pride, Fringe festivals, Nuit Blanche, etc.
+
+org:
+  name: "My Festival"
+  abbreviation: "FEST"
+
+funders:
+  BCAH: "Canadian Heritage"
+  OAC: "Ontario Arts Council"
+  TAC: "Toronto Arts Council"
+  CCA: "Canada Council for the Arts"
+
+doc_types:
+  - application
+  - report
+  - budget
+  - notification
+  - support_material
+  - agreement
+  - planning
+  - schedule
+  - programme
+  - press
+  - media_kit
+  - venue
+
+headings:
+  BCAH:
+    display: "Canadian Heritage (BCAH)"
+    headings:
+      "Festival Description": ["Festival Description", "Describe your festival", "Proposed Festival", "Event Information"]
+      "Festival Timeline": ["Festival timeline", "Festival Dates", "Duration"]
+      "Festival Location": ["Festival location", "Venue", "Location"]
+      "Online Presence": ["Online presence", "Website", "Social Media"]
+      "Previous Festival Edition": ["Previous Festival Edition", "Previous Edition"]
+      "Community Engagement": ["Community Engagement", "Local Community Partners", "Community composition"]
+      "Volunteer Engagement": ["Volunteer Engagement", "Volunteers", "Number of volunteers"]
+      "Organizational Capacity": ["Organizational Capacity", "Applicant capacity", "Contingency plans"]
+      "Official Languages": ["Official languages"]
+      "Diversity and Inclusion": ["Diversity and inclusion", "Diversity", "Inclusion"]
+      "Budget and Financial": ["Budget", "Financial", "Budget Document"]
+      "Artist Fees": ["Artist Fees", "Artist Fee Detail"]
+      "Support Materials": ["Support Materials", "Supporting documents", "Promotional", "Media Coverage"]
+      "Final Report": ["Final Report", "Report"]
+      "Exhibitions": ["Exhibitions", "Flagship Exhibition"]
+      "Events": ["Events", "Festival Party", "Performance"]
+      "Workshops": ["Workshops", "Workshop"]
+      "Accessibility": ["Accessibility", "Accessibility Information"]
+      "About the Organization": ["About", "Organization Information"]
+
+  OAC:
+    display: "Ontario Arts Council (OAC)"
+    headings:
+      "Organization Information": ["Organization Information", "Organization Information Updates"]
+      "Governance and Organizational Structure": ["Governance and Organizational Structure", "Governance"]
+      "Board and Staff": ["Board and Staff", "Staff List", "Board of Directors"]
+      "Operations and Human Resources": ["Operations", "Operations & HR", "Human Resources"]
+      "Festival Programming": ["Festival Programming", "Festival", "Programming", "Events"]
+      "Education and Workshops": ["Education", "Workshops", "Training"]
+      "Outreach and Communication": ["Outreach", "Communication", "Marketing"]
+      "Request Year Plans": ["Request Year", "Plans for Request Year"]
+      "Organizational Expectations": ["Organizational Expectations"]
+      "Projected Financial State": ["Projected Financial State", "Financial Projections"]
+      "Activity Lists": ["Activity Lists", "Activity List", "Festival Schedule"]
+      "Cost Pressures": ["Cost Pressures"]
+      "Optimal Funding": ["Optimal Funding", "Funding Priorities"]
+      "Board Approval": ["Board Approval"]
+      "Application Contacts": ["Application Contacts"]
+      "Supporting Documents": ["Supporting Documents", "Support Material"]
+
+  TAC:
+    display: "Toronto Arts Council (TAC)"
+    headings:
+      "Overview": ["Overview"]
+      "Long-Term Plan": ["Long-Term Plan", "Strategic Plan"]
+      "Organization History and Mandate": ["Organization History", "Mandate", "Mission Statement"]
+      "Current Leadership": ["Current Leadership", "Leadership"]
+      "Artistic Report": ["Artistic Report", "Artistic Contribution"]
+      "Festival Programming": ["Festival Programming", "Programming", "Festival"]
+      "Education and Workshops": ["Education", "Workshops"]
+      "Operations Report": ["Operations Report", "Organizational Activities"]
+      "Operations and Human Resources": ["Operations", "Operations & HR", "Human Resources"]
+      "Outreach and Communication": ["Outreach", "Communication", "Marketing"]
+      "Financial": ["Financial", "Financial Statements", "Finances"]
+      "Funding Request": ["Funding Request", "Request for Increase"]
+      "Public Impact and Audience": ["Public Impact", "Audience", "Attendance"]
+      "Equity Implementation": ["Equity Implementation", "Equity", "Diversity", "Inclusion"]
+      "Organizational Development": ["Organizational Development", "Capacity Building"]
+      "Application Contacts": ["Application Contacts", "Applicant ID"]
+      "CADAC Statistical Form": ["CADAC", "Statistical Form"]
+
+  CCA:
+    display: "Canada Council for the Arts (CCA)"
+    headings:
+      "Organizational Profile": ["Organizational Profile", "Organization Details", "Grant Description"]
+      "Services and Activities": ["Services, Support Activities", "Public Events"]
+      "Activity List": ["Activity List", "Activities", "Festival Schedule"]
+      "Exhibitions": ["Exhibitions", "Exhibition"]
+      "Education": ["Education", "Workshops", "Training"]
+      "Financial Overview": ["Financial", "Budget", "Financial Overview"]
+      "Diversity and Inclusion": ["Diversity", "Inclusion"]
+      "Support Materials": ["Support Materials", "Support Material", "Documentation"]

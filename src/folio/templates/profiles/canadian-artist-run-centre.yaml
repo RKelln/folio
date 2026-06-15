@@ -1,0 +1,126 @@
+# Profile: canadian-artist-run-centre
+# For artist-run centres and media arts organizations in Canada
+#
+# Includes heading taxonomies for all four major Canadian arts funders
+# (OAC, TAC, CCA, BCAH) derived from actual application form structures.
+# Suitable for InterAccess, Vtape, Trinity Square Video, and similar orgs.
+
+org:
+  name: "My Artist-Run Centre"
+  abbreviation: "ARC"
+
+funders:
+  OAC: "Ontario Arts Council"
+  TAC: "Toronto Arts Council"
+  CCA: "Canada Council for the Arts"
+  BCAH: "Canadian Heritage"
+
+doc_types:
+  - application
+  - report
+  - budget
+  - notification
+  - activity_list
+  - staff_board
+  - support_material
+  - agreement
+  - planning
+  - notes
+  - exhibition
+  - press
+
+headings:
+  OAC:
+    display: "Ontario Arts Council (OAC)"
+    headings:
+      "Organization Information": ["Organization Information", "Organization Information Updates"]
+      "Governance and Organizational Structure": ["Governance and Organizational Structure", "Governance"]
+      "Board and Staff": ["Board and Staff", "Staff List", "Board of Directors"]
+      "Pay, Benefits, and Working Conditions": ["Pay, Benefits", "Supports for Staff", "Fee Policies"]
+      "Last Completed and Current Years": ["Last Completed Year", "Current Year", "Last Completed and Current Years"]
+      "Operations and Human Resources": ["Operations", "Operations & HR", "Human Resources"]
+      "Relocation": ["Relocation"]
+      "Exhibitions and Vector Festival": ["Exhibitions", "Vector Festival", "Exhibitions & Vector Festival"]
+      "Education": ["Education", "Workshops"]
+      "Studio": ["Studio", "Studio & Community"]
+      "Outreach and Communication": ["Outreach", "Communication", "Outreach & Communication"]
+      "Request Year Plans": ["Request Year", "Plans for Request Year"]
+      "Organizational Expectations": ["Organizational Expectations"]
+      "Projected Financial State": ["Projected Financial State", "Financial Projections"]
+      "Financial Deficits and Reserve Funds": ["Financial Deficits", "Reserve Funds"]
+      "Financial and Statistical Variances": ["Financial & Statistical Variances", "CADAC Variances"]
+      "Additional Information": ["Additional Information"]
+      "Activity Lists": ["Activity Lists", "Activity List", "Activities"]
+      "Cost Pressures": ["Cost Pressures", "Three Largest Cost Pressures"]
+      "Optimal Funding": ["Optimal Funding", "Funding Priorities"]
+      "OAC Recognition Requirements": ["OAC Recognition", "Recognition Requirements"]
+      "Professional Development": ["Professional Development", "Organizational Priorities"]
+      "Board Approval": ["Board Approval"]
+      "Application Contacts": ["Application Contacts"]
+      "Supporting Documents": ["Supporting Documents", "Support Material"]
+      "Project Grants": ["Project Grants", "Grants Confirmed"]
+
+  TAC:
+    display: "Toronto Arts Council (TAC)"
+    headings:
+      "Overview": ["Overview"]
+      "Long-Term Plan": ["Long-Term Plan", "Strategic Plan", "Summarize your plan"]
+      "Organization History and Mandate": ["Organization History", "Mandate", "Mission Statement"]
+      "Current Leadership": ["Current Leadership", "Leadership", "Qualifications"]
+      "Artistic Report": ["Artistic Report", "Artistic Contribution", "Contribution to the Art Form"]
+      "Artistic Programming — Last Completed Year": ["Artistic Programming - Last Completed Year", "Programming - Last Completed"]
+      "Artistic Programming — Current Year": ["Artistic Programming - Current Year", "Programming - Current"]
+      "Artistic Programming — Request Years": ["Artistic Programming - Request Years", "Programming - Request"]
+      "Vector Festival": ["Vector Festival", "Vector"]
+      "Exhibitions": ["Exhibitions", "Exhibition"]
+      "Membership and Studio": ["Membership", "Studio", "Membership & Studio"]
+      "Education and Workshops": ["Education", "Workshops", "Intensives", "Training"]
+      "Operations Report": ["Operations Report", "Organizational Activities"]
+      "Operations and Human Resources": ["Operations", "Operations & HR", "Human Resources"]
+      "Outreach and Communication": ["Outreach", "Communication", "Outreach & Communication"]
+      "Financial": ["Financial", "Financial Statements", "Finances"]
+      "Funding Request": ["Funding Request", "Request for Increase", "TAC - Request"]
+      "Public Impact and Audience": ["Public Impact", "Audience", "Describe your audience"]
+      "Equity Implementation": ["Equity Implementation", "Equity", "Diversity", "Inclusion"]
+      "Succession Planning": ["Succession Planning", "Changes in leadership"]
+      "Organizational Development": ["Organizational Development", "Capacity Building"]
+      "Application Contacts": ["Application Contacts", "Applicant ID"]
+      "CADAC Statistical Form": ["CADAC", "Statistical Form"]
+      "Location of Toronto Activities": ["Location of Toronto Activities", "Neighbourhood Improvement Areas"]
+
+  CCA:
+    display: "Canada Council for the Arts (CCA)"
+    headings:
+      "Organizational Profile": ["Organizational Profile", "Organization Details", "Grant Description"]
+      "Services and Activities": ["Services, Support Activities", "Public Events", "Ancillary Programming"]
+      "Activity List": ["Activity List", "Activities", "Activity Lists"]
+      "Exhibitions": ["Exhibitions", "Exhibition"]
+      "Education": ["Education", "Workshops", "Training"]
+      "Financial Overview": ["Financial", "Budget", "Financial Overview"]
+      "Annual Update Report": ["Annual Update", "Annual Report", "Interim Report"]
+      "Diversity and Inclusion": ["Diversity", "Inclusion"]
+      "Support Materials": ["Support Materials", "Support Material", "Documentation"]
+      "CADAC Forms": ["CADAC", "Financial Form", "Statistical Form"]
+
+  BCAH:
+    display: "Canadian Heritage (BCAH)"
+    headings:
+      "Festival Description": ["Festival Description", "Describe your festival", "Proposed Festival", "Event Information"]
+      "Festival Timeline": ["Festival timeline", "Festival Dates", "Duration"]
+      "Festival Location": ["Festival location", "Venue", "Location"]
+      "Online Presence": ["Online presence", "Website", "Social Media"]
+      "Previous Festival Edition": ["Previous Festival Edition", "Previous Edition"]
+      "Community Engagement": ["Community Engagement", "Local Community Partners", "Community composition"]
+      "Volunteer Engagement": ["Volunteer Engagement", "Volunteers", "Number of volunteers"]
+      "Organizational Capacity": ["Organizational Capacity", "Applicant capacity", "Contingency plans"]
+      "Official Languages": ["Official languages"]
+      "Diversity and Inclusion": ["Diversity and inclusion", "Diversity", "Inclusion"]
+      "Budget and Financial": ["Budget", "Financial", "Budget Document"]
+      "Artist Fees": ["Artist Fees", "Artist Fee Detail"]
+      "Support Materials": ["Support Materials", "Supporting documents", "Promotional", "Media Coverage"]
+      "Final Report": ["Final Report", "Report"]
+      "Exhibitions": ["Exhibitions", "Flagship Exhibition"]
+      "Events": ["Events", "Festival Party", "Performance"]
+      "Workshops": ["Workshops", "Workshop"]
+      "Accessibility": ["Accessibility", "Accessibility Information"]
+      "About the Organization": ["About", "Organization Information"]
