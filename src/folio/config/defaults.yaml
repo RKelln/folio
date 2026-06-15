@@ -32,10 +32,10 @@ doc_types:
 
 # ── Paths ─────────────────────────────────────────────────────────
 paths:
-  raw_archive: "./_raw_archive/"
-  raw_md: "./raw_md/"
-  clean_md: "./clean_md/"
-  rewrite_md: "./rewrite_md/"
+  raw_archive: "./archive/"
+  raw_md: "./.folio/converted/"
+  clean_md: "./.folio/cleaned/"
+  rewrite_md: "./markdown/"
   wiki_project: "./wiki/"
 
 # ── Converter ─────────────────────────────────────────────────────
