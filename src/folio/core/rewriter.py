@@ -22,9 +22,10 @@ import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from folio.core.errors import FileStatus, ProcessingTier
+from folio.core.throttle import RateLimiter
 from folio.core.frontmatter import (
     apply_frontmatter,
     dict_to_frontmatter,
@@ -34,6 +35,7 @@ from folio.core.frontmatter import (
     update_frontmatter,
 )
 from folio.core.manifest import load_manifest, save_manifest, update_file, recalculate_summary
+from folio.core.throttle import RateLimiter
 
 # ── Tier alias mapping ─────────────────────────────────────────────────────────
 
@@ -515,17 +517,19 @@ def _call_llm(
         temperature=temperature,
         max_tokens=max_tokens,
     )
-    if reasoning_effort:
+    model_lower = model.lower()
+    if reasoning_effort and model_lower.startswith("deepseek"):
         kwargs["reasoning_effort"] = reasoning_effort
-    if thinking_enabled is not None:
+    if thinking_enabled is not None and model_lower.startswith("deepseek"):
         kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking_enabled else "disabled"}}
 
     response = client.chat.completions.create(**kwargs)
+    usage = getattr(response, 'usage', None)
     return {
         "text": response.choices[0].message.content or "",
-        "input_tokens": response.usage.prompt_tokens,
-        "output_tokens": response.usage.completion_tokens,
-        "total_tokens": response.usage.total_tokens,
+        "input_tokens": usage.prompt_tokens if usage else 0,
+        "output_tokens": usage.completion_tokens if usage else 0,
+        "total_tokens": usage.total_tokens if usage else 0,
     }
 
 
@@ -635,7 +639,12 @@ def _process_single(
         thinking_raw = tier_config.get("thinking")
         thinking = None
         if thinking_raw is not None:
-            thinking = thinking_raw if isinstance(thinking_raw, bool) else str(thinking_raw).lower() != "disabled"
+            if isinstance(thinking_raw, bool):
+                thinking = thinking_raw
+            elif isinstance(thinking_raw, str):
+                thinking = thinking_raw.lower() != "disabled"
+            else:
+                thinking = None
 
         response = _call_llm(
             client,
@@ -729,12 +738,10 @@ def rewrite_file(
     client = None
 
     if llm_provider is not None:
-        from openai import OpenAI
-
-        client = OpenAI(
-            base_url=llm_provider._base_url,
-            api_key=llm_provider._api_key,
-        )
+        if hasattr(llm_provider, '_client') and llm_provider._client is not None:
+            client = llm_provider._client
+        else:
+            client = _create_client(config)
 
     return _process_single(filepath, config, rewrite_config, tier_norm, client=client, force_api=True)
 
@@ -861,23 +868,36 @@ def rewrite_directory(
     if client is None:
         client = _create_client(config)
 
-    # Rate limiting state
-    rate_lock = threading.Lock()
-    last_request_time = [0.0]
+    req_per_sec = proc_cfg.get("requests_per_second", 5)
+    rate_limiter = RateLimiter(req_per_sec)
+    manifest_lock = threading.Lock()
 
     def _rate_limited_process(entry: dict) -> dict:
-        """Process with rate limiting."""
-        req_per_sec = proc_cfg.get("requests_per_second", 5)
-        min_interval = 1.0 / req_per_sec if req_per_sec > 0 else 0
-
-        with rate_lock:
-            elapsed = time.perf_counter() - last_request_time[0]
-            if elapsed < min_interval:
-                time.sleep(min_interval - elapsed)
-            last_request_time[0] = time.perf_counter()
-
         filepath = Path(entry["filepath"])
-        return _process_single(filepath, config, rewrite_config, entry["tier"], client=client)
+        result = None
+        for attempt in range(max_retries + 1):
+            if attempt > 0:
+                time.sleep(2 * (2 ** (attempt - 1)))
+            rate_limiter.wait()
+            try:
+                result = _process_single(filepath, config, rewrite_config, entry["tier"], client=client)
+            except Exception:
+                result = None
+            if result and result.get("status") in ("success", "local_metadata", "skipped", "corrupted", "empty"):
+                break
+        if result is None:
+            result = {
+                "filepath": str(filepath),
+                "filename": entry["filename"],
+                "tier": entry["tier"],
+                "status": "error",
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cost_usd": 0.0,
+                "elapsed_seconds": 0,
+                "error": "Failed after retries",
+            }
+        return result
 
     # Concurrent processing
     max_workers = proc_cfg.get("max_workers", 10)
@@ -915,19 +935,9 @@ def rewrite_directory(
 
         for future in as_completed(futures):
             entry = futures[future]
-            result = None
-
-            for attempt in range(max_retries + 1):
-                if attempt > 0:
-                    time.sleep(2 * (2 ** (attempt - 1)))
-                try:
-                    result = future.result()
-                except Exception:
-                    result = None
-                if result and result.get("status") in ("success", "local_metadata", "skipped", "corrupted", "empty"):
-                    break
-
-            if result is None:
+            try:
+                result = future.result()
+            except Exception:
                 result = {
                     "filepath": entry["filepath"],
                     "filename": entry["filename"],
@@ -948,16 +958,17 @@ def rewrite_directory(
 
             # Update manifest if we have one
             if manifest_path is not None:
-                update_file(manifest, result["filename"],
-                    status=FileStatus.OK if result["status"] in ("success", "local_metadata") else FileStatus.ERROR_LLM,
-                    tier=_to_processing_tier(result.get("tier", "minimal")),
-                    rewrite_input_tokens=result.get("input_tokens", 0),
-                    rewrite_output_tokens=result.get("output_tokens", 0),
-                    rewrite_cost_usd=result.get("cost_usd", 0.0),
-                    rewrite_status=result.get("status", "error"),
-                  )
-                recalculate_summary(manifest)
-                save_manifest(manifest, manifest_path)
+                with manifest_lock:
+                    update_file(manifest, result["filename"],
+                        status=FileStatus.OK if result["status"] in ("success", "local_metadata") else FileStatus.ERROR_LLM,
+                        tier=_to_processing_tier(result.get("tier", "minimal")),
+                        rewrite_input_tokens=result.get("input_tokens", 0),
+                        rewrite_output_tokens=result.get("output_tokens", 0),
+                        rewrite_cost_usd=result.get("cost_usd", 0.0),
+                        rewrite_status=result.get("status", "error"),
+                      )
+                    recalculate_summary(manifest)
+                    save_manifest(manifest, manifest_path)
 
             # Update summary
             status_key = result.get("status", "error")

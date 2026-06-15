@@ -17,6 +17,7 @@ from tqdm import tqdm
 
 from folio.config.loader import load_project_config
 from folio.config.schema import ProjectConfig
+from folio.core.manifest import load_manifest, save_manifest
 
 AVAILABLE_STAGES = [
     "scan", "convert", "clean", "canonicalize", "classify",
@@ -51,7 +52,7 @@ def run_pipeline(
         p.mkdir(parents=True, exist_ok=True)
 
     manifest_path = Path(config.paths.rewrite_md) / "manifest.json"
-    manifest = _load_manifest(manifest_path)
+    manifest = load_manifest(manifest_path)
 
     if stages is None:
         enabled = list(AVAILABLE_STAGES)
@@ -108,7 +109,7 @@ def run_pipeline(
         report["stages"][stage_name] = result
 
         manifest["stages"][stage_name] = result
-        _save_manifest(manifest, manifest_path)
+        save_manifest(manifest, manifest_path)
 
         _print_stage_summary(stage_name, result)
 
@@ -148,6 +149,13 @@ def _estimate_pipeline(config: ProjectConfig) -> dict:
     Returns a report dict with estimated per-stage costs and timings,
     without executing any stage.
     """
+    from folio.core.scanner import scan_archive
+
+    try:
+        scan = scan_archive(config.paths.raw_archive, config)
+    except Exception:
+        scan = {"total_files": 0, "estimated_costs": {"total_usd": 0.0}}
+
     enabled = list(AVAILABLE_STAGES)
     report: dict = {
         "project": config.org.name,
@@ -161,7 +169,7 @@ def _estimate_pipeline(config: ProjectConfig) -> dict:
     total_time = 0.0
 
     for stage_name in enabled:
-        result = _estimate_stage(stage_name, config)
+        result = _estimate_stage(stage_name, config, scan)
         report["stages"][stage_name] = result
         total_cost += result.get("cost_usd", 0.0)
         total_time += result.get("time_seconds", 0.0)
@@ -249,14 +257,15 @@ def _run_stage(stage_name: str, config: ProjectConfig, dry_run: bool) -> dict:
         return {"status": "error", "error": str(exc)}
 
 
-def _estimate_stage(stage_name: str, config: ProjectConfig) -> dict:
+def _estimate_stage(stage_name: str, config: ProjectConfig, scan: dict | None = None) -> dict:
     """Produce a dry-run estimate for a single stage based on config."""
-    from folio.core.scanner import scan_archive
+    if scan is None:
+        from folio.core.scanner import scan_archive
 
-    try:
-        scan = scan_archive(config.paths.raw_archive, config)
-    except Exception:
-        scan = {"total_files": 0, "estimated_costs": {"total_usd": 0.0}}
+        try:
+            scan = scan_archive(config.paths.raw_archive, config)
+        except Exception:
+            scan = {"total_files": 0, "estimated_costs": {"total_usd": 0.0}}
 
     total_files = scan.get("total_files", 0)
     est_cost = scan.get("estimated_costs", {})
@@ -579,21 +588,14 @@ def _run_rewrite(config: ProjectConfig) -> dict:
     rewrite_dir = Path(config.paths.rewrite_md)
 
     try:
-        result = rewrite_directory(clean_dir, rewrite_dir, config)
+        manifest_path = Path(config.paths.rewrite_md) / "manifest.json"
+        result = rewrite_directory(clean_dir, config, manifest_path=manifest_path)
         files = len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0
         return {
             "stage": "rewrite",
             "status": "ok",
             "files": files,
             "cost_usd": result.get("total_cost_usd", 0.0) if isinstance(result, dict) else 0.0,
-        }
-    except NotImplementedError:
-        return {
-            "stage": "rewrite",
-            "status": "skipped",
-            "warning": "rewrite stage not yet implemented",
-            "files": 0,
-            "cost_usd": 0.0,
         }
     except Exception as exc:
         return {
@@ -626,14 +628,6 @@ def _run_prioritize(config: ProjectConfig) -> dict:
             "status": "ok",
             "files": len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0,
             "cost_usd": result.get("total_cost_usd", 0.0) if isinstance(result, dict) else 0.0,
-        }
-    except NotImplementedError:
-        return {
-            "stage": "prioritize",
-            "status": "skipped",
-            "warning": "prioritize stage not yet implemented",
-            "files": 0,
-            "cost_usd": 0.0,
         }
     except Exception as exc:
         return {
@@ -713,34 +707,6 @@ def _run_wiki(config: ProjectConfig) -> dict:
         "files": len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0,
         "cost_usd": 0.0,
     }
-
-
-# ── Manifest helpers ────────────────────────────────────────────────────────
-
-
-def _load_manifest(path: Path) -> dict:
-    import json
-
-    if path.exists():
-        with open(path) as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                pass
-    return {
-        "project": "folio",
-        "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "stages": {},
-    }
-
-
-def _save_manifest(manifest: dict, path: Path) -> None:
-    import json
-
-    manifest["updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(manifest, f, indent=2)
 
 
 # ── Formatting helpers ──────────────────────────────────────────────────────

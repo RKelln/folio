@@ -18,7 +18,6 @@ import json
 import random
 import re
 import textwrap
-import threading
 import time
 import traceback
 from collections import defaultdict
@@ -30,6 +29,8 @@ from folio.core.frontmatter import (
     parse_frontmatter,
     update_frontmatter,
 )
+from folio.core.manifest import load_manifest, save_manifest
+from folio.core.throttle import RateLimiter
 
 # ── Default configuration ──────────────────────────────────────────────────────
 
@@ -372,7 +373,7 @@ def _validate_priorities(
     raw_priorities = parsed.get("priorities")
     if not isinstance(raw_priorities, dict):
         errors.append('Response missing or invalid "priorities" key')
-        return priorities, raw_priorities if isinstance(raw_priorities, dict) else {}
+        return priorities, errors
 
     for fname, info in raw_priorities.items():
         if not isinstance(info, dict):
@@ -460,6 +461,7 @@ def _process_group(
             "input_tokens": input_est_tokens,
             "output_tokens": 0,
             "elapsed_seconds": elapsed,
+            "raw_response": None,
         }
 
     output_est_tokens = len(response_text) // 3
@@ -476,6 +478,7 @@ def _process_group(
         "input_tokens": input_est_tokens,
         "output_tokens": output_est_tokens,
         "elapsed_seconds": elapsed,
+        "raw_response": parsed,
     }
 
 
@@ -678,21 +681,6 @@ def _scan_files(directory: Path) -> list[dict]:
     return items
 
 
-def _load_manifest(manifest_path: Path) -> dict:
-    """Load manifest from JSON file. Returns empty dict if missing."""
-    if manifest_path.exists():
-        with open(manifest_path) as f:
-            return json.load(f)
-    return {}
-
-
-def _save_manifest(manifest_path: Path, manifest: dict) -> None:
-    """Save manifest to JSON file."""
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(manifest_path, "w") as f:
-        json.dump(manifest, f, indent=2)
-
-
 def prioritize_directory(
     directory: Path,
     config,
@@ -816,10 +804,10 @@ def prioritize_directory(
     llm_provider = _get_provider(config)
     write_back = directory.resolve() == directory.resolve()
 
-    manifest = _load_manifest(manifest_path) if resume else {}
+    manifest = load_manifest(manifest_path) if resume else {}
     if "completed_groups" not in manifest:
         manifest["completed_groups"] = {}
-    if "summary" not in manifest:
+    if "priority_counts" not in manifest.get("summary", {}):
         manifest["summary"] = {
             "total_files": total_files,
             "total_groups": len(sorted_items),
@@ -851,18 +839,12 @@ def prioritize_directory(
     base_delay = proc_cfg.get("retry_base_delay_seconds", 3)
     backoff = proc_cfg.get("retry_backoff_multiplier", 2.0)
 
-    rate_lock = threading.Lock()
-    last_request_time = [0.0]
+    rate_limiter = RateLimiter(req_per_sec)
 
     def rate_limited_process(
         group_key: str, group_files: list[dict]
     ) -> dict | None:
-        min_interval = 1.0 / req_per_sec if req_per_sec > 0 else 0
-        with rate_lock:
-            elapsed = time.perf_counter() - last_request_time[0]
-            if elapsed < min_interval:
-                time.sleep(min_interval - elapsed)
-            last_request_time[0] = time.perf_counter()
+        rate_limiter.wait()
 
         for attempt in range(max_retries + 1):
             if attempt > 0:
@@ -952,7 +934,7 @@ def prioritize_directory(
                 "elapsed_seconds": round(result.get("elapsed_seconds", 0), 2),
             }
             manifest["summary"] = summary
-            _save_manifest(manifest_path, manifest)
+            save_manifest(manifest_path, manifest)
 
             summary["total_input_tokens"] = summary.get(
                 "total_input_tokens", 0

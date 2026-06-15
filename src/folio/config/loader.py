@@ -86,14 +86,29 @@ def _build_config(data: dict) -> ProjectConfig:
     llm_data = data.get("llm", {})
     llm_models = llm_data.get("models", {})
     llm_pricing = llm_data.get("pricing", {})
+    try:
+        input_price = float(llm_pricing.get("input_per_million", 0.14))
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"llm.pricing.input_per_million must be a number, "
+            f"got: {llm_pricing.get('input_per_million')!r}"
+        )
+    try:
+        output_price = float(llm_pricing.get("output_per_million", 0.28))
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"llm.pricing.output_per_million must be a number, "
+            f"got: {llm_pricing.get('output_per_million')!r}"
+        )
+
     llm = LLMConfig(
         provider=llm_data.get("provider", "openai_compatible"),
         base_url=llm_data.get("base_url", "https://api.deepseek.com"),
         api_key_env=llm_data.get("api_key_env", "DEEPSEEK_API_KEY"),
         fast_model=llm_models.get("fast", "deepseek-v4-flash"),
         quality_model=llm_models.get("quality", "deepseek-v4-pro"),
-        input_price_per_m=float(llm_pricing.get("input_per_million", 0.14)),
-        output_price_per_m=float(llm_pricing.get("output_per_million", 0.28)),
+        input_price_per_m=input_price,
+        output_price_per_m=output_price,
     )
 
     processing_data = data.get("processing", {})
@@ -138,9 +153,25 @@ def _validate(config: ProjectConfig) -> None:
             f"Must be one of: {', '.join(sorted(_VALID_WIKI_TYPES))}"
         )
 
-    if not config.llm.base_url.startswith("https://"):
+    url = config.llm.base_url
+    if url.startswith("https://"):
+        pass
+    elif url.startswith("http://"):
+        allowed_prefixes = (
+            "http://localhost", "http://127.",
+            "http://192.168.", "http://10.",
+            "http://172.16.", "http://172.17.", "http://172.18.", "http://172.19.",
+            "http://172.20.", "http://172.21.", "http://172.22.", "http://172.23.",
+            "http://172.24.", "http://172.25.", "http://172.26.", "http://172.27.",
+            "http://172.28.", "http://172.29.", "http://172.30.", "http://172.31.",
+        )
+        if not url.startswith(allowed_prefixes):
+            raise ValueError(
+                f"LLM base_url must use https://, or http:// for localhost/private IPs. Got: '{url}'"
+            )
+    else:
         raise ValueError(
-            f"LLM base_url must start with https://, got: '{config.llm.base_url}'"
+            f"LLM base_url must start with https:// or http://, got: '{url}'"
         )
 
     if config.processing.max_workers < 1:

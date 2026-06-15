@@ -7,12 +7,16 @@ Optionally uses LLM for ambiguous cases.
 All patterns are driven by configuration — no hardcoded org-specific rules.
 """
 
-import json
+import logging
 import re
 import shutil
 from collections import defaultdict
 from difflib import SequenceMatcher
 from pathlib import Path
+
+from folio.core.prioritizer import _parse_llm_response
+
+logger = logging.getLogger(__name__)
 
 # ── Default configuration ──────────────────────────────────────────────────────
 
@@ -543,9 +547,16 @@ def _resolve_with_llm(file_data: dict, config: dict, llm_provider) -> None:
                 temperature=0.1,
             )
             content = response.choices[0].message.content
-            content = re.sub(r"```\w*\n?", "", str(content)).strip()
-            results = json.loads(content)
-        except (json.JSONDecodeError, AttributeError, Exception):
+            parsed = _parse_llm_response(str(content))
+            if parsed is None:
+                logger.warning(
+                    "LLM canonicalizer: failed to parse response for app_key=%s",
+                    _app_key,
+                )
+                continue
+            results = parsed.get("pairs", [])
+        except (AttributeError, Exception):
+            logger.warning("LLM canonicalizer: request failed", exc_info=True)
             continue
 
         for i, result in enumerate(results):
@@ -566,7 +577,7 @@ def _build_llm_prompt(pairs: list[tuple[dict, dict, float]]) -> str:
         "For each pair below, answer YES if they are the same document",
         "(same form/section, possibly edited) or NO if they are different documents.",
         "",
-        'Respond as JSON: [{"a": "<filename_a>", "b": "<filename_b>", "same": true/false}]',
+        'Respond as JSON: {"pairs": [{"a": "<filename_a>", "b": "<filename_b>", "same": true/false}]}',
         "",
     ]
     for i, (lf, mf, sim) in enumerate(pairs):

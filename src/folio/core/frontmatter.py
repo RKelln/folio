@@ -112,10 +112,9 @@ def dict_to_frontmatter(**fields) -> str:
 def update_frontmatter(content: str, **fields) -> str:
     """Update or add fields in YAML frontmatter.
 
-    Inserts new fields after 'funder' or 'type' if present, otherwise
-    appends to the end of the frontmatter block. Existing fields with
-    the same key are replaced. Blanks lines around --- delimiters are
-    cleaned up.
+    Parses existing YAML frontmatter, updates the dict with new fields,
+    and serializes back to YAML. Correctly handles quoted values,
+    multi-line strings, and comments.
 
     Example:
         >>> update_frontmatter(doc, priority=2)
@@ -125,8 +124,7 @@ def update_frontmatter(content: str, **fields) -> str:
         return content
 
     if not content.startswith('---'):
-        fm_lines = [f'{k}: {v}' for k, v in fields.items()]
-        fm_block = '---\n' + '\n'.join(fm_lines) + '\n---\n\n'
+        fm_block = '---\n' + yaml.safe_dump(fields, default_flow_style=False, allow_unicode=True, sort_keys=False).strip() + '\n---\n\n'
         return fm_block + content
 
     end_idx = content.find('---', 3)
@@ -136,29 +134,16 @@ def update_frontmatter(content: str, **fields) -> str:
     fm_text = content[3:end_idx].strip()
     body = content[end_idx + 3:].lstrip('\n')
 
-    for key, value in fields.items():
-        if re.search(rf'^{key}:\s*.*$', fm_text, re.MULTILINE):
-            fm_text = re.sub(rf'^{key}:\s*.*$', f'{key}: {value}',
-                             fm_text, flags=re.MULTILINE)
-        else:
-            lines = fm_text.split('\n')
-            inserted = False
-            insert_after = ['funder:', 'type:']
-            for i, line in enumerate(lines):
-                stripped = line.strip()
-                if any(stripped.startswith(prefix) for prefix in insert_after):
-                    insert_pos = i + 1
-                    while insert_pos < len(lines) and (lines[insert_pos].startswith(' ') or
-                                                        lines[insert_pos].startswith('\t')):
-                        insert_pos += 1
-                    lines.insert(insert_pos, f'{key}: {value}')
-                    inserted = True
-                    break
-            if not inserted:
-                lines.append(f'{key}: {value}')
-            fm_text = '\n'.join(lines)
+    try:
+        fm_dict = yaml.safe_load(fm_text) or {}
+    except yaml.YAMLError:
+        fm_dict = {}
 
-    return f'---\n{fm_text}\n---\n{body}'
+    fm_dict.update(fields)
+
+    fm_yaml = yaml.safe_dump(fm_dict, default_flow_style=False, allow_unicode=True, sort_keys=False).strip()
+
+    return f'---\n{fm_yaml}\n---\n{body}'
 
 
 # ── Strip / sanitize ───────────────────────────────────────────────────────────

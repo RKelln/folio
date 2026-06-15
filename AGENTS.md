@@ -68,7 +68,8 @@ Each module does one job well:
 | `core/auditor.py` | Wiki quality audit |
 | `core/scanner.py` | Archive scanning and funder detection |
 | `core/frontmatter.py` | YAML frontmatter parsing, generation, validation |
-| `core/manifest.py` | Pipeline manifest read/write |
+| `core/manifest.py` | Pipeline manifest read/write (canonical — no other module should define its own manifest schema) |
+| `core/throttle.py` | Thread-safe `RateLimiter` for API calls |
 | `core/errors.py` | Shared error/status types |
 | `adapters/converters/` | PDF/DOCX → Markdown converters |
 | `adapters/wiki/` | Wiki backend integrations |
@@ -80,6 +81,18 @@ Each module does one job well:
 ### 8. Use standard libraries where possible
 
 Prefer the existing dependencies (pyyaml, openai, python-dotenv, tqdm) over new ones unless there's a strong reason.
+
+### 9. Never silently discard errors
+
+Bare `except Exception: pass` or `continue` hides bugs. Always log the exception at minimum. Prefer catching specific exception types.
+
+### 10. Guard concurrent state
+
+Any shared mutable state accessed from multiple threads needs a `threading.Lock`. Retry logic must re-submit work, not re-read a cached `Future.result()`.
+
+### 11. Strict DRY — no duplicate implementations
+
+Every function, class, or workflow must have exactly one canonical home. When you need something that might already exist (rate limiter, manifest loader, YAML parser, config merger, LLM response parser), check the module table above. If you find yourself writing the same logic a second time, extract it to a shared module — do not copy-paste. Duplicate implementations cause divergence bugs, dead code, and force orgs to fix the same bug in multiple places when customizing.
 
 ## Project Structure
 

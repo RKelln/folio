@@ -16,12 +16,15 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 import re
 from collections import Counter
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 from folio.core.errors import FileStatus, ProcessingTier
-from folio.core.frontmatter import parse_frontmatter
+from folio.core.frontmatter import extract_year, parse_frontmatter
 
 # ── Default configuration ─────────────────────────────────────────────────────
 
@@ -628,7 +631,8 @@ def _evaluate_skip_rules(
                 except (KeyError, ValueError):
                     pass
                 return {"reason": reason}
-        except Exception:
+        except Exception as e:
+            logger.warning("Skip rule evaluation failed for %s: %s", ctx.get("filename", "?"), e)
             continue
     return None
 
@@ -646,7 +650,8 @@ def _evaluate_tier_rules(
         try:
             if evaluate_rule(rule, ctx):
                 return rule.get("tier", "minimal")
-        except Exception:
+        except Exception as e:
+            logger.warning("Tier rule evaluation failed for %s: %s", ctx.get("filename", "?"), e)
             continue
     return "minimal"
 
@@ -674,17 +679,6 @@ def _tier_reason(result: dict) -> str:
         return "Application/report — heading normalization needed"
     return "Default classification"
 
-
-_FILESTATUS_MAP: dict[str, FileStatus] = {
-    "skipped_guidelines": FileStatus.SKIPPED_GUIDELINES,
-    "skipped_corrupted": FileStatus.SKIPPED_CORRUPTED,
-    "skipped_too_small": FileStatus.SKIPPED_TOO_SMALL,
-    "skipped_cv": FileStatus.SKIPPED_CV,
-    "skipped_email": FileStatus.SKIPPED_EMAIL,
-    "skipped_draft": FileStatus.SKIPPED_DRAFT,
-    "skipped_non_canonical": FileStatus.SKIPPED_NON_CANONICAL,
-    "skipped_undersized": FileStatus.SKIPPED_UNDERSIZED,
-}
 
 _TIER_MAP: dict[str, ProcessingTier] = {
     "full_rewrite": ProcessingTier.FULL,
@@ -748,8 +742,6 @@ def classify_file(filepath: Path, config: dict) -> dict:
 
     # Extract years from frontmatter if available
     if fm:
-        from folio.core.frontmatter import extract_year
-
         result["year_written"] = extract_year(fm.get("written"))
         result["year_intended_start"] = extract_year(fm.get("period_start"))
         result["year_intended_end"] = extract_year(fm.get("period_end"))

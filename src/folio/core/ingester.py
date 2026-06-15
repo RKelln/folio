@@ -260,13 +260,13 @@ def ingest_document(
 
     if run_rewrite:
         try:
-            from folio.core.rewriter import rewrite_documents  # type: ignore[import-not-found]
+            from folio.core.rewriter import rewrite_file
         except ImportError:
             logger.warning('Rewriter module not available — skipping rewrite pass')
             result['rewrite_status'] = 'rewriter not available'
         else:
-            rewrite_result = rewrite_documents(
-                files=[output_path],
+            rewrite_result = rewrite_file(
+                filepath=output_path,
                 config=config,
             )
             result['rewrite_status'] = rewrite_result
