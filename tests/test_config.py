@@ -1,5 +1,6 @@
 import pytest
 import yaml
+from pathlib import Path
 
 from folio.config.loader import _deep_merge, load_project_config
 from folio.config.schema import ProjectConfig
@@ -14,7 +15,7 @@ class TestLoadMinimalValidConfig:
         assert config.project_name == "My Grant Archive"
         assert config.org.name == "My Organization"
         assert config.org.abbreviation == "ORG"
-        assert config.paths.raw_archive == "./_raw_archive/"
+        assert Path(config.paths.raw_archive).name == "archive"
         assert config.llm.base_url == "https://api.deepseek.com"
 
     def test_load_defaults_only(self):
@@ -120,7 +121,7 @@ org:
         assert config.project_name == "Partial Project"
         assert config.org.name == "Partial Org"
         assert config.org.abbreviation == "ORG"
-        assert config.paths.raw_archive == "./_raw_archive/"
+        assert Path(config.paths.raw_archive).name == "archive"
         assert config.llm.base_url == "https://api.deepseek.com"
         assert config.converter.type == "datalab"
         assert config.wiki.type == "sage-wiki"

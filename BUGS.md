@@ -207,9 +207,9 @@ Full review of all 48 source files. 93 findings: 13 critical, 21 high, 28 medium
 
 ### [#028] 9 CLI stubs registered as entry points
 - **Priority**: P1
-- **Status**: Open
+- **Status**: Fixed (2026-06-15)
 - **What**: `pyproject.toml` registers `folio-clean`, `folio-classify`, `folio-rewrite`, `folio-prioritize`, `folio-canonicalize`, `folio-ingest`, `folio-audit`, `folio-scan`, `folio-teach` as entry points, but all print "not yet implemented." Running them gives a dead-end experience.
-- **Fix**: Either implement them or remove from `[project.scripts]` until ready.
+- **Fix**: All CLI stubs implemented as thin wrappers around core modules with `--help`, `--dry-run`, `--json`, `--config` support.
 
 ### High (P1 — important to fix)
 
@@ -282,3 +282,65 @@ Full review of all 48 source files. 93 findings: 13 critical, 21 high, 28 medium
 - **Where**: `core/classifier.py` `_evaluate_tier_rules`
 - **What**: During InterAccess classification (1255 files), ~170 tier rule evaluations fail with `KeyError: 'type'`. Affected files get the default `minimal` tier instead of the correct tier. The legacy condition parser may produce conditions missing the `type` key for certain edge cases in compound `or`/`and` expressions.
 - **Fix**: Debug the legacy parser output for failing conditions. Ensure all condition dicts have `type` key. Possible cause: deeply nested `or` chains or mixed `and`/`or` with parenthesized groups.
+
+---
+
+## CLI Review Findings (2026-06-15)
+
+Review of 12 CLI stub files. 24 findings: 0 critical, 5 high, 7 medium, 12 low. All P1s fixed.
+
+### [#039] No `--version` flag on any CLI tool
+- **Priority**: P2
+- **Status**: Open
+- **Where**: All CLI entry points
+- **What**: AGENTS.md Phase 4 requires `--version` flag on all CLI tools reading from `folio.__version__`. Currently no CLI supports this.
+- **Fix**: Add `--version` to argparse in each CLI (or common helper) that prints `folio.__version__`.
+
+### [#040] No CLI tests
+- **Priority**: P2
+- **Status**: Open
+- **Where**: `tests/` directory
+- **What**: All 15 CLI files are untested. The `main(argv=...)` pattern makes table-driven tests possible without subprocess spawning.
+- **Fix**: Write tests under `tests/cli/` covering `--help` output, `--dry-run` mode, `--json` output, and error handling for each CLI.
+
+### [#041] `classify.py` config-merging leaks business logic into CLI
+- **Priority**: P2
+- **Status**: Open
+- **Where**: `cli/classify.py:81-90`
+- **What**: Building `classify_config` from `DEFAULT_CLASSIFY_CONFIG` + `config.funders` + `config.classification` keys + `config.doc_types` is business logic duplicated from `pipeline.py:_run_classify`. AGENTS.md Rule 7 says CLIs should be thin wrappers.
+- **Fix**: Extract into `config/` or `core/classifier.py` as `build_classify_config(project_config)`.
+
+### [#042] `skills.py` imports private `_build_context`
+- **Priority**: P2
+- **Status**: Open
+- **Where**: `cli/skills.py:65`
+- **What**: `from folio.core.skills import _build_context` — imports a private function across module boundaries.
+- **Fix**: Make `_build_context` public or have `generate_skills()` expose the context in its return value.
+
+### [#043] `canonicalize.py` — broad `except Exception` on LLM provider setup
+- **Priority**: P2
+- **Status**: Open
+- **Where**: `cli/canonicalize.py:96`
+- **What**: `except Exception as exc:` catches all exceptions. Should catch specific types (`ValueError`, `ConnectionError`, `ImportError`).
+- **Fix**: Narrow the except clause to expected exception types.
+
+### [#044] `priority.py` hardcoded dry-run cost estimate
+- **Priority**: P2
+- **Status**: Open
+- **Where**: `cli/prioritize.py:153`
+- **What**: `len(md_files) * 0.002` hardcoded instead of deriving from `config.llm.pricing`. AGENTS.md Rule 1: "Configuration drives behavior."
+- **Fix**: Use `config.llm.pricing` to compute cost estimate, matching `rewrite.py` pattern.
+
+### [#045] `scan.py` `--source` arg type inconsistency
+- **Priority**: P3
+- **Status**: Open
+- **Where**: `cli/scan.py:43`
+- **What**: `--source` uses `type=str` (default), but later wrapped with `Path(args.source)`. Other CLIs use `type=Path`. Inconsistent.
+- **Fix**: Change to `type=Path`.
+
+### [#046] Missing `from __future__ import annotations` in skills.py, teach.py
+- **Priority**: P3
+- **Status**: Open
+- **Where**: `cli/skills.py`, `cli/teach.py`
+- **What**: Minor inconsistency with the other 11 CLI files.
+- **Fix**: Add the import.
