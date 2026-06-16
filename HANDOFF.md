@@ -15,62 +15,136 @@ This document is for the next AI agent taking over work on `folio`. Read it full
 
 ## Current state
 
-**Phase 1 + Phase 2 complete. Phase 3 (CLI stubs) complete. CI/CD workflow added. 352/354 tests passing. All 11 CLI subcommands functional.**
+**Phase 1-4 complete. 407 tests passing. All 14 CLI subcommands functional. Docs written. Only Phase 5 (IA deployment validation) remains.**
 
-All 20 core pipeline tasks ported from the prototype. All 10 P0 and 11 P1 bugs fixed. The CLI dispatcher provides `folio <command>` UX with subcommands auto-discovering `folio.yaml` from cwd.
+All 20 core pipeline tasks ported from the prototype. All 10 P0 and 11 P1 bugs fixed. All 8 BUGS.md #039-#046 CLI review findings fixed. The CLI dispatcher provides `folio <command>` UX with subcommands auto-discovering `folio.yaml` from cwd.
 
-**New in this session:**
-- 8 CLI stubs implemented: `clean`, `classify`, `rewrite`, `prioritize`, `canonicalize`, `ingest`, `audit`, `scan`
-- All CLIs support `--help`, `--dry-run`, `--json`, `--config` flags per AGENTS.md Rule 4
-- `folio guide` added — comprehensive agent-facing reference (with `--topic config` for extended config docs)
-- `teach` registered in dispatcher (interactive tutorial placeholder)
-- `skills.py` fixed to accept `argv` parameter and added epilog/help
-- `main.py` dispatcher has `__name__ == '__main__'` guard for `python -m` usage
-- All ruff E501 line-length errors fixed in CLI
-- CI/CD: `.github/workflows/ci.yml` — runs ruff, mypy, pytest on Python 3.10/3.11/3.12
-- Code reviewed by beads-code-reviewer: 0 critical, all P1s fixed
-
-IA deployment: `ia-library/folio.yaml` created merging all 3 prototype configs. Scan (2,600 files) and classify (1,255 files) validated against prototype data. Single-file LLM rewrite tested end-to-end. Full pipeline dry-run estimates $161 for 2,600 files.
+IA deployment: `ia-library/folio.yaml` created merging all 3 prototype configs. Scan (2,600 files) and classify (1,255 files) validated against prototype data.
 
 **Key files to read FIRST (in order):**
-1. **`HANDOFF.md`** — this file
+1. **`HANDOFF.md`** — this file (Phase 5 plan below)
 2. **`AGENTS.md`** — conventions, module table, how to run folio
-3. **`TASKS.md`** — 47 tasks, Phase 1–3 done, Phase 4/5 remaining
-4. **`README.md`** — quickstart and command reference
+3. **`TASKS.md`** — task status (Phase 1-4 done, 5 remaining)
+4. **`BUGS.md`** — known issues (only #037, #038 still open)
 5. **`folio guide`** — built-in agent reference (run `folio guide`)
+6. **`docs/`** — 6 reference files
 
-## What to do next
+## What to do next: Phase 5 — IA Deployment Validation
 
-### Step 1: Complete IA deployment validation (Phase 5)
+**Goal:** Prove folio produces equivalent output to the `llm_wiki` prototype for InterAccess's 1,033-file grant archive, with **minimal LLM cost** (under $2).
 
-The IA config is at `../ia-library/folio.yaml`. Install folio and run from there:
+**Budget principle:** The prototype already spent ~$161 on the full rewrite. We validate with sampling — not re-running. Only Step 3 has LLM cost. Everything else is free.
+
+Prototype reference data at:
+- `/home/ryankelln/Documents/Work/IA_board/llm_wiki/` (read only)
+  - `classify_config.yaml`, `rewrite_config.yaml`, `prioritize_config.yaml` — source configs
+  - `rewrite_md/` — prototype output to compare against
+  - `.opencode/skills/grant-writing/SKILL.md` — prototype skills to compare against
+
+IA library at:
+- `/home/ryankelln/Documents/Work/IA_board/ia-library/`
+  - `folio.yaml` — merged from 3 prototype configs
+  - `.env` — API keys
+  - `_raw_archive/` — 2,600+ source files (PDF/DOCX/XLSX)
+  - `.folio/raw_md/` — converter output
+  - `.folio/clean_md/` — cleaned markdown
+
+### Step 1: Config parity audit (free — no API calls)
+
+Verify `ia-library/folio.yaml` contains EVERY value from the 3 prototype configs. Missing values cause folio to silently use defaults, producing different output.
+
+Read each prototype config and cross-check against `folio.yaml`:
+
+**From `classify_config.yaml`:**
+- `funders` dict — all abbreviations and full names
+- `doc_types` dict — all patterns per type
+- `skip_rules` — every rule with conditions and reasons
+- `tier_rules` — every rule with conditions and tiers
+- `thresholds` — all sub-objects (full_rewrite, full_rewrite_app_report, light_cleanup, raw_financial)
+- `form_chrome` patterns, `draft_markers`
+
+**From `rewrite_config.yaml`:**
+- `headings` — per-funder canonical heading taxonomies (TAC, OAC, CCA, etc.)
+- `useless_headings` — every regex pattern
+- `form_chrome_patterns` — every pattern
+- `prompts` section (full, light, minimal tier prompts — if customized)
+
+**From `prioritize_config.yaml`:**
+- Rubric criteria, grouping config
+- Any custom processing settings
+
+Report every missing or mismatched value. Fix `folio.yaml` before proceeding.
+
+### Step 2: Classify validation (free)
+
+Classify already ran against 1,255 files and was "validated against prototype data" per earlier notes. Verify:
+
+1. `folio classify --source .folio/clean_md/ --json` returns tiers matching the prototype's tier assignments for at least a spot-check of 20 files across funders and years.
+
+2. If BUGS.md #038 is relevant (~170 files getting wrong tier due to `KeyError: 'type'`), assess impact: are these mostly `minimal` tier files that would be skipped for LLM rewrite anyway? If so, low impact.
+
+If classify tier assignments are wrong for >5% of files that matter (full/light tier), fix the legacy condition parser first. Otherwise proceed.
+
+### Step 3: 10-file sample rewrite (~$0.10-0.50 in LLM costs)
+
+**This is the only step with API cost.** Pick 10 files spanning:
+- Funders: at least TAC, OAC, CCA
+- Tiers: 4 full, 3 light, 3 minimal (from classify manifest)
+- Years: at least 2023, 2024, 2025
+- Doc types: application, report, budget
 
 ```bash
-cd /home/ryankelln/Documents/Work/IA_board/folio
-uv tool install --editable .
-cd ../ia-library
-folio pipeline --dry-run  # verify estimate
+cd /home/ryankelln/Documents/Work/IA_board/ia-library
+folio clean --source .folio/raw_md/ --dest .folio/clean_md/
+folio classify --source .folio/clean_md/
+folio rewrite --source .folio/clean_md/ --limit 10
 ```
 
-**Remaining validation:**
-1. `folio rewrite` on a 10-file sample — compare output with prototype `rewrite_md/`
-2. If sample matches, run `folio rewrite` on all 1,255 files
-3. `folio prioritize` on the rewrite output
-4. `folio skills --platform opencode` — compare with prototype `.opencode/skills/grant-writing/SKILL.md`
+Then compare each output against `../llm_wiki/rewrite_md/`:
+- LLM output won't be **byte-identical** (temperature, model version)
+- Compare **semantic content**: are the same facts present? Same structure? Same frontmatter fields?
+- If the 10 files match semantically, the pipeline is validated
+- If they don't, investigate why (prompt differences, heading taxonomy, tier assignment)
 
-**Known issue:** ~170 files get wrong classification tier (`BUGS.md` #038) — legacy condition parser produces `KeyError: 'type'` for some compound rules. P2, not blocking.
+SAVE THE 10-FILE OUTPUT for comparison with future runs.
 
-### Step 2: Documentation (Phase 3)
+### Step 4: Skills comparison (free)
 
-Write `docs/` reference files: `pipelines.md`, `config.md`, `converters.md`, `wiki-backends.md`, `frontmatter.md`, `skills.md`.
+```bash
+folio skills --platform opencode --output /tmp/folio-skills/
+diff /tmp/folio-skills/grant-writing/SKILL.md ../llm_wiki/.opencode/skills/grant-writing/SKILL.md
+```
 
-`folio guide` already provides an agent-facing reference. The docs files should be the human-facing detailed reference.
+Check: funder names, table formats, heading references, org context. Template differences are expected (folio's templates may differ from prototype's custom skills). Content should be substantially similar.
 
-### Step 3: Remaining polish (Phase 4)
+### Step 5 (optional): Prioritize validation
 
-- Add `--version` flag to all CLI tools (reads from `folio.__version__`)
-- Write CLI tests under `tests/cli/`
-- Fix 2 pre-existing test failures in `tests/test_config.py` (path defaults — tests expect relative paths but loader resolves absolute)
+If Steps 1-4 all pass, run `folio prioritize` on 1-2 year groups (e.g., `--year 2024`). Compare priority rankings with prototype. This costs ~$0.05-0.10.
+
+### What NOT to do:
+
+- **DO NOT** run `folio pipeline` on all 1,255 files — $161, not needed
+- **DO NOT** run `folio pipeline` without `--dry-run` first
+- **DO NOT** modify prototype files in `../llm_wiki/`
+- **DO NOT** waste time byte-comparing LLM output — semantic equivalence is the bar
+
+### If validation fails:
+
+1. Check classification tier assignments first (most likely root cause)
+2. Compare heading taxonomies (missed headings = missing sections)
+3. Check prompts (prototype may have custom prompts not in folio defaults)
+4. See `BUGS.md` — #015 (LLMProvider token counts), #038 (legacy parser)
+
+### After validation passes:
+
+1. Update `BUGS.md` — close #038 if classification fixed, mark Phase 5 complete
+2. Update `TASKS.md` — mark Phase 5 done
+3. Push `ia-library/` changes (if folio.yaml was modified)
+4. Update `HANDOFF.md` — mark this section complete
+
+---
+
+**Known open issue:** BUGS.md #038 — ~170 files get wrong tier from legacy condition parser. P2, likely affects `minimal` tier files (no LLM cost impact). Fix only if it affects full/light tier files or if classification validation (Step 2) shows meaningful discrepancies.
 
 ## Important design decisions
 
