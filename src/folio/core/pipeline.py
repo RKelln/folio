@@ -9,6 +9,7 @@ and per-stage cost/timing tracking.
 
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +19,8 @@ from tqdm import tqdm
 from folio.config.loader import load_project_config
 from folio.config.schema import ProjectConfig
 from folio.core.manifest import load_manifest, save_manifest
+
+logger = logging.getLogger(__name__)
 
 AVAILABLE_STAGES = [
     "scan", "convert", "clean", "canonicalize", "classify",
@@ -409,6 +412,7 @@ def _run_convert(config: ProjectConfig) -> dict:
     converted = 0
     failed = 0
     failed_files: list[str] = []
+    failures: list[dict] = []
 
     for ref in tqdm(convertible, desc="  Converting", unit="file"):
         try:
@@ -423,9 +427,14 @@ def _run_convert(config: ProjectConfig) -> dict:
             else:
                 failed += 1
                 failed_files.append(ref.name)
+                failures.append({"file": ref.name, "error": "converter returned empty result"})
+                logger.error("Conversion returned empty result for %s", ref.name)
         except Exception as exc:
             failed += 1
-            failed_files.append(f"{ref.name}: {exc}")
+            error_str = str(exc)[:300]
+            failed_files.append(f"{ref.name}: {error_str}")
+            failures.append({"file": ref.name, "error": error_str})
+            logger.error("Conversion failed for %s: %s", ref.name, error_str)
 
     result: dict = {
         "stage": "convert",
@@ -437,9 +446,44 @@ def _run_convert(config: ProjectConfig) -> dict:
     }
     if failed_files:
         result["failed_files"] = failed_files[:20]
+        result["failure_details"] = failures[:20]
         result["warning"] = f"{failed} conversion failures"
 
+    _check_common_conversion_failures(converted, failures)
+
     return result
+
+
+def _check_common_conversion_failures(converted: int, failures: list[dict]) -> None:
+    if not failures or converted > 0:
+        return
+
+    error_texts = [f["error"] for f in failures]
+    unique_errors = set(error_texts)
+    if len(unique_errors) == 1:
+        error = error_texts[0]
+        logger.error("All %d conversions failed with the same error: %s", len(failures), error)
+        if "ModuleNotFoundError" in error or "No module named" in error:
+            logger.error(
+                "All conversions failed — install a converter:\n"
+                "  pip install docling\n"
+                "Or configure converter in folio.yaml:\n"
+                "  converters:\n"
+                "    engine: docling"
+            )
+        elif "datalab" in error.lower():
+            logger.error(
+                "Datalab conversion failed — try switching to docling in folio.yaml:\n"
+                "  converters:\n"
+                "    engine: docling"
+            )
+    else:
+        logger.error(
+            "All %d conversions failed with different errors. "
+            "First 3:\n  %s",
+            len(failures),
+            "\n  ".join(f"{f['file']}: {f['error'][:120]}" for f in failures[:3]),
+        )
 
 
 def _run_clean(config: ProjectConfig) -> dict:
@@ -744,6 +788,16 @@ def _print_stage_summary(stage_name: str, result: dict) -> None:
                 failed = result.get("failed", 0)
                 if failed:
                     extras.append(f"{failed} failed")
+                    details = result.get("failure_details", [])
+                    if details:
+                        show = min(3, len(details))
+                        for d in details[:show]:
+                            err = d["error"][:120]
+                            print(f"      {d['file']}: {err}")
+                        if len(details) > 3:
+                            remaining = len(details) - 3
+                            print(f"      ... and {remaining} more. "
+                                  f"Run with --verbose for full details.")
             elif stage_name == "canonicalize":
                 extras.append(f"{result.get('canonical', 0)} canonical")
                 extras.append(f"{result.get('non_canonical', 0)} non-canonical")
