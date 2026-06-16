@@ -26,6 +26,7 @@ CLI_MODULES = {
     "skills": "folio.cli.skills",
     "guide": "folio.cli.guide",
     "teach": "folio.cli.teach",
+    "convert": "folio.cli.convert",
 }
 
 
@@ -91,6 +92,7 @@ REQUIRED_ARG_CLIS = [
     ("canonicalize", 2, None),
     ("audit", 2, None),
     ("skills", 2, None),
+    ("convert", 2, None),
 ]
 
 
@@ -582,3 +584,68 @@ def test_init_no_mode(capsys):
     captured = capsys.readouterr()
     assert "Error" in captured.err
     assert "Choose at least one mode" in captured.err
+
+
+# ---------------------------------------------------------------------------
+# 12. test_convert
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def source_dir_with_pdf(tmp_path):
+    """Create a temp source directory containing a dummy .pdf file."""
+    src = tmp_path / "source"
+    src.mkdir()
+    (src / "test.pdf").write_text("dummy PDF content", encoding="utf-8")
+    return src
+
+
+def test_convert_dry_run(source_dir_with_pdf, tmp_path, capsys):
+    """convert --dry-run prints 'Would convert' and exits cleanly."""
+    from folio.cli.convert import main
+
+    dest = tmp_path / "out"
+    main([
+        "--dry-run", "--source", str(source_dir_with_pdf),
+        "--dest", str(dest),
+    ])
+    captured = capsys.readouterr()
+    assert "Would convert" in captured.out
+
+
+def test_convert_dry_run_json(source_dir_with_pdf, tmp_path, capsys):
+    """convert --dry-run --json produces valid JSON with expected keys."""
+    from folio.cli.convert import main
+
+    dest = tmp_path / "out"
+    main([
+        "--dry-run", "--json", "--source", str(source_dir_with_pdf),
+        "--dest", str(dest),
+    ])
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert "files" in data
+    assert "dry_run" in data
+    assert data["dry_run"] is True
+
+
+def test_convert_no_files(empty_dir, tmp_path, capsys):
+    """convert with no convertible files exits 1 with error."""
+    from folio.cli.convert import main
+
+    dest = tmp_path / "out"
+    with pytest.raises(SystemExit) as exc:
+        main(["--source", str(empty_dir), "--dest", str(dest)])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "No convertible files" in captured.err
+
+
+def test_convert_nonexistent_source(capsys):
+    """convert with nonexistent source dir exits 1 with error."""
+    from folio.cli.convert import main
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--source", "/nonexistent/path", "--dest", "/tmp/out"])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Error" in captured.err

@@ -29,6 +29,7 @@ _COMMANDS = {
     "audit": "folio.cli.audit",
     "guide": "folio.cli.guide",
     "teach": "folio.cli.teach",
+    "convert": "folio.cli.convert",
 }
 
 

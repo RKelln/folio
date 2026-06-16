@@ -32,6 +32,7 @@ def main(argv: list[str] | None = None) -> None:
             "  folio init --profile canadian-artist-run-centre  # Use a profile\n"
             "  folio init --from-scan scan-results.yaml  # From scan report\n"
             "  folio init --name \"My Org\" --funders OAC,TAC,CCA  # Quick setup\n"
+            "  folio init --name \"My Org\" --funders OAC,CCA --raw-archive ./archive/  # Quick setup with data flags\n"
             "  folio init --profile generic --dry-run   # Preview config without writing\n"
             "  folio init --profile generic --json      # Output config as JSON\n"
         ),
@@ -88,7 +89,12 @@ def main(argv: list[str] | None = None) -> None:
 
     args = parser.parse_args(argv)
 
-    if not any([args.guided, args.profile, args.from_scan]):
+    has_mode = any([args.guided, args.profile, args.from_scan])
+    has_data = any([args.funders, args.name, args.raw_archive])
+
+    if not has_mode and has_data:
+        args.profile = "generic"
+    elif not has_mode:
         print("Error: Choose at least one mode option.", file=sys.stderr)
         print("", file=sys.stderr)
         print("  --guided        Interactive guided setup", file=sys.stderr)
@@ -112,6 +118,10 @@ def main(argv: list[str] | None = None) -> None:
         raw_archive=args.raw_archive,
         dry_run=args.dry_run,
     )
+
+    if not has_mode and has_data:
+        result.setdefault("warnings", []).insert(0,
+            "No --profile specified; using 'generic' profile as base")
 
     if args.dry_run:
         files_would_write = [str(Path(args.output).resolve())]

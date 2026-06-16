@@ -100,7 +100,7 @@ def run_pipeline(
         print(f"Stage {stage_num}/{total_stages}: {stage_name}")
 
         start = time.time()
-        result = _run_stage(stage_name, config, dry_run)
+        result = _run_stage(stage_name, config, dry_run, resume=resume)
         elapsed = time.time() - start
 
         result["time_seconds"] = round(elapsed, 1)
@@ -233,7 +233,7 @@ def _format_pipeline_report(report: dict) -> str:
 # ── Stage dispatch ──────────────────────────────────────────────────────────
 
 
-def _run_stage(stage_name: str, config: ProjectConfig, dry_run: bool) -> dict:
+def _run_stage(stage_name: str, config: ProjectConfig, dry_run: bool, resume: bool = True) -> dict:
     if dry_run:
         return _estimate_stage(stage_name, config)
 
@@ -241,7 +241,7 @@ def _run_stage(stage_name: str, config: ProjectConfig, dry_run: bool) -> dict:
         if stage_name == "scan":
             return _run_scan(config)
         elif stage_name == "convert":
-            return _run_convert(config)
+            return _run_convert(config, resume=resume)
         elif stage_name == "clean":
             return _run_clean(config)
         elif stage_name == "canonicalize":
@@ -376,7 +376,7 @@ def _run_scan(config: ProjectConfig) -> dict:
     }
 
 
-def _run_convert(config: ProjectConfig) -> dict:
+def _run_convert(config: ProjectConfig, resume: bool = True) -> dict:
     from folio.adapters.converters import get_converter
     from folio.adapters.sources import get_source
 
@@ -410,11 +410,25 @@ def _run_convert(config: ProjectConfig) -> dict:
     print(f"  Converting {len(convertible)} files via {converter.name}...")
 
     converted = 0
+    skipped = 0
     failed = 0
     failed_files: list[str] = []
     failures: list[dict] = []
 
+    if resume:
+        for ref in convertible:
+            dest_path = out_dir / (Path(ref.name).stem + ".md")
+            if dest_path.exists() and dest_path.stat().st_size > 0:
+                skipped += 1
+        if skipped:
+            print(f"  Found {skipped} already-converted files — skipping")
+
     for ref in tqdm(convertible, desc="  Converting", unit="file"):
+        dest_path = out_dir / (Path(ref.name).stem + ".md")
+        if resume and dest_path.exists() and dest_path.stat().st_size > 0:
+            converted += 1
+            continue
+
         try:
             src_path = raw_root / ref.path
             if not src_path.exists():
@@ -441,6 +455,7 @@ def _run_convert(config: ProjectConfig) -> dict:
         "status": "ok" if failed == 0 else "warning",
         "files": len(convertible),
         "converted": converted,
+        "skipped": skipped,
         "failed": failed,
         "cost_usd": 0.0,
     }
