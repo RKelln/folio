@@ -80,22 +80,15 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     config_path = args.config
-    if args.json_output or args.output:
-        config_exists = Path(config_path).exists()
-        config = (
-            load_project_config(config_path) if config_exists
-            else load_project_config(None)
-        )
-    else:
-        if not Path(config_path).exists():
-            print(f"Warning: Config file not found: {config_path}", file=sys.stderr)
-            print('  Running with default config. Run "folio init" to customize.', file=sys.stderr)
-            print(file=sys.stderr)
-        config_exists = Path(config_path).exists()
-        config = (
-            load_project_config(config_path) if config_exists
-            else load_project_config(None)
-        )
+    config_exists = Path(config_path).exists()
+    if not config_exists:
+        print(f"Warning: Config file not found: {config_path}", file=sys.stderr)
+        print('  Running with default config. Run "folio init" to customize.', file=sys.stderr)
+        print(file=sys.stderr)
+    config = (
+        load_project_config(config_path) if config_exists
+        else load_project_config(None)
+    )
 
     print(f"Scanning {source_path}...")
     report = scan_archive(str(source_path), config)
