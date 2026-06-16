@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import sys
+from importlib import resources
 from pathlib import Path
 
 import yaml
@@ -18,8 +19,8 @@ AVAILABLE_PROFILES = [
     "generic",
 ]
 
-_BUILTIN_DEFAULTS_PATH = Path(__file__).resolve().parent.parent / "config" / "defaults.yaml"
-_PROFILES_DIR = Path(__file__).resolve().parent.parent / "templates" / "profiles"
+_BUILTIN_DEFAULTS = resources.files("folio.config") / "defaults.yaml"
+_PROFILES_BASE = resources.files("folio.templates") / "profiles"
 
 
 def init_project(
@@ -152,14 +153,13 @@ def _guided_setup() -> dict:
 
 
 def _load_profile(profile_name: str) -> dict:
-    profile_path = _PROFILES_DIR / f"{profile_name}.yaml"
-    if not profile_path.exists():
+    profile_path = _PROFILES_BASE / f"{profile_name}.yaml"
+    try:
+        return yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
+    except FileNotFoundError:
         print(f"Profile '{profile_name}' not found at {profile_path}")
         print(f"Available profiles: {', '.join(AVAILABLE_PROFILES)}")
         sys.exit(1)
-
-    with open(profile_path) as f:
-        return yaml.safe_load(f) or {}
 
 
 def _build_config_from_scan(scan_path: Path) -> dict:
@@ -191,12 +191,12 @@ def _build_config_from_scan(scan_path: Path) -> dict:
 
 
 def _merge_with_defaults(user_config: dict) -> dict:
-    if not _BUILTIN_DEFAULTS_PATH.exists():
-        print(f"Built-in defaults not found: {_BUILTIN_DEFAULTS_PATH}")
+    try:
+        data = _BUILTIN_DEFAULTS.read_text(encoding="utf-8")
+        defaults = yaml.safe_load(data) or {}
+    except FileNotFoundError:
+        print(f"Built-in defaults not found: {_BUILTIN_DEFAULTS}")
         sys.exit(1)
-
-    with open(_BUILTIN_DEFAULTS_PATH) as f:
-        defaults = yaml.safe_load(f) or {}
 
     return _deep_merge(copy.deepcopy(defaults), user_config)
 

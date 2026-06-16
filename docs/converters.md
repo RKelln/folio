@@ -34,9 +34,41 @@ To add a new converter, subclass `Converter`, implement the three methods above,
 
 ## Available Converters
 
-### 1. Datalab (default)
+### 1. Docling (default)
 
-Proprietary IBM Datalab SDK. Highest quality conversion for grant forms, PDFs with tables, and complex layouts. Recommended for production archives.
+Docling is an open-source document converter (Apache 2.0) originally from IBM Research. It handles PDF, DOCX, PPTX, and XLSX with high-quality output. Recommended as the default converter for most archives.
+
+| Property | Value |
+|----------|-------|
+| Class | `DoclingConverter` |
+| Supported extensions | `.pdf`, `.docx`, `.pptx`, `.xlsx` |
+| Pricing | Free (OSS, Apache 2.0) |
+| Requires network | No (runs entirely offline) |
+
+**Installation:**
+
+```bash
+uv add docling
+```
+
+Or with the optional dependency group:
+
+```bash
+uv pip install "folio[docling]"
+```
+
+**Configuration in folio.yaml:**
+
+```yaml
+converter:
+  type: "docling"
+```
+
+---
+
+### 2. Datalab
+
+Proprietary IBM Datalab SDK. Highest quality conversion for grant forms, PDFs with tables, and complex layouts. Recommended for production archives that need the best possible fidelity.
 
 | Property | Value |
 |----------|-------|
@@ -75,7 +107,7 @@ export DATALAB_API_KEY="your-key"
 
 ---
 
-### 2. Marker
+### 3. Marker
 
 Open-source `marker-pdf` package. Runs entirely offline. Converts PDF to markdown with good table and layout handling.
 
@@ -109,40 +141,6 @@ converter:
 
 ---
 
-### 3. Docling
-
-IBM Docling, open-source. Supports multiple document formats including PDF, DOCX, and PPTX. Good balance of quality and format coverage without proprietary costs.
-
-| Property | Value |
-|----------|-------|
-| Class | `DoclingConverter` |
-| Supported extensions | `.pdf`, `.docx`, `.pptx` |
-| Pricing | Free |
-| Requires network | No |
-
-**Installation:**
-
-```bash
-uv add docling
-```
-
-Or with the optional dependency group:
-
-```bash
-uv pip install "folio[docling]"
-```
-
-**Configuration in folio.yaml:**
-
-```yaml
-converter:
-  type: "docling"
-```
-
-**Note:** Implementation is not yet complete. Best for multi-format archives in an open-source pipeline.
-
----
-
 ### 4. Null (skip conversion)
 
 Use when source documents are already in markdown format. The pipeline starts at the clean stage, bypassing conversion entirely.
@@ -164,16 +162,16 @@ No additional dependencies required. No API key needed.
 
 | Converter | PDF | DOCX | XLSX | PPTX | Images | Pricing | Offline | Status |
 |-----------|-----|------|------|------|--------|---------|---------|--------|
+| Docling  | Yes | Yes  | Yes  | Yes  | No     | Free   | Yes | Ready |
 | Datalab  | Yes | Yes  | Yes  | Yes  | Yes    | ~$0.02/page | No  | Ready |
 | Marker   | Yes | No   | No   | No   | No     | Free   | Yes | Planned |
-| Docling  | Yes | Yes  | No   | Yes  | No     | Free   | Yes | Planned |
 | Null     | N/A | N/A  | N/A  | N/A  | N/A    | Free   | N/A | Ready |
 
 ### Choosing a Converter
 
-- **Large archive with mixed formats, production use** -> Datalab
+- **Most archives** -> Docling (default, OSS, multi-format)
+- **Large archive with mixed formats, maximum fidelity** -> Datalab
 - **PDF-only archive, offline or cost-sensitive** -> Marker (when implemented)
-- **Multi-format archive, open-source pipeline** -> Docling (when implemented)
 - **Documents already in markdown** -> Null
 
 ### Configuration in folio.yaml
@@ -182,10 +180,10 @@ Set the converter type under the `converter:` section:
 
 ```yaml
 converter:
-  type: "datalab"   # datalab | marker | docling | null
+  type: "docling"   # docling | datalab | marker | null
 ```
 
-The default is `datalab`. For null converter, no other fields are needed. For datalab, provide a `pipeline_id` and set the `DATALAB_API_KEY` environment variable.
+The default is `docling`. For null converter, no other fields are needed. For datalab, provide a `pipeline_id` and set the `DATALAB_API_KEY` environment variable.
 
 ### Skipping Conversion Entirely
 
@@ -197,11 +195,11 @@ Set `converter.type: "null"` in `folio.yaml`. The pipeline will treat all files 
 
 ### Converter Factory
 
-`get_converter(config)` in `src/folio/adapters/converters/__init__.py` receives the application config and returns the correct `Converter` instance. The factory reads `config.converter.type` (defaulting to `"datalab"`) and dispatches to the matching class:
+`get_converter(config)` in `src/folio/adapters/converters/__init__.py` receives the application config and returns the correct `Converter` instance. The factory reads `config.converter.type` (defaulting to `"docling"`) and dispatches to the matching class:
 
+- `"docling"` -> `DoclingConverter()`
 - `"datalab"` -> `DatalabConverter(pipeline_id)`
 - `"marker"` -> raises `NotImplementedError` (planned)
-- `"docling"` -> raises `NotImplementedError` (planned)
 - `"pandoc"` -> raises `NotImplementedError` (planned)
 - anything else -> raises `ValueError`
 

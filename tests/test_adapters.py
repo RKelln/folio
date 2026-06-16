@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from folio.adapters.converters import DatalabConverter, get_converter
+from folio.adapters.converters import DatalabConverter, DoclingConverter, get_converter
 from folio.adapters.llm import OpenAICompatibleProvider, get_llm_provider
 from folio.adapters.sources import DocumentSource, get_source
 from folio.adapters.sources.local import LocalSource
@@ -21,7 +21,7 @@ def _make_config(**kwargs):
     return types.SimpleNamespace(**kwargs)
 
 
-def _make_converter_config(converter_type="datalab", pipeline_id=""):
+def _make_converter_config(converter_type="docling", pipeline_id=""):
     converter = types.SimpleNamespace(type=converter_type, datalab_pipeline_id=pipeline_id)
     return _make_config(converter=converter)
 
@@ -39,8 +39,13 @@ def _make_llm_config(base_url="https://api.example.com", api_key_env="MY_KEY"):
 class TestConverterFactory:
     def test_default_with_none_config(self):
         converter = get_converter(None)
-        assert isinstance(converter, DatalabConverter)
-        assert converter.name == "datalab"
+        assert isinstance(converter, DoclingConverter)
+        assert converter.name == "docling"
+
+    def test_docling(self):
+        converter = get_converter(_make_converter_config("docling"))
+        assert isinstance(converter, DoclingConverter)
+        assert converter.name == "docling"
 
     def test_datalab(self):
         converter = get_converter(_make_converter_config("datalab"))
@@ -50,10 +55,6 @@ class TestConverterFactory:
     def test_marker_raises_not_implemented(self):
         with pytest.raises(NotImplementedError, match="Marker converter not yet implemented"):
             get_converter(_make_converter_config("marker"))
-
-    def test_docling_raises_not_implemented(self):
-        with pytest.raises(NotImplementedError, match="Docling converter not yet implemented"):
-            get_converter(_make_converter_config("docling"))
 
     def test_pandoc_raises_not_implemented(self):
         with pytest.raises(NotImplementedError, match="Pandoc converter not yet implemented"):

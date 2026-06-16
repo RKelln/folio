@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from importlib import resources
 
 import yaml
 from dotenv import load_dotenv
@@ -24,8 +25,6 @@ from folio.config.schema import (
 )
 
 logger = logging.getLogger(__name__)
-
-_DEFAULTS_PATH = Path(__file__).resolve().parent / "defaults.yaml"
 
 _VALID_CONVERTER_TYPES = {"datalab", "marker", "docling", "pandoc"}
 _VALID_WIKI_TYPES = {"sage-wiki", "null"}
@@ -44,13 +43,15 @@ def _deep_merge(base: dict, override: dict) -> dict:
 
 def _load_defaults() -> dict:
     """Load built-in defaults from the YAML file shipped with the package."""
-    if not _DEFAULTS_PATH.exists():
+    _defaults_path = resources.files("folio.config") / "defaults.yaml"
+    try:
+        data = _defaults_path.read_text(encoding="utf-8")
+        return yaml.safe_load(data) or {}
+    except FileNotFoundError:
         raise FileNotFoundError(
-            f"Built-in defaults not found: {_DEFAULTS_PATH}\n"
+            f"Built-in defaults not found: {_defaults_path}\n"
             f"The folio package may be corrupted. Reinstall with: pip install --force-reinstall folio"
-        )
-    with open(_DEFAULTS_PATH) as f:
-        return yaml.safe_load(f) or {}
+        ) from None
 
 
 def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
@@ -79,7 +80,7 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
     converter_data = data.get("converter", {})
     converter_datalab = converter_data.get("datalab", {})
     converter = ConverterConfig(
-        type=converter_data.get("type", "datalab"),
+        type=converter_data.get("type", "docling"),
         datalab_pipeline_id=converter_datalab.get("pipeline_id", ""),
         datalab_api_key_env=converter_datalab.get("api_key_env", "DATALAB_API_KEY"),
     )

@@ -588,7 +588,7 @@ def _run_rewrite(config: ProjectConfig) -> dict:
 
     try:
         manifest_path = Path(config.paths.rewrite_md) / "manifest.json"
-        result = rewrite_directory(clean_dir, config, manifest_path=manifest_path)
+        result = rewrite_directory(clean_dir, config, manifest_path=manifest_path, dest=rewrite_dir)
         files = len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0
         return {
             "stage": "rewrite",
