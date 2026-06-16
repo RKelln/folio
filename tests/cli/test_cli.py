@@ -418,3 +418,167 @@ def test_guide_full(capsys):
     captured = capsys.readouterr()
     assert "QUICK START FOR AGENTS" in captured.out
     assert "PIPELINE STAGES" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# 8. test_guide_positional_arg
+# ---------------------------------------------------------------------------
+
+def test_guide_positional_topic(capsys):
+    """guide config (positional arg, no --topic) shows config reference."""
+    from folio.cli.guide import main
+
+    main(["config"])
+    captured = capsys.readouterr()
+    assert "CONFIG REFERENCE" in captured.out
+
+
+def test_guide_positional_unknown(capsys):
+    """guide nonexistent (positional) exits 1 with error on stderr."""
+    from folio.cli.guide import main
+
+    with pytest.raises(SystemExit) as exc:
+        main(["nonexistent_topic"])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Unknown topic" in captured.err
+
+
+# ---------------------------------------------------------------------------
+# 9. test_guide_search
+# ---------------------------------------------------------------------------
+
+def test_guide_search_with_results(capsys):
+    """guide --search LLM prints matching lines."""
+    from folio.cli.guide import main
+
+    main(["--search", "LLM"])
+    captured = capsys.readouterr()
+    assert captured.out.strip(), "Expected search results to stdout"
+    assert "LLM" in captured.out
+
+
+def test_guide_search_no_results(capsys):
+    """guide --search with nonexistent keyword prints error to stderr."""
+    from folio.cli.guide import main
+
+    main(["--search", "xyznonexistentzzz"])
+    captured = capsys.readouterr()
+    assert "No matches found" in captured.err
+
+
+def test_guide_search_with_topic(capsys):
+    """guide --topic config --search converter prints matches from topic text."""
+    from folio.cli.guide import main
+
+    main(["--topic", "config", "--search", "converter"])
+    captured = capsys.readouterr()
+    assert captured.out.strip(), "Expected search results from config topic"
+
+
+def test_guide_search_json(capsys):
+    """guide --search LLM --json produces structured JSON with matches list."""
+    from folio.cli.guide import main
+
+    main(["--search", "LLM", "--json"])
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert "search" in data
+    assert data["search"] == "LLM"
+    assert "matches" in data
+    assert isinstance(data["matches"], list)
+    assert len(data["matches"]) > 0
+
+
+# ---------------------------------------------------------------------------
+# 10. test_guide_dry_run_json
+# ---------------------------------------------------------------------------
+
+def test_guide_dry_run_json(capsys):
+    """guide --dry-run --json produces JSON topic list."""
+    from folio.cli.guide import main
+
+    main(["--dry-run", "--json"])
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert "topics" in data
+    assert "dry_run" in data
+    assert data["dry_run"] is True
+    assert isinstance(data["topics"], list)
+    assert len(data["topics"]) > 0
+
+
+def test_guide_dry_run_with_search_warns(capsys):
+    """guide --dry-run --search warns that search is ignored."""
+    from folio.cli.guide import main
+
+    main(["--dry-run", "--search", "LLM"])
+    captured = capsys.readouterr()
+    assert "ignores --search" in captured.err
+    assert "Available topics" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# 11. test_init
+# ---------------------------------------------------------------------------
+
+def test_init_dry_run_profile(capsys):
+    """init --profile canadian-artist-run-centre --dry-run prints preview."""
+    from folio.cli.init import main
+
+    main(["--profile", "canadian-artist-run-centre", "--dry-run"])
+    captured = capsys.readouterr()
+    assert "Dry run" in captured.out
+    assert "Files that would be created" in captured.out
+    assert "folio.yaml" in captured.out
+    assert "My Artist-Run Centre" in captured.out
+
+
+def test_init_json_output(tmp_path, capsys):
+    """init --profile generic --json produces structured JSON output."""
+    from folio.cli.init import main
+
+    output_file = tmp_path / "folio.yaml"
+    main(["--profile", "generic", "--json", "--output", str(output_file)])
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert "files_written" in data
+    assert "profile" in data
+    assert data["profile"] == "generic"
+    assert "warnings" in data
+
+
+def test_init_dry_run_json(tmp_path, capsys):
+    """init --dry-run --json produces JSON preview without writing files."""
+    from folio.cli.init import main
+
+    output_file = tmp_path / "folio.yaml"
+    main(["--profile", "generic", "--dry-run", "--json", "--output", str(output_file)])
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert "files_written" in data
+    assert "config_values" in data
+    assert "dry_run" in data
+    assert data["dry_run"] is True
+
+
+def test_init_dry_run_guided(capsys):
+    """init --guided --dry-run prints preview without interactive prompts."""
+    from folio.cli.init import main
+
+    main(["--guided", "--dry-run"])
+    captured = capsys.readouterr()
+    assert "Dry run" in captured.out
+    assert "Cannot preview guided setup" in captured.out
+
+
+def test_init_no_mode(capsys):
+    """init with no mode options exits 1 with error."""
+    from folio.cli.init import main
+
+    with pytest.raises(SystemExit) as exc:
+        main([])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Error" in captured.err
+    assert "Choose at least one mode" in captured.err
