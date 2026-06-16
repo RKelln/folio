@@ -35,6 +35,7 @@ A new agent dropped into this repo should be able to:
 - Avoid interactive prompts; everything must work non-interactively via CLI flags
 - Exit codes: 0 on success, non-zero on failure
 - Use `tqdm` for progress bars
+- Verified: all 14 CLI entry points support `--dry-run` and `--json`
 
 ### 5. Design for composition
 
@@ -60,7 +61,7 @@ Each module does one job well:
 | Module | Job |
 |--------|-----|
 | `core/cleaner.py` | Deterministic markdown cleanup |
-| `core/classifier.py` | File quality scoring and tier assignment |
+| `core/classifier.py` | File quality scoring, tier assignment, language detection |
 | `core/rewriter.py` | LLM re-authoring with tiered prompts |
 | `core/prioritizer.py` | Archival priority scoring |
 | `core/canonicalizer.py` | Version detection and dedup |
@@ -71,12 +72,14 @@ Each module does one job well:
 | `core/manifest.py` | Pipeline manifest read/write (canonical — no other module should define its own manifest schema) |
 | `core/throttle.py` | Thread-safe `RateLimiter` for API calls |
 | `core/errors.py` | Shared error/status types |
+| `core/skills.py` | Skills generation — platform-agnostic template filling, tool snippet composition |
 | `adapters/converters/` | PDF/DOCX → Markdown converters |
 | `adapters/wiki/` | Wiki backend integrations |
 | `adapters/llm/` | LLM provider abstraction |
 | `adapters/sources/` | Document source connectors |
 | `config/` | Config loading and Pydantic validation |
 | `cli/` | CLI entry points (thin wrappers around core) |
+| `cli/guide.py` | Built-in agent reference guide (argparse-based with --dry-run and --json) |
 
 ### 8. Use standard libraries where possible
 
@@ -146,6 +149,12 @@ folio/
 │
 ├── skills/                Agent skills
 │   ├── core/              Platform-agnostic instruction content
+│   │   ├── _tool-file-search.md         (baseline file search)
+│   │   ├── _tool-sage-wiki.md           (wiki search, conditional)
+│   │   ├── _tool-agentmap.md            (agentmap search, conditional)
+│   │   ├── archive-search.md            (wrapper template)
+│   │   ├── grant-drafting.md
+│   │   └── grant-writing-craft.md
 │   ├── platforms/         Platform-specific wrappers
 │   └── templates/         Org-specific fill-in templates
 │

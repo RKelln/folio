@@ -1,6 +1,7 @@
 # CODE_REVIEW.md — folio v0.1.0 Full Code Review
 
 **Date:** 2026-06-15
+**Updated:** 2026-06-16 — Phase 6 changes applied
 **Reviewer:** beads-code-reviewer
 **Language:** Python 3.10+
 **Project type:** CLI pipeline / library
@@ -12,7 +13,7 @@
 
 ## Overview
 
-The codebase shows strong architectural intent — clean separation of concerns, config-driven design, composable pipeline stages. However, it was ported by parallel agents without cross-module review: three manifest implementations, two rate-limiters, an LLM provider abstraction that the rewriter bypasses, and a critically broken pipeline orchestration function. The core algorithmic logic (classifier DSL, canonicalizer dedup, cleaner transformations) is sound, but the integration layer needs significant rework before this package is production-ready.
+The codebase shows strong architectural intent — clean separation of concerns, config-driven design, composable pipeline stages. However, it was ported by parallel agents without cross-module review: three manifest implementations, two rate-limiters, and a critically broken pipeline orchestration function. The LLM provider now supports `complete_with_usage()` for unified token tracking. The core algorithmic logic (classifier DSL, canonicalizer dedup, cleaner transformations) is sound, but the integration layer needs significant rework before this package is production-ready.
 
 ## Recommendation
 
@@ -102,6 +103,7 @@ The codebase shows strong architectural intent — clean separation of concerns,
 - **Fix:** Extract into shared utility `core/throttle.py`.
 
 ### [#033] `rewriter._call_llm` and `OpenAICompatibleProvider.complete()` — two different LLM call paths
+- **Status:** ✅ Resolved — `LLMProvider.complete_with_usage()` now returns `(text, usage_dict)`, unifying token tracking across rewriter and prioritizer.
 - **What:** The rewriter bypasses `LLMProvider` entirely (calls `OpenAI` directly). The prioritizer uses `LLMProvider.complete()`. The rewriter gets token counts; the prioritizer doesn't. The rewriter sets `reasoning_effort`; the provider doesn't support it. This bifurcation means the `LLMProvider` interface is already obsolete.
 - **Fix:** Extend `LLMProvider.complete()` to return `(text, usage_dict)`. Migrate rewriter to use it.
 
@@ -298,6 +300,7 @@ The codebase shows strong architectural intent — clean separation of concerns,
 ## 🔵 Low / Nitpicks
 
 ### [#071] Inconsistent `from __future__ import annotations` usage
+- **Status:** ✅ Resolved — all modules now consistently use `from __future__ import annotations`.
 - **What:** `cleaner.py`, `classifier.py`, `rewriter.py`, `ingester.py`, `auditor.py`, `pipeline.py`, `init.py`, `cli/pipeline.py`, `cli/init.py` use it. `canonicalizer.py`, `prioritizer.py`, `scanner.py`, `frontmatter.py`, `manifest.py`, `errors.py`, `skills.py`, all adapters do NOT.
 - **Fix:** Standardize: either all modules or none.
 
@@ -406,8 +409,8 @@ The codebase shows strong architectural intent — clean separation of concerns,
 | #012 No Pydantic | — | Deferred | |
 | #013 yaml import | — | ✅ Consistent | |
 | #014 Datalab SDK | — | P2 | Documented |
-| #015 Provider token counts | folio-dj1 | **Open** | P2 |
+| #015 Provider token counts | folio-dj1 | ✅ Resolved | `complete_with_usage()` added |
 | #016 agentmap as Python | — | Won't Fix | Standalone Go binary |
-| #016b French detection | folio-j9h | **Open** | P3 |
-| #017 Filename convention | folio-r8c | **Open** | P2 |
-| #037 `__future__` annotations | folio-bme | **Open** | P2 |
+| #016b French detection | folio-j9h | ✅ Resolved | `detect_language()` + rewriter skip |
+| #017 Filename convention | folio-r8c | ✅ Resolved | `docs/file-naming.md` |
+| #037 `__future__` annotations | folio-bme | ✅ Resolved | 66 files standardized |

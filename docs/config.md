@@ -235,7 +235,28 @@ wiki:
 
 ---
 
-## Section 8: `llm`
+## Section 8: `agentmap`
+
+Controls agentmap TOC (table of contents) generation for agent navigation.
+
+| YAML path | Python type | Default | Description |
+|---|---|---|---|
+| `agentmap.enabled` | `bool` | `false` | Set to `true` to enable agentmap TOC generation |
+| `agentmap.binary_path` | `str` | `"agentmap"` | Path to the `agentmap` binary (must be on `PATH` or an absolute path) |
+
+Example:
+
+```yaml
+agentmap:
+  enabled: true
+  binary_path: "agentmap"
+```
+
+When enabled, the pipeline validates that the `agentmap` binary is accessible on `PATH`. If disabled (default), no agentmap processing occurs.
+
+---
+
+## Section 9: `llm`
 
 Controls the LLM provider used for rewriting and prioritization. Uses an OpenAI-compatible API.
 
@@ -283,7 +304,7 @@ llm:
 
 ---
 
-## Section 9: `processing`
+## Section 10: `processing`
 
 Controls pipeline execution behavior (concurrency, rate limiting, reliability).
 
@@ -306,7 +327,7 @@ processing:
 
 ---
 
-## Section 10: `classification`
+## Section 11: `classification`
 
 Controls how files are scored for quality and assigned to processing tiers. This section is **entirely optional** -- if omitted, sensible defaults apply.
 
@@ -572,7 +593,7 @@ true / false                                     → true / not_ true
 
 ---
 
-## Section 11: `headings`
+## Section 12: `headings`
 
 Per-funder canonical heading taxonomy. Used by the rewriter to normalize document headings into a consistent structure per funder.
 
@@ -645,7 +666,7 @@ headings:
 
 ---
 
-## Section 12: `audit`
+## Section 13: `audit`
 
 Controls the wiki quality audit tool (`folio audit`). All fields are optional and deep-merged with defaults.
 

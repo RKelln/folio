@@ -53,7 +53,8 @@ folio               # Show available commands
 folio pipeline      # Run all or selected stages
 folio scan          # Scan archive, detect funders/years/types
 folio init          # Guided setup or load a profile
-folio skills        # Generate agent skills for opencode/claude/etc
+folio skills --platform opencode  # Generate agent skills for opencode/claude/etc
+folio guide         # Built-in agent reference guide
 folio classify      # Classify a directory of markdown files
 folio rewrite       # LLM re-author a directory of markdown files
 folio prioritize    # Assign archival priority scores
@@ -63,7 +64,20 @@ folio clean          # Deterministic markdown cleanup
 folio canonicalize   # Version detection and dedup
 ```
 
+All commands support `--dry-run` (preview without side effects) and `--json` (structured output for agent composition).
+
 Run `folio <command> --help` for details on each subcommand.
+
+## Documentation
+
+- [Configuration](docs/config.md) — folio.yaml reference
+- [Pipeline stages](docs/pipelines.md) — how the pipeline works end-to-end
+- [Frontmatter](docs/frontmatter.md) — YAML frontmatter field reference
+- [File naming](docs/file-naming.md) — filename convention reference
+- [Converters](docs/converters.md) — PDF/DOCX → markdown converter options
+- [Wiki backends](docs/wiki-backends.md) — wiki compilation backends
+- [Skills](docs/skills.md) — agent skills architecture
+- [Coding guide](AGENTS.md) — conventions for customizing folio
 
 ## For AI agents
 

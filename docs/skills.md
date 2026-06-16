@@ -10,15 +10,18 @@ Skills are organized in three layers under the `skills/` directory:
 
 ```
 skills/
-├── core/              Platform-agnostic instruction content
-│   ├── archive-search.md
-│   ├── grant-drafting.md
-│   └── grant-writing-craft.md
-├── templates/         Org-specific fill-in templates
+├── core/                           # Core skill content (platform-agnostic)
+│   ├── archive-search.md           # Archive search wrapper template
+│   ├── grant-drafting.md           # Grant drafting template
+│   ├── grant-writing-craft.md      # Grant writing craft template
+│   ├── _tool-file-search.md        # Always included — baseline file search (grep, glob, Read)
+│   ├── _tool-sage-wiki.md          # Conditional (wiki != 'null') — wiki search and query
+│   └── _tool-agentmap.md           # Conditional (agentmap enabled) — section search + NAV workflow
+├── templates/                      # Org-specific fill-in templates
 │   ├── funders.md
 │   ├── organization.md
 │   └── wiki-agents.md
-├── platforms/         Platform-specific wrapper directories
+├── platforms/                      # Platform-specific wrapper directories
 │   ├── opencode/
 │   ├── claude/
 │   ├── openclaw/
@@ -32,11 +35,14 @@ Three markdown templates that form the instruction content, independent of any s
 
 | File | Layer | Purpose |
 |------|-------|---------|
-| `archive-search.md` | Search | How to search the wiki and markdown archive using `sage-wiki` and `agentmap`. Covers funder tables, document types, search patterns, and the combined two-tool workflow. |
+| `archive-search.md` | Search | How to search the wiki and markdown archive. Covers funder tables, document types, and search patterns. Search tool instructions are injected via the `{tool_sections}` placeholder at generation time. |
 | `grant-drafting.md` | Draft | How to assemble searched information into grant text. Covers drafting principles (ground claims in sources, match funder tone, cite sources) and the output format with section/sources/key-facts structure. |
 | `grant-writing-craft.md` | Craft | Writing quality rules: the pre-writing checklist, Pass 1 (fact draft) / Pass 2 (narrative rewrite) workflow, the juror test, section-level rules (the "So What" test), and 15 anti-patterns to avoid. |
+| `_tool-file-search.md` | Tool Snippet | Always included — teaches `grep`, `glob`, `Read` on `markdown/` |
+| `_tool-sage-wiki.md` | Tool Snippet | Conditional (wiki enabled) — wiki search and query instructions |
+| `_tool-agentmap.md` | Tool Snippet | Conditional (agentmap enabled) — section-level search and NAV workflow |
 
-These files use `{placeholder}` syntax for context substitution. The generator fills them from `folio.yaml`.
+`archive-search.md` uses a `{tool_sections}` placeholder which the generator fills by concatenating enabled tool snippet files. Other placeholders use `{placeholder}` syntax for context substitution.
 
 ### Layer 2: `skills/templates/` — org-specific fill-in templates
 
@@ -56,7 +62,7 @@ Each platform directory contains platform-specific scaffolding. The generator co
 
 The generator reads template files from `skills/core/` and substitutes `{placeholders}` using Python's `str.format()`-style replacement. Placeholders are matched with the regex `\{(\w+)\}`. If a placeholder has no matching key in the context dictionary, it is left in the output unchanged and a warning is logged.
 
-Context is built by `build_context()` in `src/folio/core/skills.py:65`, which reads from the `ProjectConfig` object (parsed from `folio.yaml`).
+Context is built by `build_context()` in `src/folio/core/skills.py:66`, which reads from the `ProjectConfig` object (parsed from `folio.yaml`). The function also composes enabled tool snippet files into the `{tool_sections}` placeholder.
 
 ## Supported Platforms
 
@@ -171,9 +177,14 @@ The default config path is `folio.yaml` in the current directory. In dry-run mod
 
 Edit files in `skills/core/` to change the instruction content that appears in all generated skills across all platforms:
 
-- `archive-search.md` — Modify search workflows, add new search patterns, change tool commands.
+- `archive-search.md` — Modify search workflows, add new search patterns. Uses `{tool_sections}` placeholder for tool instructions (injected at generation time).
 - `grant-drafting.md` — Adjust drafting principles, output format requirements, citation rules.
 - `grant-writing-craft.md` — Refine writing rules, add or remove anti-patterns, adjust the juror test.
+- `_tool-file-search.md` — Always included. Teaches baseline file search with `grep`, `glob`, `Read`.
+- `_tool-sage-wiki.md` — Conditional on `wiki.type`. Wiki search and query instructions.
+- `_tool-agentmap.md` — Conditional on `agentmap.enabled`. Section-level search and NAV workflow.
+
+To add a new tool snippet, create a new `_tool-*.md` file under `skills/core/` and add composition logic to `build_context()` in `src/folio/core/skills.py`.
 
 Use `{placeholder}` syntax to reference values from `folio.yaml`. Available placeholders are listed in the Context Variables section below.
 
@@ -208,7 +219,7 @@ No Python code changes are needed for per-org customization.
 
 ## Context Variables
 
-These placeholders are available in all core templates and are filled from `ProjectConfig` (parsed from `folio.yaml`). They are built by `build_context()` in `src/folio/core/skills.py:65`.
+These placeholders are available in all core templates and are filled from `ProjectConfig` (parsed from `folio.yaml`). They are built by `build_context()` in `src/folio/core/skills.py:66`.
 
 ### Organization identity
 
@@ -244,6 +255,14 @@ These placeholders are available in all core templates and are filled from `Proj
 | `{wiki_path}` | `paths.wiki_project` |
 | `{raw_archive_path}` | `paths.raw_archive` |
 
+### Tool snippets
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{tool_sections}` | Concatenation of enabled tool snippet templates (always: file-search, conditional: sage-wiki, agentmap), including combined workflow when both wiki and agentmap are enabled |
+| `{wiki_enabled}` | Boolean, `True` when `wiki.type != 'null'` |
+| `{agentmap_enabled}` | String `'true'` or `'false'` |
+
 ## Generated Skill Structure
 
 A generated skill file (using OpenCode as the canonical example) has this structure:
@@ -262,8 +281,9 @@ A generated skill file (using OpenCode as the canonical example) has this struct
 │ Archive layout (wiki + markdown paths)                   │
 │ Funder table                                             │
 │ Document type table                                      │
-│ Two search tools: sage-wiki vs agentmap                  │
-│ Combined workflow (4 steps)                              │
+│ Tool snippets composed at generation time                │
+│   (always: file-search, conditional: sage-wiki, agentmap) │
+│ Combined workflow (when both wiki and agentmap enabled)   │
 │ YAML frontmatter reference                               │
 │ Common search patterns with bash examples                │
 ├─ Body section 2: Grant Drafting ─────────────────────────┤

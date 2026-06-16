@@ -15,9 +15,9 @@ This document is for the next AI agent taking over work on `folio`. Read it full
 
 ## Current state
 
-**Phase 1-5 complete. 407 tests passing. All 14 CLI subcommands functional. Pipeline validated against prototype with semantic equivalence confirmed ($0.04 LLM cost).**
+**Phase 1-5 complete. 427 tests passing. All 14 CLI subcommands functional. Pipeline validated against prototype with semantic equivalence confirmed ($0.04 LLM cost).**
 
-All 20 core pipeline tasks ported from the prototype. All 10 P0 and 11 P1 bugs fixed. All 8 BUGS.md #039-#046 CLI review findings fixed. 8 additional bugs found and fixed during Phase 5 validation. The CLI dispatcher provides `folio <command>` UX with subcommands auto-discovering `folio.yaml` from cwd.
+All 20 core pipeline tasks ported from the prototype. All 10 P0 and 11 P1 bugs fixed. All 8 CLI review findings (folio-039–folio-046) fixed. 8 additional bugs found and fixed during Phase 5 validation. The CLI dispatcher provides `folio <command>` UX with subcommands auto-discovering `folio.yaml` from cwd.
 
 **Key files to read FIRST (in order):**
 1. **`HANDOFF.md`** — this file
@@ -49,52 +49,37 @@ Validated against InterAccess's 1,033-file grant archive. $0.04 total LLM cost.
 | Prioritizer ignores `config.prioritize` (dataclass path) | Merge rubric/grouping/processing from `config.prioritize` |
 | `period_start`/`period_end` missing from frontmatter defaults | Added to `DEFAULT_REWRITE_CONFIG` and metadata block |
 
-## Recent additions (2026-06-15)
+## Recent additions (2026-06-16)
 
-### Agentmap toggle
+### All open beads closed — 21 issues resolved
 
-New `agentmap` config section with `enabled` (bool) and `binary_path`. When enabled:
-- Config validation verifies `agentmap` binary is on PATH
-- Generated skills include full agentmap NAV workflow (generate → update → check, bulk indexing)
-- When disabled, all agentmap references are stripped from generated skills
-
-`ia-library/folio.yaml` has agentmap enabled.
-
-### Conditional skill template blocks
-
-Skill templates support `{?key}...{/key}` blocks. Content between them is included only when `context[key]` is truthy. Currently used to conditionally include agentmap sections.
+All bugs consolidated from BUGS.md into beads, then all resolved:
+- CLI `--dry-run`/`--json` compliance across all 14 subcommands (folio-3ps epic + 4 children)
+- Dead code removed from CLI files (folio-lqr)
+- `from __future__ import annotations` standardized across 66 files (folio-bme)
+- `build_context()` public API added to core.skills (folio-27e)
+- `LLMProvider.complete_with_usage()` — rewriter no longer bypasses abstraction (folio-dj1)
+- Skills refactored from `{?conditional}` blocks to tool snippet composition (folio-7dt)
+- French language detection with frequency analysis (folio-j9h)
+- Config behavior normalized — optional CLIs log warnings, required CLIs error consistently (folio-20o)
+- Filename convention documented in `docs/file-naming.md` (folio-r8c)
+- Guide CLI refactored from manual argv to argparse, section regex fixed (folio-83v, folio-zqr)
+- 13 new CLI tests added (folio-3je)
 
 ## What to do next
 
-### Priority: P3 — `folio-7dt` — Refactor skills to compose tool instructions from snippets
+### ✅ COMPLETED — (no open beads)
 
-**Current state:** `archive-search.md` is a monolithic template with `{?conditional}` blocks for agentmap. Sage-wiki instructions are always included (not conditional).
+All 21 beads closed. 427 tests passing. All P0-P3 issues from BUGS.md resolved.
 
-**Design:**
-- Folio ships tool-specific template snippets under `skills/core/`:
-  - `_tool-file-search.md` — always included (baseline: grep, glob, Read on `markdown/`)
-  - `_tool-sage-wiki.md` — included when `wiki.type != 'null'`
-  - `_tool-agentmap.md` — included when `agentmap.enabled`
-- `archive-search.md` becomes a wrapper with a `{tool_sections}` placeholder
-- Skills generator concatenates enabled snippets into `{tool_sections}`
-- Remove `{?conditional}` blocks entirely — composition replaces conditionals
+### Resolved bugs (all now fixed)
 
-**Acceptance:**
-- Default (no tools): skills only teach basic file search on `markdown/`
-- sage-wiki enabled: adds wiki search/query instructions
-- agentmap enabled: adds section-level search and NAV generation
-- Both: includes combined workflow as today
-
-See beads issue `folio-7dt` for full details.
-
-### Remaining open bugs (all P2/P3, tracked in beads)
-
-| Bead ID | BUGS # | What | Priority |
-|---------|--------|------|----------|
-| folio-dj1 | 015 | LLMProvider doesn't return token counts — rewriter bypasses abstraction | P2 |
-| folio-j9h | 016b | French language detection for CCA/BCAH documents | P3 |
-| folio-r8c | 017 | Filename convention `FUNDER__Year__Type.md` undocumented/fragile | P2 |
-| folio-bme | 037 | `from __future__ import annotations` inconsistent across codebase | P2 |
+| Bead ID | Original # | What | Status |
+|---------|-----------|------|--------|
+| folio-dj1 | 015 | LLMProvider token counts | ✅ complete_with_usage() |
+| folio-j9h | 016b | French language detection | ✅ detect_language() + rewriter skip |
+| folio-r8c | 017 | Filename convention | ✅ docs/file-naming.md |
+| folio-bme | 037 | `__future__` annotations | ✅ 66 files standardized |
 
 ### Deferred
 
@@ -104,17 +89,17 @@ See beads issue `folio-7dt` for full details.
 ## Important design decisions
 
 1. **No Pydantic** — config validation uses plain dataclasses to keep deps minimal.
-2. **LLM provider bypass** — the rewriter creates its own OpenAI client for token tracking because `LLMProvider.complete()` doesn't return usage metadata. See beads `folio-dj1`.
+2. **LLM provider bypass** — ✅ Resolved — `complete_with_usage()` added to `LLMProvider`.
 3. **Safe condition DSL** — the 12 condition types in `classifier.py` are the canonical way to express classification rules. Legacy eval parser exists for migration from prototype configs.
 4. **SequenceMatcher autojunk** — always use `autojunk=False` when comparing grant documents. See `BUGS.md` #007.
 5. **Frontmatter API is frozen** — `parse_frontmatter`, `dict_to_frontmatter`, `sanitize_frontmatter`, `update_frontmatter` have the same signatures as the prototype. Don't change them.
 6. **Manifest as checkpoint state** — the manifest at `{paths.rewrite_md}/manifest.json` is the pipeline's resume mechanism. Save after each stage.
-7. **Filename convention** — files use `FUNDER__Year_Description__Type.md` with double-underscore separators. See beads `folio-r8c`.
+7. **Filename convention** — ✅ Resolved — `docs/file-naming.md` created.
 8. **Paths resolve relative to config** — `load_project_config()` resolves relative paths from the config file's directory, not cwd.
 9. **Org repos are separate** — org-specific config + data lives in its own repo (e.g., `ia-library/`). The folio tool repo (`folio/`) contains only code.
 10. **load_dotenv() is automatic** — `.env` is loaded from the same directory as `folio.yaml` at config load time.
 11. **Agentmap is standalone** — kept as a separate Go binary, not ported to Python. Config toggle with PATH validation.
-12. **Skills compose from tool snippets** — (design in `folio-7dt`) generated skills are assembled from per-tool template snippets based on what's installed.
+12. **Skills compose from tool snippets** — ✅ Implemented — tool snippets composed at generation time in `build_context()`.
 
 ## How to run things
 

@@ -32,6 +32,7 @@ These fields appear inside the `---` block of markdown files.
 | Period start year | `period_start` | `int` | Rewrite (LLM) | Yes | `2024` |
 | Period end year | `period_end` | `int` | Rewrite (LLM) | Yes | `2025` |
 | Grant dollar amount | `grant_amount` | `str` | Rewrite (LLM) | Yes | `"$51,000"` |
+| Document language | `language` | `str` — `"en"`, `"fr"`, `"mixed"` | Rewrite | Yes | `"en"` |
 | Archival priority | `priority` | `int` (1, 2, or 3) | Ingest (default=1), Prioritize (LLM) | No | `2` |
 | Error/corruption count | `errors` | `int` | Rewrite | No | `0` |
 
@@ -203,6 +204,7 @@ LLM re-authoring. Files are sent to an LLM with tier-specific prompts. The LLM p
 - `written` -- confirmed/corrected from document body
 - `period` -- extracted from document body (e.g. `"2025-2027"`)
 - `grant_amount` -- extracted from document body if mentioned
+- `language` -- added by rewrite stage for French/mixed documents (detected via frequency analysis)
 - `errors` -- count of `<!-- FIXME: -->` flags (added post-LLM by code)
 
 **Manifest fields added**: `rewrite_input_tokens`, `rewrite_output_tokens`, `rewrite_cost_usd`, `rewrite_status`.

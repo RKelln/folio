@@ -94,8 +94,8 @@ Working production pipeline that InterAccess can run against their archive, prod
 - [x] **Consistent progress bars** (tqdm) across all long-running operations
 - [x] **Consistent error messages** (use `sys.exit(1)`, messages to stderr)
 - [x] **CI/CD** — GitHub Actions: pytest, ruff lint, mypy typecheck on push
-- [x] **CLI tests** — 53 tests in `tests/cli/test_cli.py`
-- [x] **BUGS #039-#046** — all 8 CLI review findings fixed
+- [x] **CLI tests** — 66 tests in `tests/cli/test_cli.py`
+- [x] **b#039–b#046** — all 8 CLI review findings fixed
 - [x] **Built-in guide** — `folio guide` with agent reference
 - [x] **`__version__` on all 14 CLIs** — via argparse `action="version"`
 
@@ -128,12 +128,30 @@ Working production pipeline that InterAccess can run against their archive, prod
 
 ---
 
+## Phase 6: Production Polish ✅ COMPLETE
+
+- [x] **BUGS.md consolidated into beads** — 4 open bugs migrated to beads issues
+- [x] **CLI `--dry-run`/`--json` compliance** — all 14 CLIs now AGENTS.md Rule 4 compliant
+- [x] **CLI dead code removal** — no-op branches removed from scan, audit, clean, guide
+- [x] **Guide CLI refactored** — manual argv parsing replaced with argparse, section regex fixed
+- [x] **`from __future__ import annotations`** — standardized across 66 Python files
+- [x] **`build_context()` public API** — private `_build_context` function no longer imported across modules
+- [x] **`LLMProvider.complete_with_usage()`** — rewriter no longer bypasses LLM abstraction
+- [x] **Skills snippet composition** — `{?conditional}` blocks replaced by tool snippet files
+- [x] **French language detection** — `detect_language()` using frequency analysis, rewriter skips English taxonomy for French docs
+- [x] **Config behavior normalized** — optional CLIs log warnings, required CLIs error consistently
+- [x] **Filename convention documented** — `docs/file-naming.md` created
+- [x] **New CLI tests** — 13 tests added for guide/init flag paths
+
+---
+
 ## Summary
 
 | Phase | Tasks | Status |
 |-------|-------|--------|
 | 1: Core pipeline | 20 tasks | ✅ Done |
 | 2: Testing | 6 task groups (407 tests) | ✅ Done |
-| 3: Documentation | 7 docs (6 done, README in progress) | ✅ Mostly complete |
+| 3: Documentation | 7 docs (6 done ✅, README [~]) | ✅ Mostly complete |
 | 4: Polish | 10 tasks | ✅ Done |
 | 5: InterAccess deploy | 3 tasks | ✅ Done |
+| 6: Production Polish | 12 tasks | ✅ Done |

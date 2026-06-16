@@ -428,6 +428,8 @@ Each output file includes:
 | `minimal` | Metadata-only: add frontmatter, remove image placeholders, minor fixes | ~20 sec | Disabled |
 | `skip` | Not processed | — | — |
 
+**Language detection** — documents are language-detected (via frequency analysis) before heading taxonomy substitution. French and mixed-language documents skip English heading taxonomy normalization. Detected language is recorded in the `language` frontmatter field.
+
 **Undersized files** — files shorter than `min_content_chars` (default 2000 chars) are processed locally without an API call. Only frontmatter metadata is added.
 
 ### Key Configuration
@@ -447,7 +449,7 @@ Each output file includes:
 
 ### Deterministic or LLM?
 
-Heavy LLM usage. Every file above the minimum size threshold is sent to the LLM. Files below the threshold get deterministic metadata-only processing. Supports concurrent processing with configurable rate limiting and retry logic with exponential backoff.
+Heavy LLM usage. Every file above the minimum size threshold is sent to the LLM. Files below the threshold get deterministic metadata-only processing. The rewriter uses `LLMProvider.complete_with_usage()` for token tracking, returning both the response text and usage metadata (prompt tokens, completion tokens, cost). Supports concurrent processing with configurable rate limiting and retry logic with exponential backoff.
 
 ### Dry-Run Behavior
 
