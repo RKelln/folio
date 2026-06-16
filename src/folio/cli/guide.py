@@ -370,20 +370,28 @@ _SELECTIONS: dict[str, str | None] = {
 
 
 def _extract_sections_with_content(text: str) -> list[dict[str, str]]:
-    """Split guide text into sections with titles and content."""
+    """Split guide text into sections with titles and content.
+
+    Sections are detected by a title line followed immediately by a
+    separator line of unicode box-drawing dashes (U+2500). This
+    structural approach captures all section titles regardless of
+    character content (digits, parens, lowercase, dots, etc.).
+    """
     lines = text.split("\n")
     result: list[dict[str, str]] = []
     current_title: str | None = None
     current_lines: list[str] = []
 
-    for line in lines:
-        m = re.match(r"^([A-Z][A-Z /]+)$", line)
-        if m and current_title is None:
-            current_title = m.group(1)
+    for i, line in enumerate(lines):
+        next_is_sep = bool(
+            i + 1 < len(lines) and re.match(r"^\s*─+\s*$", lines[i + 1])
+        )
+        if next_is_sep and current_title is None:
+            current_title = line.strip()
             continue
-        if m and current_title is not None:
+        if next_is_sep and current_title is not None:
             result.append({"title": current_title, "content": "\n".join(current_lines).strip()})
-            current_title = m.group(1)
+            current_title = line.strip()
             current_lines = []
             continue
         if current_title is not None:
@@ -465,6 +473,8 @@ def main(argv: list[str] | None = None) -> None:
 
     # --dry-run: list topics only, no full content
     if args.dry_run:
+        if args.search_keyword:
+            print("Warning: --dry-run ignores --search. Showing topic list only.", file=sys.stderr)
         if args.json_output:
             print(json.dumps({
                 "topics": topics_available,
