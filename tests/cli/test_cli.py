@@ -247,7 +247,7 @@ def test_dry_run_rewrite_no_config(source_dir_with_md, capsys):
         main(["--dry-run", "--source", str(source_dir_with_md)])
     assert exc.value.code == 1
     captured = capsys.readouterr()
-    assert "Error" in captured.err
+    assert "folio.yaml" in captured.err
 
 
 # ---------------------------------------------------------------------------

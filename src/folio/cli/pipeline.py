@@ -96,8 +96,7 @@ def main(argv: list[str] | None = None) -> None:
 
     config_path = args.config
     if not Path(config_path).exists():
-        print(f"Error: Config file not found: {config_path}", file=sys.stderr)
-        print('  Run "folio init" to create one.', file=sys.stderr)
+        print("folio.yaml not found. This command requires configuration. Run 'folio init' first.", file=sys.stderr)
         sys.exit(1)
 
     if args.dry_run:

@@ -12,12 +12,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 
 from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.scanner import scan_archive
+
+logger = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -82,6 +85,7 @@ def main(argv: list[str] | None = None) -> None:
     config_path = args.config
     config_exists = Path(config_path).exists()
     if not config_exists:
+        logger.warning("folio.yaml not found. Using defaults.")
         print(f"Warning: Config file not found: {config_path}", file=sys.stderr)
         print('  Running with default config. Run "folio init" to customize.', file=sys.stderr)
         print(file=sys.stderr)

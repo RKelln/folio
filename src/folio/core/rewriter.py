@@ -14,6 +14,7 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import textwrap
@@ -34,7 +35,10 @@ from folio.core.frontmatter import (
     strip_existing_frontmatter,
     update_frontmatter,
 )
+from folio.core.classifier import detect_language
 from folio.core.manifest import create_manifest, load_manifest, save_manifest, update_file, recalculate_summary
+
+logger = logging.getLogger(__name__)
 from folio.core.throttle import RateLimiter
 
 # ── Tier alias mapping ─────────────────────────────────────────────────────────
@@ -643,8 +647,15 @@ def _process_single(
 
         frontmatter_instructions = _build_frontmatter_instructions(fm_fields, funders_list, date_fmt)
 
-        # Build heading taxonomy
-        heading_taxonomy = _build_heading_taxonomy(funders_config)
+        # Detect document language
+        lang = detect_language(content)
+
+        # Build heading taxonomy (skip for French/mixed documents)
+        if lang in ("fr", "mixed"):
+            heading_taxonomy = ""
+            logger.info("French or mixed-language document detected; skipping English heading taxonomy substitution")
+        else:
+            heading_taxonomy = _build_heading_taxonomy(funders_config)
 
         # Build metadata block (minimal — from filename)
         metadata_block = _build_metadata_block({"filename": fname})
@@ -695,6 +706,10 @@ def _process_single(
         if fixme_count > 0:
             result["status"] = "corrupted"
         rewritten = update_frontmatter(rewritten, errors=fixme_count)
+
+        # Add language field for French or mixed documents
+        if lang in ("fr", "mixed"):
+            rewritten = update_frontmatter(rewritten, language=lang)
 
         _, body = parse_frontmatter(rewritten)
         if not body or not body.strip():

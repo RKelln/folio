@@ -10,12 +10,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 
 from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.auditor import audit_wiki
+
+logger = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -99,6 +102,8 @@ def main(argv: list[str] | None = None) -> None:
             audit_cfg = getattr(config, "audit", None)
             if not isinstance(audit_cfg, dict):
                 audit_cfg = None
+    else:
+        logger.warning("folio.yaml not found. Using defaults.")
 
     if args.required_sections:
         if audit_cfg is None:

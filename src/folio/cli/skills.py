@@ -8,9 +8,13 @@ platform-agnostic skill templates in skills/core/.
 from __future__ import annotations
 
 import argparse
+import logging
+import sys
 from pathlib import Path
 
 from folio import __version__
+
+logger = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None):
@@ -65,6 +69,9 @@ def main(argv: list[str] | None = None):
     if args.dry_run and not Path(config_path).exists():
         config = load_project_config(None)
     else:
+        if not Path(config_path).exists():
+            print("folio.yaml not found. This command requires configuration. Run 'folio init' first.", file=sys.stderr)
+            sys.exit(1)
         config = load_project_config(config_path)
 
     if args.dry_run:

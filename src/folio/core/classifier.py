@@ -26,6 +26,28 @@ logger = logging.getLogger(__name__)
 from folio.core.errors import FileStatus, ProcessingTier
 from folio.core.frontmatter import extract_year, parse_frontmatter
 
+_FRENCH_WORDS = frozenset({"le", "la", "les", "de", "du", "des", "et", "est", "que", "qui", "dans", "pour", "sur", "une", "avec", "sont", "par", "plus", "faire", "peut", "ces", "leur", "pas", "nous", "vous", "ils", "elle", "ses", "aux"})
+_ENGLISH_WORDS = frozenset({"the", "and", "for", "with", "that", "this", "have", "from", "are", "was", "not", "but", "all", "can", "had", "been", "one", "has", "were", "its", "also", "than", "them", "some", "may", "who", "which", "will"})
+
+
+def detect_language(text: str) -> str:
+    """Detect document language as 'en', 'fr', or 'mixed'.
+
+    Uses frequency analysis of common French vs English words.
+    No external dependencies required.
+    """
+    words = set(text.lower().split())
+    fr_count = len(words & _FRENCH_WORDS)
+    en_count = len(words & _ENGLISH_WORDS)
+    if fr_count == 0 and en_count == 0:
+        return "en"
+    ratio = fr_count / max(en_count, 1)
+    if ratio > 2.0:
+        return "fr"
+    elif ratio > 0.5:
+        return "mixed"
+    return "en"
+
 # ── Default configuration ─────────────────────────────────────────────────────
 
 DEFAULT_CLASSIFY_CONFIG: dict = {

@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 
 from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.cleaner import clean_file, clean_markdown
+
+logger = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -79,6 +82,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
 
     config_path = args.config
+    if not Path(config_path).exists():
+        logger.warning("folio.yaml not found. Using defaults.")
     config = load_project_config(config_path) if Path(config_path).exists() else None
 
     cleaner_config = config.classification if config and hasattr(config, "classification") else {}
