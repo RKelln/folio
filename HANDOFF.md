@@ -23,9 +23,8 @@ All 20 core pipeline tasks ported from the prototype. All 10 P0 and 11 P1 bugs f
 1. **`HANDOFF.md`** — this file
 2. **`AGENTS.md`** — conventions, module table, how to run folio
 3. **`TASKS.md`** — task status (Phase 1-5 done)
-4. **`BUGS.md`** — known issues (#015, #016b, #017, #037 open; #016, #038 resolved)
-5. **`folio guide`** — built-in agent reference (run `folio guide`)
-6. **`docs/`** — 6 reference files
+4. **`folio guide`** — built-in agent reference (run `folio guide`)
+5. **`docs/`** — 6 reference files
 
 ## Phase 5 — IA Deployment Validation: COMPLETE
 
@@ -88,14 +87,14 @@ Skill templates support `{?key}...{/key}` blocks. Content between them is includ
 
 See beads issue `folio-7dt` for full details.
 
-### Remaining open bugs (all P2/P3, not blocking)
+### Remaining open bugs (all P2/P3, tracked in beads)
 
-| # | What | Priority |
-|---|------|----------|
-| 015 | LLMProvider doesn't return token counts — rewriter bypasses abstraction | P2 |
-| 016b | French language detection for CCA/BCAH documents | P3 |
-| 017 | Filename convention `FUNDER__Year__Type.md` undocumented/fragile | P2 |
-| 037 | `from __future__ import annotations` inconsistent across codebase | P2 |
+| Bead ID | BUGS # | What | Priority |
+|---------|--------|------|----------|
+| folio-dj1 | 015 | LLMProvider doesn't return token counts — rewriter bypasses abstraction | P2 |
+| folio-j9h | 016b | French language detection for CCA/BCAH documents | P3 |
+| folio-r8c | 017 | Filename convention `FUNDER__Year__Type.md` undocumented/fragile | P2 |
+| folio-bme | 037 | `from __future__ import annotations` inconsistent across codebase | P2 |
 
 ### Deferred
 
@@ -105,12 +104,12 @@ See beads issue `folio-7dt` for full details.
 ## Important design decisions
 
 1. **No Pydantic** — config validation uses plain dataclasses to keep deps minimal.
-2. **LLM provider bypass** — the rewriter creates its own OpenAI client for token tracking because `LLMProvider.complete()` doesn't return usage metadata. See `BUGS.md` #015.
+2. **LLM provider bypass** — the rewriter creates its own OpenAI client for token tracking because `LLMProvider.complete()` doesn't return usage metadata. See beads `folio-dj1`.
 3. **Safe condition DSL** — the 12 condition types in `classifier.py` are the canonical way to express classification rules. Legacy eval parser exists for migration from prototype configs.
 4. **SequenceMatcher autojunk** — always use `autojunk=False` when comparing grant documents. See `BUGS.md` #007.
 5. **Frontmatter API is frozen** — `parse_frontmatter`, `dict_to_frontmatter`, `sanitize_frontmatter`, `update_frontmatter` have the same signatures as the prototype. Don't change them.
 6. **Manifest as checkpoint state** — the manifest at `{paths.rewrite_md}/manifest.json` is the pipeline's resume mechanism. Save after each stage.
-7. **Filename convention** — files use `FUNDER__Year_Description__Type.md` with double-underscore separators. See `BUGS.md` #017.
+7. **Filename convention** — files use `FUNDER__Year_Description__Type.md` with double-underscore separators. See beads `folio-r8c`.
 8. **Paths resolve relative to config** — `load_project_config()` resolves relative paths from the config file's directory, not cwd.
 9. **Org repos are separate** — org-specific config + data lives in its own repo (e.g., `ia-library/`). The folio tool repo (`folio/`) contains only code.
 10. **load_dotenv() is automatic** — `.env` is loaded from the same directory as `folio.yaml` at config load time.
@@ -158,8 +157,7 @@ ia-library/          # Org repo (separate git repo from folio tool)
 |---|---|
 | How a module works | `AGENTS.md` section 7 (module table) |
 | Task status | `TASKS.md` |
-| Known issues | `BUGS.md` |
-| Beads issues | `bd ready` / `bd show <id>` |
+| Known issues | `bd ready` / `bd show <id>` (beads) |
 | CLI entry point | `src/folio/cli/<name>.py` |
 | CLI dispatcher | `src/folio/cli/main.py` |
 | Business logic | `src/folio/core/<name>.py` |

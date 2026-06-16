@@ -4,7 +4,7 @@
 **Reviewer:** beads-code-reviewer
 **Language:** Python 3.10+
 **Project type:** CLI pipeline / library
-**Conventions read:** AGENTS.md, BUGS.md, pyproject.toml, defaults.yaml
+**Conventions read:** AGENTS.md, pyproject.toml, defaults.yaml
 **Files reviewed:** 48 (.py + .yaml) — ~9,500 lines total
 **Findings:** 13 critical · 21 high · 28 medium · 31 low
 
@@ -386,24 +386,28 @@ The codebase shows strong architectural intent — clean separation of concerns,
 
 ---
 
-## BUGS.md Cross-Reference
+## Original BUGS.md Cross-Reference
 
-| BUGS.md # | Status | Notes |
-|-----------|--------|-------|
-| #001 eval() security | ✅ Fixed | Safe DSL in classifier |
-| #002 Hardcoded funders | ✅ Fixed | config.funders |
-| #003 Datalab pipeline ID | ✅ Fixed | config.converter |
-| #004 Useless headings | ✅ Fixed | config-driven |
-| #005 Stale content | ✅ Fixed | config-driven |
-| #006 Topic keywords | P2 | Not yet ported |
-| #007 autojunk | ✅ Fixed | autojunk=False everywhere |
-| #008 SequenceMatcher scaling | ⚠️ | Mitigated, not fully resolved |
-| #009 Python 3.14 | ✅ Fixed | >=3.10 |
-| #010 Config validation | ✅ Fixed | schema.py |
-| #011 Error taxonomy | ✅ Fixed | errors.py |
-| #012 No Pydantic | Deferred | |
-| #013 yaml import | ✅ Consistent | |
-| #014 Datalab SDK | P2 | Documented |
-| #015 Provider token counts | **Still open** | FINDING #033 |
-| #016 French detection | P3 | Not started |
-| #017 Filename convention | **Still open** | No documentation |
+(BUGS.md has been consolidated into beads; see `bd ready` for current state.)
+
+| Original # | Bead ID | Status | Notes |
+|-----------|---------|--------|-------|
+| #001 eval() security | — | ✅ Fixed | Safe DSL in classifier |
+| #002 Hardcoded funders | — | ✅ Fixed | config.funders |
+| #003 Datalab pipeline ID | — | ✅ Fixed | config.converter |
+| #004 Useless headings | — | ✅ Fixed | config-driven |
+| #005 Stale content | — | ✅ Fixed | config-driven |
+| #006 Topic keywords | — | P2 | Not yet ported |
+| #007 autojunk | — | ✅ Fixed | autojunk=False everywhere |
+| #008 SequenceMatcher scaling | — | ⚠️ | Mitigated, not fully resolved |
+| #009 Python 3.14 | — | ✅ Fixed | >=3.10 |
+| #010 Config validation | — | ✅ Fixed | schema.py |
+| #011 Error taxonomy | — | ✅ Fixed | errors.py |
+| #012 No Pydantic | — | Deferred | |
+| #013 yaml import | — | ✅ Consistent | |
+| #014 Datalab SDK | — | P2 | Documented |
+| #015 Provider token counts | folio-dj1 | **Open** | P2 |
+| #016 agentmap as Python | — | Won't Fix | Standalone Go binary |
+| #016b French detection | folio-j9h | **Open** | P3 |
+| #017 Filename convention | folio-r8c | **Open** | P2 |
+| #037 `__future__` annotations | folio-bme | **Open** | P2 |

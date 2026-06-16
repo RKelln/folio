@@ -45,3 +45,4 @@ ia-library/
 .dolt/
 *.db
 .beads-credential-key
+.beads/issues.jsonl
