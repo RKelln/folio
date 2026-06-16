@@ -52,6 +52,11 @@ wiki:
     binary_path: "sage-wiki"
     pack: "arts-org"
 
+# ── Agentmap ──────────────────────────────────────────────────────
+agentmap:
+  enabled: false                # set to true to enable agentmap TOC generation
+  binary_path: "agentmap"       # path to agentmap binary
+
 # ── LLM provider ──────────────────────────────────────────────────
 llm:
   provider: "openai_compatible"

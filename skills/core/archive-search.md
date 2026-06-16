@@ -4,13 +4,13 @@ How to search {org_name}'s grant archive to find precedent documents, budget fig
 
 ## Archive layout
 
-The folio pipeline produces two searchable views of the same documents:
+The folio pipeline produces searchable views of the documents:
 
 | Path | Contents | Tool |
 |------|----------|------|
 | `{wiki_path}` | Compiled wiki — concept articles, summaries, ontology graph | `sage-wiki` |
-| `{rewrite_md_path}` | Full dataset — all documents with YAML frontmatter | `agentmap` |
-
+{?agentmap_enabled}| `{rewrite_md_path}` | Full dataset — all documents with YAML frontmatter | `agentmap` |
+{/agentmap_enabled}
 ## Funders
 
 {funder_table}
@@ -19,7 +19,7 @@ The folio pipeline produces two searchable views of the same documents:
 
 {doc_type_table}
 
-## Two search tools — when to use each
+## Search tools
 
 ### sage-wiki (cross-document synthesis)
 
@@ -30,7 +30,7 @@ cd {wiki_path} && sage-wiki search "<query>"
 sage-wiki query "<question>"
 ```
 
-### agentmap (section-level search)
+{?agentmap_enabled}### agentmap (section-level search)
 
 Best for: finding specific passages by heading name, navigating documents by section.
 
@@ -72,15 +72,15 @@ agentmap next                # advance to next file; repeat until done
 - Never hand-edit line numbers — `agentmap update` manages those
 
 **Read a section by NAV offset:** `Read(offset=s, limit=n)` using the `s,n` values from the nav block entry.
-
+{/agentmap_enabled}
 ### Combined workflow
 
 1. `sage-wiki search` → find which documents are relevant
 2. `sage-wiki query` → synthesized answer with citations
-3. `agentmap search "<heading>"` → exact section content from candidate docs
+{?agentmap_enabled}3. `agentmap search "<heading>"` → exact section content from candidate docs
 4. Read AGENT:NAV block → jump to exact line offset with `Read(offset=s, limit=n)`
 5. If NAV block is missing or stale → `agentmap generate <file>` then fill descriptions
-
+{/agentmap_enabled}
 ## Reading metadata from any file
 
 YAML frontmatter on every file in `{rewrite_md_path}`:
@@ -102,13 +102,13 @@ errors: 0
 # Find all applications for a funder
 sage-wiki search "<funder> application"
 
-# Find a specific section across a funder's applications
+{?agentmap_enabled}# Find a specific section across a funder's applications
 agentmap search "<section>" {rewrite_md_path}/{funder_abbrev}_*.md
 
 # Find budget/financial information
 sage-wiki query "What were {funder_abbrev} grant amounts by year?"
 agentmap search "budget" {rewrite_md_path}/{funder_abbrev}_*
-
+{/agentmap_enabled}
 # Find org overview
 sage-wiki query "Describe {org_name}"
 

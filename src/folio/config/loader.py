@@ -11,6 +11,7 @@ import yaml
 from dotenv import load_dotenv
 
 from folio.config.schema import (
+    AgentmapConfig,
     ConverterConfig,
     LLMConfig,
     OrgConfig,
@@ -89,6 +90,12 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
         sage_wiki_pack=wiki_sage.get("pack", "arts-org"),
     )
 
+    agentmap_data = data.get("agentmap", {})
+    agentmap = AgentmapConfig(
+        enabled=bool(agentmap_data.get("enabled", False)),
+        binary_path=str(agentmap_data.get("binary_path", "agentmap")),
+    )
+
     llm_data = data.get("llm", {})
     llm_models = llm_data.get("models", {})
     llm_pricing = llm_data.get("pricing", {})
@@ -134,6 +141,7 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
         paths=paths,
         converter=converter,
         wiki=wiki,
+        agentmap=agentmap,
         llm=llm,
         processing=processing,
         classification=data.get("classification", {}),
@@ -141,6 +149,18 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
         rewrite=data.get("rewrite", {}),
         prioritize=data.get("prioritize", {}),
     )
+
+
+def _validate_agentmap_binary(binary_path: str) -> None:
+    """Verify agentmap binary is accessible when enabled."""
+    import shutil
+    resolved = shutil.which(binary_path)
+    if resolved is None:
+        raise ValueError(
+            f"agentmap is enabled but binary '{binary_path}' not found on PATH.\n"
+            f"Install agentmap or set agentmap.enabled: false in folio.yaml."
+        )
+    logger.info("agentmap binary found: %s", resolved)
 
 
 def _validate(config: ProjectConfig) -> None:
@@ -188,6 +208,9 @@ def _validate(config: ProjectConfig) -> None:
         raise ValueError(
             f"processing.max_workers must be >= 1, got: {config.processing.max_workers}"
         )
+
+    if config.agentmap.enabled:
+        _validate_agentmap_binary(config.agentmap.binary_path)
 
     if not Path(config.paths.raw_archive).exists():
         logger.warning(

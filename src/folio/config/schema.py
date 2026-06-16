@@ -39,6 +39,11 @@ class WikiConfig:
     sage_wiki_pack: str = "arts-org"
 
 @dataclass
+class AgentmapConfig:
+    enabled: bool = False
+    binary_path: str = "agentmap"
+
+@dataclass
 class ProcessingConfig:
     max_workers: int = 10
     requests_per_second: float = 5.0
@@ -58,6 +63,7 @@ class ProjectConfig:
     paths: PathsConfig = field(default_factory=PathsConfig)
     converter: ConverterConfig = field(default_factory=ConverterConfig)
     wiki: WikiConfig = field(default_factory=WikiConfig)
+    agentmap: AgentmapConfig = field(default_factory=AgentmapConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
     processing: ProcessingConfig = field(default_factory=ProcessingConfig)
     classification: dict = field(default_factory=dict)

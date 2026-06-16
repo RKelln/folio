@@ -24,6 +24,7 @@ _TEMPLATES_DIR = _SKILLS_DIR / "templates"
 _PLATFORM_CHOICES = {"opencode", "claude", "openclaw", "hermes"}
 
 _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
+_CONDITIONAL_RE = re.compile(r"\{\?(\w+)\}(.*?)\{/(\w+)\}", re.DOTALL)
 
 
 def generate_skills(
@@ -102,6 +103,8 @@ def build_context(config: ProjectConfig) -> dict:
         "rewrite_md_path": paths.rewrite_md,
         "wiki_path": paths.wiki_project,
         "raw_archive_path": paths.raw_archive,
+        "agentmap_enabled": str(config.agentmap.enabled).lower(),
+        "agentmap_binary": config.agentmap.binary_path,
     }
 
 
@@ -121,9 +124,27 @@ def _build_doc_type_table(config: ProjectConfig) -> str:
 def _fill_template(template_path: Path, context: dict) -> str:
     """Read a template file and fill {placeholders} from context dict.
 
+    Supports conditional blocks: ``{?key}...{/key}`` — included only when
+    ``context[key]`` is truthy (non-empty, not ``"false"``, not ``"0"``).
+
     Warns if any placeholder remains unfilled after substitution.
     """
     text = template_path.read_text()
+
+    def _is_truthy(key: str) -> bool:
+        val = context.get(key, "")
+        if isinstance(val, bool):
+            return val
+        return str(val).lower() not in ("", "false", "0", "none")
+
+    def _replace_conditionals(match: re.Match) -> str:
+        key = match.group(1)
+        body = match.group(2)
+        if _is_truthy(key):
+            return body
+        return ""
+
+    text = _CONDITIONAL_RE.sub(_replace_conditionals, text)
 
     def _replace(match: re.Match) -> str:
         key = match.group(1)
@@ -142,6 +163,7 @@ def _fill_template(template_path: Path, context: dict) -> str:
         )
 
     return result
+
 
 
 def _read_core(name: str) -> str:
