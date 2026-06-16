@@ -15,148 +15,92 @@ This document is for the next AI agent taking over work on `folio`. Read it full
 
 ## Current state
 
-**Phase 1-4 complete. 407 tests passing. All 14 CLI subcommands functional. Docs written. Only Phase 5 (IA deployment validation) remains.**
+**Phase 1-5 complete. 407 tests passing. All 14 CLI subcommands functional. Pipeline validated against prototype with semantic equivalence confirmed ($0.04 LLM cost).**
 
-All 20 core pipeline tasks ported from the prototype. All 10 P0 and 11 P1 bugs fixed. All 8 BUGS.md #039-#046 CLI review findings fixed. The CLI dispatcher provides `folio <command>` UX with subcommands auto-discovering `folio.yaml` from cwd.
-
-IA deployment: `ia-library/folio.yaml` created merging all 3 prototype configs. Scan (2,600 files) and classify (1,255 files) validated against prototype data.
+All 20 core pipeline tasks ported from the prototype. All 10 P0 and 11 P1 bugs fixed. All 8 BUGS.md #039-#046 CLI review findings fixed. 8 additional bugs found and fixed during Phase 5 validation. The CLI dispatcher provides `folio <command>` UX with subcommands auto-discovering `folio.yaml` from cwd.
 
 **Key files to read FIRST (in order):**
-1. **`HANDOFF.md`** — this file (Phase 5 plan below)
+1. **`HANDOFF.md`** — this file
 2. **`AGENTS.md`** — conventions, module table, how to run folio
-3. **`TASKS.md`** — task status (Phase 1-4 done, 5 remaining)
-4. **`BUGS.md`** — known issues (only #037, #038 still open)
+3. **`TASKS.md`** — task status (Phase 1-5 done)
+4. **`BUGS.md`** — known issues (#015, #016b, #017, #037 open; #016, #038 resolved)
 5. **`folio guide`** — built-in agent reference (run `folio guide`)
 6. **`docs/`** — 6 reference files
 
-## What to do next: Phase 5 — IA Deployment Validation
+## Phase 5 — IA Deployment Validation: COMPLETE
 
-**Goal:** Prove folio produces equivalent output to the `llm_wiki` prototype for InterAccess's 1,033-file grant archive, with **minimal LLM cost** (under $2).
+Validated against InterAccess's 1,033-file grant archive. $0.04 total LLM cost.
 
-**Budget principle:** The prototype already spent ~$161 on the full rewrite. We validate with sampling — not re-running. Only Step 3 has LLM cost. Everything else is free.
+- **Step 1: Config parity audit** — all classification/rewrite/prioritize values matched. Minor gaps: `period_start`/`period_end` (fixed), `rules_file` (deferred).
+- **Step 2: Classify validation** — 1,255 files classified: 292 full, 121 light, 618 minimal, 224 skip. BUGS #038 fixed (legacy parser nested conditions).
+- **Step 3: 10-file sample rewrite** — $0.04 cost. 10 files across TAC/OAC/CCA, full/light/minimal tiers. Semantic equivalence confirmed vs prototype.
+- **Step 4: Skills comparison** — generated successfully. Template differences expected.
+- **Step 5: Prioritize** — not run (optional, deferred).
 
-**Status: COMPLETE as of 2026-06-15.**
+### Bugs fixed during Phase 5
 
-Prototype reference data at:
-- `/home/ryankelln/Documents/Work/IA_board/llm_wiki/` (read only)
-  - `classify_config.yaml`, `rewrite_config.yaml`, `prioritize_config.yaml` — source configs
-  - `rewrite_md/` — prototype output to compare against
-  - `.opencode/skills/grant-writing/SKILL.md` — prototype skills to compare against
+| Bug | Fix |
+|-----|-----|
+| rewrite_directory manifest `KeyError: 'files'` crash | `create_manifest()` fallback when file absent |
+| User rewrite config from folio.yaml never merged | `_deep_merge_rewrite()` in rewriter |
+| Skills template path resolution broken | Fixed `importlib.resources` path to repo root |
+| CLI summary shows 0/0 (wrong dict keys) | `summary["ok"]` → `summary["success"]` + errors |
+| BUGS #038: 235 files `KeyError: 'type'` in tier rules | Recursive `evaluate_rule` guard for nested conditions |
+| `--dest` flag in rewrite CLI not wired | Added `dest` param to `rewrite_directory` |
+| Prioritizer ignores `config.prioritize` (dataclass path) | Merge rubric/grouping/processing from `config.prioritize` |
+| `period_start`/`period_end` missing from frontmatter defaults | Added to `DEFAULT_REWRITE_CONFIG` and metadata block |
 
-IA library at:
-- `/home/ryankelln/Documents/Work/IA_board/ia-library/`
-  - `folio.yaml` — merged from 3 prototype configs
-  - `.env` — API keys
-  - `_raw_archive/` — 2,600+ source files (PDF/DOCX/XLSX)
-  - `.folio/raw_md/` — converter output
-  - `.folio/clean_md/` — cleaned markdown
+## Recent additions (2026-06-15)
 
-### Step 1: Config parity audit (free — no API calls) ✅ Complete — all values matched; minor gaps documented (period_start/period_end, rules_file)
+### Agentmap toggle
 
-Verify `ia-library/folio.yaml` contains EVERY value from the 3 prototype configs. Missing values cause folio to silently use defaults, producing different output.
+New `agentmap` config section with `enabled` (bool) and `binary_path`. When enabled:
+- Config validation verifies `agentmap` binary is on PATH
+- Generated skills include full agentmap NAV workflow (generate → update → check, bulk indexing)
+- When disabled, all agentmap references are stripped from generated skills
 
-Read each prototype config and cross-check against `folio.yaml`:
+`ia-library/folio.yaml` has agentmap enabled.
 
-**From `classify_config.yaml`:**
-- `funders` dict — all abbreviations and full names
-- `doc_types` dict — all patterns per type
-- `skip_rules` — every rule with conditions and reasons
-- `tier_rules` — every rule with conditions and tiers
-- `thresholds` — all sub-objects (full_rewrite, full_rewrite_app_report, light_cleanup, raw_financial)
-- `form_chrome` patterns, `draft_markers`
+### Conditional skill template blocks
 
-**From `rewrite_config.yaml`:**
-- `headings` — per-funder canonical heading taxonomies (TAC, OAC, CCA, etc.)
-- `useless_headings` — every regex pattern
-- `form_chrome_patterns` — every pattern
-- `prompts` section (full, light, minimal tier prompts — if customized)
+Skill templates support `{?key}...{/key}` blocks. Content between them is included only when `context[key]` is truthy. Currently used to conditionally include agentmap sections.
 
-**From `prioritize_config.yaml`:**
-- Rubric criteria, grouping config
-- Any custom processing settings
+## What to do next
 
-Report every missing or mismatched value. Fix `folio.yaml` before proceeding.
+### Priority: P3 — `folio-7dt` — Refactor skills to compose tool instructions from snippets
 
-### Step 2: Classify validation (free) ✅ Complete — 1,255 files classified; BUGS #038 fixed (legacy parser)
+**Current state:** `archive-search.md` is a monolithic template with `{?conditional}` blocks for agentmap. Sage-wiki instructions are always included (not conditional).
 
-Classify already ran against 1,255 files and was "validated against prototype data" per earlier notes. Verify:
+**Design:**
+- Folio ships tool-specific template snippets under `skills/core/`:
+  - `_tool-file-search.md` — always included (baseline: grep, glob, Read on `markdown/`)
+  - `_tool-sage-wiki.md` — included when `wiki.type != 'null'`
+  - `_tool-agentmap.md` — included when `agentmap.enabled`
+- `archive-search.md` becomes a wrapper with a `{tool_sections}` placeholder
+- Skills generator concatenates enabled snippets into `{tool_sections}`
+- Remove `{?conditional}` blocks entirely — composition replaces conditionals
 
-1. `folio classify --source .folio/clean_md/ --json` returns tiers matching the prototype's tier assignments for at least a spot-check of 20 files across funders and years.
+**Acceptance:**
+- Default (no tools): skills only teach basic file search on `markdown/`
+- sage-wiki enabled: adds wiki search/query instructions
+- agentmap enabled: adds section-level search and NAV generation
+- Both: includes combined workflow as today
 
-2. If BUGS.md #038 is relevant (~170 files getting wrong tier due to `KeyError: 'type'`), assess impact: are these mostly `minimal` tier files that would be skipped for LLM rewrite anyway? If so, low impact.
+See beads issue `folio-7dt` for full details.
 
-If classify tier assignments are wrong for >5% of files that matter (full/light tier), fix the legacy condition parser first. Otherwise proceed.
+### Remaining open bugs (all P2/P3, not blocking)
 
-### Step 3: 10-file sample rewrite (~$0.10-0.50 in LLM costs) ✅ Complete — $0.04 cost; semantic equivalence confirmed
+| # | What | Priority |
+|---|------|----------|
+| 015 | LLMProvider doesn't return token counts — rewriter bypasses abstraction | P2 |
+| 016b | French language detection for CCA/BCAH documents | P3 |
+| 017 | Filename convention `FUNDER__Year__Type.md` undocumented/fragile | P2 |
+| 037 | `from __future__ import annotations` inconsistent across codebase | P2 |
 
-**This is the only step with API cost.** Pick 10 files spanning:
-- Funders: at least TAC, OAC, CCA
-- Tiers: 4 full, 3 light, 3 minimal (from classify manifest)
-- Years: at least 2023, 2024, 2025
-- Doc types: application, report, budget
+### Deferred
 
-```bash
-cd /home/ryankelln/Documents/Work/IA_board/ia-library
-folio clean --source .folio/raw_md/ --dest .folio/clean_md/
-folio classify --source .folio/clean_md/
-folio rewrite --source .folio/clean_md/ --limit 10
-```
-
-Then compare each output against `../llm_wiki/rewrite_md/`:
-- LLM output won't be **byte-identical** (temperature, model version)
-- Compare **semantic content**: are the same facts present? Same structure? Same frontmatter fields?
-- If the 10 files match semantically, the pipeline is validated
-- If they don't, investigate why (prompt differences, heading taxonomy, tier assignment)
-
-SAVE THE 10-FILE OUTPUT for comparison with future runs.
-
-### Step 4: Skills comparison (free) ✅ Complete — generated successfully, template differences expected
-
-```bash
-folio skills --platform opencode --output /tmp/folio-skills/
-diff /tmp/folio-skills/grant-writing/SKILL.md ../llm_wiki/.opencode/skills/grant-writing/SKILL.md
-```
-
-Check: funder names, table formats, heading references, org context. Template differences are expected (folio's templates may differ from prototype's custom skills). Content should be substantially similar.
-
-### Step 5 (optional): Prioritize validation — Not run (optional, deferred)
-
-If Steps 1-4 all pass, run `folio prioritize` on 1-2 year groups (e.g., `--year 2024`). Compare priority rankings with prototype. This costs ~$0.05-0.10.
-
-### What NOT to do:
-
-- **DO NOT** run `folio pipeline` on all 1,255 files — $161, not needed
-- **DO NOT** run `folio pipeline` without `--dry-run` first
-- **DO NOT** modify prototype files in `../llm_wiki/`
-- **DO NOT** waste time byte-comparing LLM output — semantic equivalence is the bar
-
-### If validation fails:
-
-1. Check classification tier assignments first (most likely root cause)
-2. Compare heading taxonomies (missed headings = missing sections)
-3. Check prompts (prototype may have custom prompts not in folio defaults)
-4. See `BUGS.md` — #015 (LLMProvider token counts), #038 (legacy parser)
-
-### After validation passes:
-
-1. Update `BUGS.md` — close #038 if classification fixed, mark Phase 5 complete
-2. Update `TASKS.md` — mark Phase 5 done
-3. Push `ia-library/` changes (if folio.yaml was modified)
-4. Update `HANDOFF.md` — mark this section complete
-
-6. Bugs fixed during Phase 5:
-   - rewrite_directory manifest KeyError crash
-   - User rewrite config not merged into defaults
-   - Skills template path resolution
-   - CLI summary display keys (ok/failed → success/error)
-   - BUGS #038: legacy condition parser nested conditions
-   - rewrite CLI --dest not wired to function
-   - Prioritizer dataclass path ignoring config.prioritize
-   - period_start/period_end missing from frontmatter defaults
-
----
-
-**BUGS.md #038 FIXED:** Legacy condition parser now has recursive guard for nested `conditions` dicts. Tier rule evaluation failures dropped from 235 to 0.
+- **Step 5 prioritize validation** — run `folio prioritize` on 1-2 year groups (~$0.10)
+- **Full archive rewrite** — DO NOT run on all 1,255 files (~$161); only with explicit budget approval
 
 ## Important design decisions
 
@@ -170,6 +114,8 @@ If Steps 1-4 all pass, run `folio prioritize` on 1-2 year groups (e.g., `--year 
 8. **Paths resolve relative to config** — `load_project_config()` resolves relative paths from the config file's directory, not cwd.
 9. **Org repos are separate** — org-specific config + data lives in its own repo (e.g., `ia-library/`). The folio tool repo (`folio/`) contains only code.
 10. **load_dotenv() is automatic** — `.env` is loaded from the same directory as `folio.yaml` at config load time.
+11. **Agentmap is standalone** — kept as a separate Go binary, not ported to Python. Config toggle with PATH validation.
+12. **Skills compose from tool snippets** — (design in `folio-7dt`) generated skills are assembled from per-tool template snippets based on what's installed.
 
 ## How to run things
 
@@ -198,7 +144,7 @@ uv run pytest tests/ -v
 
 ```
 ia-library/          # Org repo (separate git repo from folio tool)
-├── folio.yaml       # Org config (funders, doc types, paths, LLM, headings, etc.)
+├── folio.yaml       # Org config (funders, doc types, paths, LLM, headings, agentmap, etc.)
 ├── .env             # API keys (DEEPSEEK_API_KEY, DATALAB_API_KEY)
 ├── archive/         # Raw source files (PDF, DOCX, XLSX)
 ├── markdown/        # Final LLM-rewritten output
@@ -213,6 +159,7 @@ ia-library/          # Org repo (separate git repo from folio tool)
 | How a module works | `AGENTS.md` section 7 (module table) |
 | Task status | `TASKS.md` |
 | Known issues | `BUGS.md` |
+| Beads issues | `bd ready` / `bd show <id>` |
 | CLI entry point | `src/folio/cli/<name>.py` |
 | CLI dispatcher | `src/folio/cli/main.py` |
 | Business logic | `src/folio/core/<name>.py` |
