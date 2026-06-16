@@ -30,7 +30,7 @@ rewrite_md/
 datalab_md/
 
 # Wiki projects (per-installation)
-wiki/
+/wiki/
 
 # Test artifacts
 .pytest_cache/

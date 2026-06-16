@@ -1,0 +1,29 @@
+"""Null wiki backend (no wiki, markdown-only mode).
+
+Used when an org only wants the markdown pipeline without wiki compilation.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from folio.adapters.wiki.base import WikiBackend
+
+
+class NullWikiBackend(WikiBackend):
+    """No-op wiki backend. All operations return empty or placeholder results."""
+
+    def init(self, project_dir: Path, config: dict) -> None:
+        pass
+
+    def add_documents(self, source_paths: list[Path]) -> None:
+        pass
+
+    def compile(self) -> None:
+        pass
+
+    def search(self, query: str) -> str:
+        return "Wiki not configured. Run with a wiki backend to enable search."
+
+    def query(self, question: str) -> str:
+        return "Wiki not configured. Run with a wiki backend to enable search."
