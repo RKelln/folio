@@ -34,7 +34,7 @@ from folio.core.frontmatter import (
     strip_existing_frontmatter,
     update_frontmatter,
 )
-from folio.core.manifest import load_manifest, save_manifest, update_file, recalculate_summary
+from folio.core.manifest import create_manifest, load_manifest, save_manifest, update_file, recalculate_summary
 from folio.core.throttle import RateLimiter
 
 # ── Tier alias mapping ─────────────────────────────────────────────────────────
@@ -71,6 +71,19 @@ def _tier_value(tier: str | ProcessingTier) -> str:
     if hasattr(tier, "value"):
         return tier.value
     return str(tier)
+
+
+# ── Config merging ─────────────────────────────────────────────────────────────
+
+def _deep_merge_rewrite(base: dict, override: dict) -> dict:
+    """Recursively merge override into base. Dicts are merged; scalars/lists replaced."""
+    result = dict(base)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge_rewrite(result[key], value)
+        else:
+            result[key] = value
+    return result
 
 
 # ── Default tier prompts ──────────────────────────────────────────────────────
@@ -216,6 +229,14 @@ DEFAULT_REWRITE_CONFIG: dict[str, Any] = {
             "period": {
                 "description": 'Year or range the document covers (e.g. 2025 or "2025–2027"). Use this for year-level precision.',
                 "type": "string",
+            },
+            "period_start": {
+                "description": "Start date when a precise range is available (e.g. 2019-04-02). Use with period_end instead of period.",
+                "type": "date",
+            },
+            "period_end": {
+                "description": "End date when a precise range is available (e.g. 2019-09-15). Use with period_start instead of period.",
+                "type": "date",
             },
             "grant_amount": {
                 "description": 'Grant dollar amount if mentioned in the document (e.g. "$51,000")',
@@ -381,6 +402,13 @@ def _build_metadata_block(entry: dict) -> str:
     else:
         lines.append("- Period: [MISSING — find in document]")
 
+    ps = entry.get("period_start")
+    if ps:
+        lines.append(f"- Period start: {ps}")
+    pe = entry.get("period_end")
+    if pe:
+        lines.append(f"- Period end: {pe}")
+
     lines.append("- Grant amount: [MISSING — find in document if mentioned]")
     lines.append("")
     lines.append("(Frontmatter is generated from your response — ensure all determinable fields are populated.)")
@@ -411,6 +439,13 @@ def _entry_to_fm_fields(entry: dict) -> dict:
                 fields["period"] = ys
             else:
                 fields["period"] = f"{ys}–{ye}"
+
+    ps = entry.get("period_start")
+    if ps:
+        fields["period_start"] = ps
+    pe = entry.get("period_end")
+    if pe:
+        fields["period_end"] = pe
     return fields
 
 
@@ -732,7 +767,17 @@ def rewrite_file(
         string), ``cost_usd``, ``elapsed_seconds``, ``error`` (if any).
     """
     if rewrite_config is None:
-        rewrite_config = DEFAULT_REWRITE_CONFIG
+        rewrite_config = dict(DEFAULT_REWRITE_CONFIG)
+
+    # Merge user's rewrite config from ProjectConfig, if present
+    if isinstance(config, dict) and "rewrite" in config:
+        user_rewrite = config.get("rewrite", {})
+    elif hasattr(config, "rewrite"):
+        user_rewrite = config.rewrite
+    else:
+        user_rewrite = {}
+    if user_rewrite:
+        rewrite_config = _deep_merge_rewrite(rewrite_config, user_rewrite)
 
     tier_norm = _normalize_tier(tier)
     client = None
@@ -756,6 +801,7 @@ def rewrite_directory(
     dry_run: bool = False,
     rewrite_config: dict | None = None,
     client: object | None = None,
+    dest: Path | None = None,
 ) -> dict:
     """Rewrite all files in a directory, using manifest for tier selection and resume.
 
@@ -774,22 +820,37 @@ def rewrite_directory(
         rewrite_config: Rewrite configuration dict. Uses ``DEFAULT_REWRITE_CONFIG``
             if not provided.
         client: Pre-created OpenAI client. Created from config if None.
+        dest: Destination directory for rewritten output. Overrides the
+            ``output_dir`` from rewrite config.
 
     Returns:
         A summary dict with counts by status and cost totals.
     """
     if rewrite_config is None:
-        rewrite_config = DEFAULT_REWRITE_CONFIG
+        rewrite_config = dict(DEFAULT_REWRITE_CONFIG)
+
+    # Merge user's rewrite config from ProjectConfig, if present
+    if isinstance(config, dict) and "rewrite" in config:
+        user_rewrite = config.get("rewrite", {})
+    elif hasattr(config, "rewrite"):
+        user_rewrite = config.rewrite
+    else:
+        user_rewrite = {}
+    if user_rewrite:
+        rewrite_config = _deep_merge_rewrite(rewrite_config, user_rewrite)
 
     proc_cfg = rewrite_config.get("processing", {})
-    output_dir = Path(proc_cfg.get("output_dir", "rewrite_md"))
+    output_dir = dest.resolve() if dest else Path(proc_cfg.get("output_dir", "rewrite_md"))
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load manifest if provided
     manifest: dict[str, Any] = {}
     manifest_entries: dict[str, dict] = {}
-    if manifest_path is not None and manifest_path.exists():
-        manifest = load_manifest(manifest_path)
+    if manifest_path is not None:
+        if manifest_path.exists():
+            manifest = load_manifest(manifest_path)
+        else:
+            manifest = create_manifest()
         manifest_entries = manifest.get("files", {})
 
     # Collect file entries

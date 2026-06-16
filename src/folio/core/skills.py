@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 try:
     from importlib.resources import files as _resources_files
-    _SKILLS_DIR = Path(str(_resources_files("folio"))) / "skills"
+    _PKG_DIR = Path(str(_resources_files("folio")))
+    _SKILLS_DIR = _PKG_DIR.parent.parent / "skills"
 except ImportError:
     _SKILLS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "skills"
 _CORE_DIR = _SKILLS_DIR / "core"

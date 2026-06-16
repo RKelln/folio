@@ -208,13 +208,14 @@ def main(argv: list[str] | None = None) -> None:
         limit=args.limit,
         resume=not args.no_resume,
         dry_run=False,
+        dest=args.dest,
     )
 
     if args.json_output:
         print(json.dumps(summary, indent=2, default=str))
         return
-    ok = summary.get("ok", 0)
-    failed = summary.get("failed", 0)
+    ok = summary.get("success", 0) + summary.get("local_metadata", 0) + summary.get("corrupted", 0)
+    failed = summary.get("error", 0) + summary.get("empty", 0)
     total_cost = summary.get("total_cost_usd", 0)
     print(f"Rewrite complete: {ok} ok, {failed} failed")
     print(f"  Total cost: ${total_cost:.4f}")

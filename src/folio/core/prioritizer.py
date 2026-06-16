@@ -166,6 +166,15 @@ def _resolve_config(config) -> dict:
     if hasattr(config, "llm"):
         result["llm_model"] = config.llm.quality_model
 
+    if hasattr(config, "prioritize") and isinstance(config.prioritize, dict):
+        p = config.prioritize
+        if isinstance(p.get("rubric"), dict):
+            result["rubric"].update(p["rubric"])
+        if isinstance(p.get("grouping"), dict):
+            result["grouping"].update(p["grouping"])
+        if isinstance(p.get("processing"), dict):
+            result["processing"].update(p["processing"])
+
     return result
 
 

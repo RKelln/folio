@@ -115,7 +115,7 @@ Each has a priority: **P0** (blocking), **P1** (important), **P2** (nice-to-have
 - **What**: agentmap is a Go binary (external dependency). Porting its heading extraction + fuzzy matching (~500 lines of Go) to Python would remove one external dependency.
 - **Recommendation**: Evaluate after core pipeline ships.
 
-### [#016] French language detection
+### [#016b] French language detection
 - **Priority**: P3
 - **Status**: Not started
 - **What**: Canadian arts orgs have French documents (CCA, BCAH). The pipeline doesn't detect language. French documents would get English heading taxonomies applied incorrectly.
@@ -278,10 +278,11 @@ Full review of all 48 source files. 93 findings: 13 critical, 21 high, 28 medium
 
 ### [#038] Tier rule evaluation fails with KeyError 'type' on ~170 files
 - **Priority**: P2
-- **Status**: Open
+- **Status**: Fixed
 - **Where**: `core/classifier.py` `_evaluate_tier_rules`
 - **What**: During InterAccess classification (1255 files), ~170 tier rule evaluations fail with `KeyError: 'type'`. Affected files get the default `minimal` tier instead of the correct tier. The legacy condition parser may produce conditions missing the `type` key for certain edge cases in compound `or`/`and` expressions.
 - **Fix**: Debug the legacy parser output for failing conditions. Ensure all condition dicts have `type` key. Possible cause: deeply nested `or` chains or mixed `and`/`or` with parenthesized groups.
+- **Note**: Fixed 2026-06-15: `evaluate_rule` now contains a recursive guard for nested `conditions` dicts produced by parenthesized expressions in the legacy condition parser. Tier rule evaluation failures dropped from 235 to 0.
 
 ---
 

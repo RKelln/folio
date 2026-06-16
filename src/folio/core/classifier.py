@@ -141,14 +141,24 @@ def evaluate_rule(rule: dict, context: dict) -> bool:
     A rule has ``conditions`` (list of condition dicts) and ``match``
     (``"all"`` or ``"any"``).  Returns ``True`` when the match strategy
     is satisfied.
+
+    Sub-conditions that themselves have a ``conditions`` key (nested
+    compound rules from parenthesized expressions) are evaluated
+    recursively instead of being passed to :func:`evaluate_condition`.
     """
     conditions = rule.get("conditions", [])
     match_type = rule.get("match", "all")
     if not conditions:
         return True
+
+    def _eval_one(c: dict) -> bool:
+        if "conditions" in c:
+            return evaluate_rule(c, context)
+        return evaluate_condition(c, context)
+
     if match_type == "all":
-        return all(evaluate_condition(c, context) for c in conditions)
-    return any(evaluate_condition(c, context) for c in conditions)
+        return all(_eval_one(c) for c in conditions)
+    return any(_eval_one(c) for c in conditions)
 
 
 # ── Legacy eval-string parser ─────────────────────────────────────────────────

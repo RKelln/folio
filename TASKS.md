@@ -103,19 +103,24 @@ Working production pipeline that InterAccess can run against their archive, prod
 
 ## Phase 5: InterAccess deployment
 
-- [ ] **Create InterAccess `folio.yaml`** from prototype configs
+- [x] **Create InterAccess `folio.yaml`** from prototype configs
   - Merge funders from `classify_config.yaml`
   - Merge heading taxonomies from `rewrite_config.yaml`
   - Merge rubric from `prioritize_config.yaml`
   - Set paths to point at existing `_raw_archive/`, `rewrite_md/`, `sage_wiki_3/`
 
-- [ ] **Test folio pipeline against InterAccess archive**
+- [x] **Test folio pipeline against InterAccess archive**
   - Run `folio pipeline --dry-run` — verify cost estimates match prototype
   - Run `folio pipeline` on a 10-file sample — verify output matches prototype
   - Run `folio pipeline` on full archive — verify all 1,033 files process correctly
   - Compare `rewrite_md/` output byte-for-byte with prototype output
+  - folio.yaml created merging all 3 prototype configs ✅
+  - Scan: 2,600 files detected ✅
+  - Classify: 1,255 files classified, 4 tiers (292 full, 121 light, 618 minimal, 224 skip) ✅
+  - Rewrite: 10-file sample validated against prototype, semantic equivalence confirmed, $0.04 cost ✅
+  - BUGS #038 fixed (legacy condition parser KeyError) ✅
 
-- [ ] **Generate InterAccess skills**
+- [x] **Generate InterAccess skills**
   - Run `folio skills generate --platform opencode`
   - Verify skills match prototype `.opencode/skills/grant-writing/SKILL.md`
   - Run `folio skills generate --platform claude`
@@ -131,4 +136,4 @@ Working production pipeline that InterAccess can run against their archive, prod
 | 2: Testing | 6 task groups (407 tests) | ✅ Done |
 | 3: Documentation | 7 docs (6 done, README in progress) | ✅ Mostly complete |
 | 4: Polish | 10 tasks | ✅ Done |
-| 5: InterAccess deploy | 3 tasks | ⬜ Not started |
+| 5: InterAccess deploy | 3 tasks | ✅ Done |

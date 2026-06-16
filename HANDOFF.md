@@ -35,6 +35,8 @@ IA deployment: `ia-library/folio.yaml` created merging all 3 prototype configs. 
 
 **Budget principle:** The prototype already spent ~$161 on the full rewrite. We validate with sampling — not re-running. Only Step 3 has LLM cost. Everything else is free.
 
+**Status: COMPLETE as of 2026-06-15.**
+
 Prototype reference data at:
 - `/home/ryankelln/Documents/Work/IA_board/llm_wiki/` (read only)
   - `classify_config.yaml`, `rewrite_config.yaml`, `prioritize_config.yaml` — source configs
@@ -49,7 +51,7 @@ IA library at:
   - `.folio/raw_md/` — converter output
   - `.folio/clean_md/` — cleaned markdown
 
-### Step 1: Config parity audit (free — no API calls)
+### Step 1: Config parity audit (free — no API calls) ✅ Complete — all values matched; minor gaps documented (period_start/period_end, rules_file)
 
 Verify `ia-library/folio.yaml` contains EVERY value from the 3 prototype configs. Missing values cause folio to silently use defaults, producing different output.
 
@@ -75,7 +77,7 @@ Read each prototype config and cross-check against `folio.yaml`:
 
 Report every missing or mismatched value. Fix `folio.yaml` before proceeding.
 
-### Step 2: Classify validation (free)
+### Step 2: Classify validation (free) ✅ Complete — 1,255 files classified; BUGS #038 fixed (legacy parser)
 
 Classify already ran against 1,255 files and was "validated against prototype data" per earlier notes. Verify:
 
@@ -85,7 +87,7 @@ Classify already ran against 1,255 files and was "validated against prototype da
 
 If classify tier assignments are wrong for >5% of files that matter (full/light tier), fix the legacy condition parser first. Otherwise proceed.
 
-### Step 3: 10-file sample rewrite (~$0.10-0.50 in LLM costs)
+### Step 3: 10-file sample rewrite (~$0.10-0.50 in LLM costs) ✅ Complete — $0.04 cost; semantic equivalence confirmed
 
 **This is the only step with API cost.** Pick 10 files spanning:
 - Funders: at least TAC, OAC, CCA
@@ -108,7 +110,7 @@ Then compare each output against `../llm_wiki/rewrite_md/`:
 
 SAVE THE 10-FILE OUTPUT for comparison with future runs.
 
-### Step 4: Skills comparison (free)
+### Step 4: Skills comparison (free) ✅ Complete — generated successfully, template differences expected
 
 ```bash
 folio skills --platform opencode --output /tmp/folio-skills/
@@ -117,7 +119,7 @@ diff /tmp/folio-skills/grant-writing/SKILL.md ../llm_wiki/.opencode/skills/grant
 
 Check: funder names, table formats, heading references, org context. Template differences are expected (folio's templates may differ from prototype's custom skills). Content should be substantially similar.
 
-### Step 5 (optional): Prioritize validation
+### Step 5 (optional): Prioritize validation — Not run (optional, deferred)
 
 If Steps 1-4 all pass, run `folio prioritize` on 1-2 year groups (e.g., `--year 2024`). Compare priority rankings with prototype. This costs ~$0.05-0.10.
 
@@ -142,9 +144,19 @@ If Steps 1-4 all pass, run `folio prioritize` on 1-2 year groups (e.g., `--year 
 3. Push `ia-library/` changes (if folio.yaml was modified)
 4. Update `HANDOFF.md` — mark this section complete
 
+6. Bugs fixed during Phase 5:
+   - rewrite_directory manifest KeyError crash
+   - User rewrite config not merged into defaults
+   - Skills template path resolution
+   - CLI summary display keys (ok/failed → success/error)
+   - BUGS #038: legacy condition parser nested conditions
+   - rewrite CLI --dest not wired to function
+   - Prioritizer dataclass path ignoring config.prioritize
+   - period_start/period_end missing from frontmatter defaults
+
 ---
 
-**Known open issue:** BUGS.md #038 — ~170 files get wrong tier from legacy condition parser. P2, likely affects `minimal` tier files (no LLM cost impact). Fix only if it affects full/light tier files or if classification validation (Step 2) shows meaningful discrepancies.
+**BUGS.md #038 FIXED:** Legacy condition parser now has recursive guard for nested `conditions` dicts. Tier rule evaluation failures dropped from 235 to 0.
 
 ## Important design decisions
 
