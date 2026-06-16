@@ -26,7 +26,6 @@ _TEMPLATES_DIR = _SKILLS_DIR / "templates"
 _PLATFORM_CHOICES = {"opencode", "claude", "openclaw", "hermes"}
 
 _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
-_CONDITIONAL_RE = re.compile(r"\{\?(\w+)\}(.*?)\{/(\w+)\}", re.DOTALL)
 
 
 def generate_skills(
@@ -91,7 +90,11 @@ def build_context(config: ProjectConfig) -> dict:
 
     funder_abbrev = sorted(funders.keys())[0] if funders else "FUNDER"
 
-    return {
+    wiki_type = config.wiki.type
+    wiki_enabled = wiki_type != "null"
+    agentmap_enabled = config.agentmap.enabled
+
+    ctx = {
         "org_name": org.name,
         "org_description": org.description,
         "org_abbreviation": org.abbreviation,
@@ -105,9 +108,34 @@ def build_context(config: ProjectConfig) -> dict:
         "rewrite_md_path": paths.rewrite_md,
         "wiki_path": paths.wiki_project,
         "raw_archive_path": paths.raw_archive,
-        "agentmap_enabled": str(config.agentmap.enabled).lower(),
+        "agentmap_enabled": str(agentmap_enabled).lower(),
         "agentmap_binary": config.agentmap.binary_path,
+        "wiki_enabled": wiki_enabled,
+        "wiki_enabled_str": str(wiki_enabled).lower(),
     }
+
+    sections: list[str] = []
+    sections.append(_fill_core("_tool-file-search.md", ctx))
+
+    if wiki_enabled:
+        sections.append(_fill_core("_tool-sage-wiki.md", ctx))
+
+    if agentmap_enabled:
+        sections.append(_fill_core("_tool-agentmap.md", ctx))
+
+    if wiki_enabled and agentmap_enabled:
+        sections.append("""### Combined workflow
+
+1. `sage-wiki search` → find which documents are relevant
+2. `sage-wiki query` → synthesized answer with citations
+3. `agentmap search "<heading>"` → exact section content from candidate docs
+4. Read AGENT:NAV block → jump to exact line offset with `Read(offset=s, limit=n)`
+5. If NAV block is missing or stale → `agentmap generate <file>` then fill descriptions""")
+
+    ctx["tool_sections"] = "\n\n".join(sections)
+    ctx["agentmap_step"] = "- agentmap search -> find exact section heading" if agentmap_enabled else ""
+
+    return ctx
 
 
 def _build_funder_table(config: ProjectConfig) -> str:
@@ -126,27 +154,9 @@ def _build_doc_type_table(config: ProjectConfig) -> str:
 def _fill_template(template_path: Path, context: dict) -> str:
     """Read a template file and fill {placeholders} from context dict.
 
-    Supports conditional blocks: ``{?key}...{/key}`` — included only when
-    ``context[key]`` is truthy (non-empty, not ``"false"``, not ``"0"``).
-
     Warns if any placeholder remains unfilled after substitution.
     """
     text = template_path.read_text()
-
-    def _is_truthy(key: str) -> bool:
-        val = context.get(key, "")
-        if isinstance(val, bool):
-            return val
-        return str(val).lower() not in ("", "false", "0", "none")
-
-    def _replace_conditionals(match: re.Match) -> str:
-        key = match.group(1)
-        body = match.group(2)
-        if _is_truthy(key):
-            return body
-        return ""
-
-    text = _CONDITIONAL_RE.sub(_replace_conditionals, text)
 
     def _replace(match: re.Match) -> str:
         key = match.group(1)

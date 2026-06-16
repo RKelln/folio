@@ -7,10 +7,7 @@ How to draft grant application text using {org_name}'s historical archive as pre
 Always search the archive before drafting:
 
 1. Identify the funder and question (e.g. "OAC Community Engagement section")
-2. Find past answers with the two-tool pipeline:
-   - `sage-wiki search` → find relevant documents
-{?agentmap_enabled}   - `agentmap search` → find the section heading within those docs
-{/agentmap_enabled}
+2. Find past answers using available search tools
 3. Present past answers organized by year
 4. Draft the new answer grounded in precedent
 
