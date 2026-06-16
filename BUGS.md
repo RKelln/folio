@@ -111,9 +111,9 @@ Each has a priority: **P0** (blocking), **P1** (important), **P2** (nice-to-have
 
 ### [#016] agentmap as Python library
 - **Priority**: P2
-- **Status**: Not started
+- **Status**: Won't Fix
 - **What**: agentmap is a Go binary (external dependency). Porting its heading extraction + fuzzy matching (~500 lines of Go) to Python would remove one external dependency.
-- **Recommendation**: Evaluate after core pipeline ships.
+- **Decision**: Keep agentmap as a standalone tool. Better to invest in making sure folio skills properly teach agents the full agentmap workflow (generate → rewrite descriptions → update → check) for creating AGENT:NAV table-of-contents blocks in rewritten documents.
 
 ### [#016b] French language detection
 - **Priority**: P3
