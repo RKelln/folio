@@ -698,6 +698,7 @@ def _run_prioritize(config: ProjectConfig) -> dict:
 
 
 def _run_wiki(config: ProjectConfig) -> dict:
+    import os
     from folio.adapters.wiki import get_wiki_backend
 
     wiki_type = config.wiki.type if hasattr(config.wiki, "type") else "null"
@@ -738,6 +739,11 @@ def _run_wiki(config: ProjectConfig) -> dict:
         if llm and hasattr(llm, "provider"):
             fetch_model = getattr(llm, "fast_model", None)
             write_model = getattr(llm, "quality_model", None)
+            # Ensure the API key env var is set in the current process so
+            # the sage-wiki subprocess inherits it for ${ENV_VAR} expansion.
+            api_key = os.environ.get(llm.api_key_env, "")
+            if api_key:
+                os.environ.setdefault(llm.api_key_env, api_key)
             wiki_config["api"] = {
                 "provider": "openai-compatible" if "deepseek" in str(llm.base_url) else llm.provider,
                 "base_url": llm.base_url,
