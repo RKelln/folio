@@ -757,7 +757,7 @@ def _run_wiki(config: ProjectConfig) -> dict:
                 "query": write_model or fetch_model or "deepseek-chat",
             }
             wiki_config["embed"] = {"provider": "auto"}
-        backend.init(wiki_dir, wiki_config)
+        backend.init(wiki_dir, wiki_config, source_dir=rewrite_dir)
     except Exception as exc:
         return {
             "stage": "wiki",
@@ -770,7 +770,7 @@ def _run_wiki(config: ProjectConfig) -> dict:
     if rewrite_dir.is_dir():
         md_files = list(rewrite_dir.glob("*.md"))
         if md_files:
-            print(f"  Adding {len(md_files)} documents to wiki...")
+            print(f"  Wiki linked to {len(md_files)} documents in {rewrite_dir}")
             backend.add_documents(md_files)
 
     print(f"  Compiling wiki...")
