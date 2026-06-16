@@ -8,6 +8,8 @@ Type values are normalized (support material → support_material, etc.).
 Period values are normalized to YYYY or YYYY–YYYY format.
 """
 
+from __future__ import annotations
+
 import datetime
 import re
 

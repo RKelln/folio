@@ -4,6 +4,8 @@ Reads templates from skills/core/ and skills/templates/ and fills
 {placeholders} from the project configuration (folio.yaml).
 """
 
+from __future__ import annotations
+
 import logging
 import re
 from pathlib import Path

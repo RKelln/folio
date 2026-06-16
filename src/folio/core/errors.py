@@ -1,5 +1,7 @@
 """Shared error and status types used across all pipeline stages."""
 
+from __future__ import annotations
+
 from enum import Enum
 
 

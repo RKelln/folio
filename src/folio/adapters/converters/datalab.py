@@ -4,6 +4,8 @@ Uses the Datalab pipeline API to convert PDF/DOCX/XLSX to markdown.
 Requires DATALAB_API_KEY environment variable and datalab-python-sdk.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from folio.adapters.converters.base import Converter

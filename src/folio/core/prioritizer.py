@@ -14,6 +14,8 @@ Usage::
     manifest = prioritize_directory(Path("rewrite_md"), config, dry_run=True)
 """
 
+from __future__ import annotations
+
 import json
 import random
 import re

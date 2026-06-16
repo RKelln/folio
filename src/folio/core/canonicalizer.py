@@ -7,6 +7,8 @@ Optionally uses LLM for ambiguous cases.
 All patterns are driven by configuration — no hardcoded org-specific rules.
 """
 
+from __future__ import annotations
+
 import logging
 import re
 import shutil

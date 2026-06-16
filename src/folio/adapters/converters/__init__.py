@@ -7,6 +7,8 @@ Pluggable interface with implementations for:
 - Pandoc (universal, lowest quality)
 """
 
+from __future__ import annotations
+
 from folio.adapters.converters.base import Converter
 from folio.adapters.converters.datalab import DatalabConverter
 

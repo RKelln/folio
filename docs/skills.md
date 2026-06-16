@@ -56,7 +56,7 @@ Each platform directory contains platform-specific scaffolding. The generator co
 
 The generator reads template files from `skills/core/` and substitutes `{placeholders}` using Python's `str.format()`-style replacement. Placeholders are matched with the regex `\{(\w+)\}`. If a placeholder has no matching key in the context dictionary, it is left in the output unchanged and a warning is logged.
 
-Context is built by `_build_context()` in `src/folio/core/skills.py:63`, which reads from the `ProjectConfig` object (parsed from `folio.yaml`).
+Context is built by `build_context()` in `src/folio/core/skills.py:65`, which reads from the `ProjectConfig` object (parsed from `folio.yaml`).
 
 ## Supported Platforms
 
@@ -182,7 +182,7 @@ Use `{placeholder}` syntax to reference values from `folio.yaml`. Available plac
 1. Add the platform name to `_PLATFORM_CHOICES` in `src/folio/core/skills.py:23`.
 2. Write a `_generate_{platform}()` function following the pattern of existing generators:
    - Accept `(config, output_dir, warnings)`.
-   - Build context with `_build_context(config)`.
+   - Build context with `build_context(config)`.
    - Fill core templates with `_fill_core("template-name.md", ctx)`.
    - Write output files with `_write_file(path, content)`.
    - Return a list of written paths.
@@ -208,7 +208,7 @@ No Python code changes are needed for per-org customization.
 
 ## Context Variables
 
-These placeholders are available in all core templates and are filled from `ProjectConfig` (parsed from `folio.yaml`). They are built by `_build_context()` in `src/folio/core/skills.py:63`.
+These placeholders are available in all core templates and are filled from `ProjectConfig` (parsed from `folio.yaml`). They are built by `build_context()` in `src/folio/core/skills.py:65`.
 
 ### Organization identity
 

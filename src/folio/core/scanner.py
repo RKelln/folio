@@ -5,6 +5,8 @@ from filenames, estimates pipeline costs and processing time.
 Produces a scan report for informed pipeline planning.
 """
 
+from __future__ import annotations
+
 import re
 from collections import defaultdict
 from pathlib import Path

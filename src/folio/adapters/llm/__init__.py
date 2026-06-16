@@ -5,6 +5,8 @@ is OpenAI-compatible (covers DeepSeek, OpenAI, and any
 OpenAI-compatible API).
 """
 
+from __future__ import annotations
+
 from folio.adapters.llm.base import LLMProvider
 from folio.adapters.llm.openai_compatible import OpenAICompatibleProvider
 

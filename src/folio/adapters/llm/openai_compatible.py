@@ -4,6 +4,8 @@ Covers DeepSeek, OpenAI, and any API implementing the
 OpenAI chat completions interface.
 """
 
+from __future__ import annotations
+
 import os
 
 from folio.adapters.llm.base import LLMProvider

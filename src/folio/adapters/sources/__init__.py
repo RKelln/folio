@@ -6,6 +6,8 @@ Pluggable interface for pulling documents from different sources:
 - Dropbox
 """
 
+from __future__ import annotations
+
 from folio.adapters.sources.base import DocumentSource
 from folio.adapters.sources.local import LocalSource
 

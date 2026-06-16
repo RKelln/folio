@@ -4,6 +4,8 @@ Loads the project config (folio.yaml) and merges it with built-in defaults.
 Resolves paths, validates against the schema, and returns a typed config object.
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

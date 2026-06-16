@@ -1,5 +1,7 @@
 """Local filesystem document source (default)."""
 
+from __future__ import annotations
+
 import datetime
 import shutil
 from pathlib import Path

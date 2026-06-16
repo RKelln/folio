@@ -3,6 +3,8 @@
 Tests the `main(argv)` pattern used by every folio CLI module.
 """
 
+from __future__ import annotations
+
 import importlib
 import json
 import pytest

@@ -5,6 +5,8 @@ and metadata through the pipeline. Used for checkpoint/resume and
 inter-stage communication.
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
 from datetime import datetime, timezone
