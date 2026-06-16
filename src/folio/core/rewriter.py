@@ -503,16 +503,16 @@ def _add_metadata_only(content: str, entry: dict) -> str:
         return f"{fm}\n\n# {title}\n\n{content}\n"
 
 
-# ── LLM client ────────────────────────────────────────────────────────────────
+# ── LLM provider ──────────────────────────────────────────────────────────────
 
-def _create_client(config: Any) -> object:
-    """Create an OpenAI-compatible client from config.
+def _create_provider(config: Any):
+    """Create an LLM provider from config.
 
     Args:
         config: May be a ``ProjectConfig`` dataclass or a dict with
             ``base_url`` and ``api_key_env`` keys.
     """
-    from openai import OpenAI
+    from folio.adapters.llm.openai_compatible import OpenAICompatibleProvider
 
     if hasattr(config, "llm"):
         base_url = config.llm.base_url
@@ -521,15 +521,11 @@ def _create_client(config: Any) -> object:
         base_url = config.get("base_url", "https://api.deepseek.com")
         api_key_env = config.get("api_key_env", "DEEPSEEK_API_KEY")
 
-    api_key = os.environ.get(api_key_env, "")
-    if not api_key:
-        raise RuntimeError(f"Environment variable {api_key_env} not set")
-
-    return OpenAI(base_url=base_url, api_key=api_key)
+    return OpenAICompatibleProvider(base_url=base_url, api_key_env=api_key_env)
 
 
 def _call_llm(
-    client: object,
+    provider,
     model: str,
     system_prompt: str,
     user_prompt: str,
@@ -538,33 +534,25 @@ def _call_llm(
     reasoning_effort: str | None = None,
     thinking_enabled: bool | None = None,
 ) -> dict:
-    """Call the LLM API and return response text + token usage.
+    """Call the LLM API via provider and return response text + token usage.
 
     Returns:
         Dict with keys ``text``, ``input_tokens``, ``output_tokens``, ``total_tokens``.
     """
-    kwargs: dict[str, Any] = dict(
+    text, usage = provider.complete_with_usage(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
         model=model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
         temperature=temperature,
         max_tokens=max_tokens,
+        reasoning_effort=reasoning_effort,
+        thinking_enabled=thinking_enabled,
     )
-    model_lower = model.lower()
-    if reasoning_effort and model_lower.startswith("deepseek"):
-        kwargs["reasoning_effort"] = reasoning_effort
-    if thinking_enabled is not None and model_lower.startswith("deepseek"):
-        kwargs["extra_body"] = {"thinking": {"type": "enabled" if thinking_enabled else "disabled"}}
-
-    response = client.chat.completions.create(**kwargs)
-    usage = getattr(response, 'usage', None)
     return {
-        "text": response.choices[0].message.content or "",
-        "input_tokens": usage.prompt_tokens if usage else 0,
-        "output_tokens": usage.completion_tokens if usage else 0,
-        "total_tokens": usage.total_tokens if usage else 0,
+        "text": text,
+        "input_tokens": usage.get("input_tokens", 0),
+        "output_tokens": usage.get("output_tokens", 0),
+        "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
     }
 
 
@@ -575,7 +563,7 @@ def _process_single(
     config: Any,
     rewrite_config: dict,
     tier: str,
-    client: object | None = None,
+    provider=None,
     force_api: bool = False,
 ) -> dict:
     """Process a single file through the LLM pipeline.
@@ -588,7 +576,7 @@ def _process_single(
         config: ``ProjectConfig`` or dict with LLM config.
         rewrite_config: Rewrite configuration dict (tier prompts, thresholds, etc.).
         tier: Canonical short tier name (full/light/minimal).
-        client: Pre-created OpenAI client. Created from config if None.
+        provider: Pre-created LLM provider. Created from config if None.
         force_api: If True, send to LLM even if file is undersized.
 
     Returns:
@@ -643,8 +631,8 @@ def _process_single(
             result["elapsed_seconds"] = time.perf_counter() - start_time
             return result
 
-        if client is None:
-            client = _create_client(config)
+        if provider is None:
+            provider = _create_provider(config)
 
         # Build frontmatter instructions
         fm_cfg = rewrite_config.get("frontmatter", {})
@@ -682,7 +670,7 @@ def _process_single(
                 thinking = None
 
         response = _call_llm(
-            client,
+            provider,
             model,
             prompts["system"],
             prompts["user"],
@@ -757,7 +745,7 @@ def rewrite_file(
         tier: Processing tier name (``"full"``, ``"light"``, ``"minimal"``,
             or their aliases).
         llm_provider: Optional ``LLMProvider`` instance. If provided, overrides
-            the default client construction from config.
+            the default provider construction from config.
         rewrite_config: Rewrite configuration dict. Uses ``DEFAULT_REWRITE_CONFIG``
             if not provided.
 
@@ -780,15 +768,12 @@ def rewrite_file(
         rewrite_config = _deep_merge_rewrite(rewrite_config, user_rewrite)
 
     tier_norm = _normalize_tier(tier)
-    client = None
+    provider = None
 
     if llm_provider is not None:
-        if hasattr(llm_provider, '_client') and llm_provider._client is not None:
-            client = llm_provider._client
-        else:
-            client = _create_client(config)
+        provider = llm_provider
 
-    return _process_single(filepath, config, rewrite_config, tier_norm, client=client, force_api=True)
+    return _process_single(filepath, config, rewrite_config, tier_norm, provider=provider, force_api=True)
 
 
 def rewrite_directory(
@@ -800,7 +785,7 @@ def rewrite_directory(
     resume: bool = True,
     dry_run: bool = False,
     rewrite_config: dict | None = None,
-    client: object | None = None,
+    provider=None,
     dest: Path | None = None,
 ) -> dict:
     """Rewrite all files in a directory, using manifest for tier selection and resume.
@@ -819,7 +804,7 @@ def rewrite_directory(
         dry_run: If True, print a summary without making any API calls.
         rewrite_config: Rewrite configuration dict. Uses ``DEFAULT_REWRITE_CONFIG``
             if not provided.
-        client: Pre-created OpenAI client. Created from config if None.
+        provider: Pre-created LLM provider. Created from config if None.
         dest: Destination directory for rewritten output. Overrides the
             ``output_dir`` from rewrite config.
 
@@ -925,9 +910,9 @@ def rewrite_directory(
             "wall_seconds": 0.0,
         }
 
-    # Create client if not provided
-    if client is None:
-        client = _create_client(config)
+    # Create provider if not provided
+    if provider is None:
+        provider = _create_provider(config)
 
     req_per_sec = proc_cfg.get("requests_per_second", 5)
     rate_limiter = RateLimiter(req_per_sec)
@@ -941,7 +926,7 @@ def rewrite_directory(
                 time.sleep(2 * (2 ** (attempt - 1)))
             rate_limiter.wait()
             try:
-                result = _process_single(filepath, config, rewrite_config, entry["tier"], client=client)
+                result = _process_single(filepath, config, rewrite_config, entry["tier"], provider=provider)
             except Exception:
                 result = None
             if result and result.get("status") in ("success", "local_metadata", "skipped", "corrupted", "empty"):
