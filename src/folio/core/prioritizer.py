@@ -945,7 +945,7 @@ def prioritize_directory(
                 "elapsed_seconds": round(result.get("elapsed_seconds", 0), 2),
             }
             manifest["summary"] = summary
-            save_manifest(manifest_path, manifest)
+            save_manifest(manifest, manifest_path)
 
             summary["total_input_tokens"] = summary.get(
                 "total_input_tokens", 0
