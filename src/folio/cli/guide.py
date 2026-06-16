@@ -1,13 +1,4 @@
 """folio guide — agent-facing usage guide and reference.
-
-Usage:
-    folio guide                  # Full guide
-    folio guide --topic config   # Configuration reference only
-    folio guide --topic pipeline # Pipeline stages only
-    folio guide --topic orgs     # New org onboarding only
-    folio guide --topic recipes  # Common workflows
-    folio guide --dry-run        # Preview without displaying guide
-    folio guide --json           # Structured output
 """
 
 from __future__ import annotations
@@ -16,6 +7,7 @@ import argparse
 import json
 import re
 import sys
+from typing import Any
 
 from folio import __version__
 
@@ -368,7 +360,7 @@ ENVIRONMENT VARIABLES (.env)
   DATALAB_API_KEY          IBM Datalab converter API key
 """
 
-_SELECTIONS = {
+_SELECTIONS: dict[str, str | None] = {
     "config": _CONFIG_EXTENDED,
     "config-extended": _CONFIG_EXTENDED,
     "pipeline": None,
@@ -386,36 +378,90 @@ def _extract_sections(text: str) -> list[str]:
     return sections
 
 
+def _extract_sections_with_content(text: str) -> list[dict[str, str]]:
+    """Split guide text into sections with titles and content."""
+    lines = text.split("\n")
+    result: list[dict[str, str]] = []
+    current_title: str | None = None
+    current_lines: list[str] = []
+
+    for line in lines:
+        m = re.match(r"^([A-Z][A-Z /]+)$", line)
+        if m and current_title is None:
+            current_title = m.group(1)
+            continue
+        if m and current_title is not None:
+            result.append({"title": current_title, "content": "\n".join(current_lines).strip()})
+            current_title = m.group(1)
+            current_lines = []
+            continue
+        if current_title is not None:
+            current_lines.append(line)
+
+    if current_title is not None:
+        result.append({"title": current_title, "content": "\n".join(current_lines).strip()})
+
+    return result
+
+
+def _search_text(text: str, keyword: str) -> list[str]:
+    """Return lines from text containing keyword (case-insensitive)."""
+    keyword_lower = keyword.lower()
+    matches = []
+    for line in text.split("\n"):
+        if keyword_lower in line.lower():
+            matches.append(line.strip())
+    return matches
+
+
 def main(argv: list[str] | None = None) -> None:
+    topics_available = sorted(_SELECTIONS.keys())
+
     parser = argparse.ArgumentParser(
         prog="folio guide",
         description="Display the folio agent usage guide and reference.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  folio guide\n"
-            "  folio guide --topic config\n"
+            "  folio guide                        # Full guide\n"
+            "  folio guide config                 # Configuration reference\n"
+            "  folio guide --topic config         # Same as positional\n"
             "  folio guide --topic config-extended\n"
-            "  folio guide --dry-run\n"
-            "  folio guide --json\n"
-            "  folio guide --topic recipes --json\n"
+            "  folio guide --topic pipeline\n"
+            "  folio guide --search LLM           # Search for keyword\n"
+            "  folio guide --dry-run              # List available topics\n"
+            "  folio guide --json                 # Structured JSON output\n"
+            "  folio guide config --json          # Topic as JSON\n"
+            "  folio guide --dry-run --json       # Topic list as JSON\n"
         ),
     )
 
     parser.add_argument(
+        "topic_pos",
+        nargs="?",
+        metavar="TOPIC",
+        help=f"Topic to display ({', '.join(topics_available)})",
+    )
+    parser.add_argument(
         "--topic", "-t",
-        help="Display a specific topic (config, pipeline, orgs, recipes, config-extended)",
+        dest="topic",
+        help=f"Display a specific topic ({', '.join(topics_available)})",
+    )
+    parser.add_argument(
+        "--search", "-k",
+        dest="search_keyword",
+        help="Search the guide for a keyword (case-insensitive)",
     )
     parser.add_argument(
         "--dry-run", "-n",
         action="store_true",
-        help="Preview which guide topic would be displayed without outputting content",
+        help="List available topics without printing full guide content",
     )
     parser.add_argument(
         "--json",
         action="store_true",
         dest="json_output",
-        help="Output guide structure as JSON",
+        help="Output guide structure as structured JSON",
     )
     parser.add_argument(
         "--version", action="version",
@@ -424,36 +470,71 @@ def main(argv: list[str] | None = None) -> None:
 
     args = parser.parse_args(argv)
 
-    topic = args.topic
+    topic: str | None = args.topic or args.topic_pos
 
+    # --dry-run: list topics only, no full content
     if args.dry_run:
-        if topic:
-            print(f"Would display guide for topic: {topic}")
+        if args.json_output:
+            print(json.dumps({
+                "topics": topics_available,
+                "dry_run": True,
+            }, indent=2))
         else:
-            print("Would display guide (full reference)")
+            if topic:
+                print(f"Available topics: {', '.join(topics_available)}")
+                print(f"Selected topic: {topic}")
+            else:
+                print(f"Available topics: {', '.join(topics_available)}")
         return
 
+    # --search: find keyword in guide text
+    if args.search_keyword:
+        search_text = _SELECTIONS.get(topic, _GUIDE) if topic and topic in _SELECTIONS else _GUIDE
+        if isinstance(search_text, str):
+            matches = _search_text(search_text, args.search_keyword)
+        else:
+            matches = _search_text(_GUIDE, args.search_keyword)
+
+        if args.json_output:
+            print(json.dumps({
+                "search": args.search_keyword,
+                "topic": topic or "full",
+                "matches": matches,
+            }, indent=2))
+        else:
+            if matches:
+                for line in matches:
+                    print(line)
+            else:
+                print(f"No matches found for '{args.search_keyword}'", file=sys.stderr)
+        return
+
+    # --json: structured output (no human-readable text printed)
     if args.json_output:
-        result: dict = {}
+        result: dict[str, Any] = {}
+        result["topics"] = topics_available
+
         if topic and topic in _SELECTIONS:
             result["topic"] = topic
             section_text = _SELECTIONS[topic]
             if section_text:
-                result["sections"] = _extract_sections(section_text)
+                result["sections"] = _extract_sections_with_content(section_text)
             else:
-                main_sections = _extract_sections(_GUIDE)
-                result["sections"] = ["(covered in main guide, see folio guide --json)"]
-                result["main_guide_sections"] = main_sections
+                main_sections = _extract_sections_with_content(_GUIDE)
+                result["sections"] = main_sections
+                result["note"] = f"Topic '{topic}' is covered in the main guide"
         elif topic:
             print(f"Unknown topic: {topic}", file=sys.stderr)
-            print(f"Available topics: {', '.join(sorted(_SELECTIONS))}", file=sys.stderr)
+            print(f"Available topics: {', '.join(topics_available)}", file=sys.stderr)
             sys.exit(1)
         else:
             result["topic"] = "full"
-            result["sections"] = _extract_sections(_GUIDE)
+            result["sections"] = _extract_sections_with_content(_GUIDE)
+
         print(json.dumps(result, indent=2))
         return
 
+    # Human-readable output
     if topic and topic in _SELECTIONS:
         section = _SELECTIONS[topic]
         if section:
@@ -465,7 +546,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if topic:
         print(f"Unknown topic: {topic}", file=sys.stderr)
-        print(f"Available topics: {', '.join(sorted(_SELECTIONS))}", file=sys.stderr)
+        print(f"Available topics: {', '.join(topics_available)}", file=sys.stderr)
         sys.exit(1)
 
     print(_GUIDE)

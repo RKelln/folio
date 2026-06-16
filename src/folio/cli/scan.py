@@ -29,6 +29,7 @@ def main(argv: list[str] | None = None) -> None:
         epilog=(
             "Examples:\n"
             "  folio scan --source ./archive/\n"
+            "  folio scan --source ./archive/ --dry-run\n"
             "  folio scan --source ./archive/ --json\n"
             "  folio scan --source ./archive/ --output scan-report.json\n"
             "  folio scan --source ./archive/ --json | jq .estimated_costs\n"

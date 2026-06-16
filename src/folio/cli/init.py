@@ -110,14 +110,29 @@ def main(argv: list[str] | None = None) -> None:
         org_name=args.name,
         funders=funders,
         raw_archive=args.raw_archive,
-        dry_run=args.dry_run or args.json_output,
+        dry_run=args.dry_run,
     )
 
-    if args.json_output:
-        print(json.dumps(result.get("merged_config", {}), indent=2, default=str))
-        return
-
     if args.dry_run:
+        files_would_write = [str(Path(args.output).resolve())]
+        if args.guided:
+            files_would_write.append(str(Path(".env").resolve()))
+        config_values = result.get("merged_config", {})
+
+        if args.json_output:
+            print(json.dumps({
+                "files_written": files_would_write,
+                "config_values": config_values,
+                "dry_run": True,
+            }, indent=2, default=str))
+            return
+
+        print("Dry run — no files will be written.")
+        print()
+        print("Files that would be created:")
+        for f in files_would_write:
+            print(f"  {f}")
+        print()
         if args.guided:
             mode = "guided"
         elif args.profile:
@@ -126,9 +141,8 @@ def main(argv: list[str] | None = None) -> None:
             mode = f"from-scan:{args.from_scan}"
         else:
             mode = "minimal"
-        print(f"Would write configuration to {result['config_path']}")
-        print(f"  Mode: {mode}")
-        merged = result.get("merged_config", {})
+        print(f"Mode: {mode}")
+        merged = config_values
         org_name = merged.get("org", {}).get("name", "N/A")
         print(f"  Organization: {org_name}")
         funders_cfg = merged.get("funders", {})
@@ -139,6 +153,21 @@ def main(argv: list[str] | None = None) -> None:
             print(f"  Doc types: {', '.join(doc_types)}")
         for w in result.get("warnings", []):
             print(f"  Warning: {w}")
+        return
+
+    files_written = [str(Path(args.output).resolve())]
+    env_keys_written: list[str] = []
+    if args.guided:
+        files_written.append(str(Path(".env").resolve()))
+        env_keys_written.append("DEEPSEEK_API_KEY")
+
+    if args.json_output:
+        print(json.dumps({
+            "files_written": files_written,
+            "profile": result.get("profile"),
+            "warnings": result.get("warnings", []),
+            "env_keys_written": env_keys_written,
+        }, indent=2))
         return
 
     print(f"Configuration written to {result['config_path']}")

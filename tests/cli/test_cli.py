@@ -399,12 +399,12 @@ def test_guide_topic_unknown(capsys):
 
 
 def test_guide_dry_run(capsys):
-    """guide --dry-run prints 'Would display' and does not output full guide."""
+    """guide --dry-run prints topic list and does not output full guide."""
     from folio.cli.guide import main
 
     main(["--dry-run"])
     captured = capsys.readouterr()
-    assert "Would display" in captured.out
+    assert "Available topics" in captured.out
     assert "QUICK START FOR AGENTS" not in captured.out
 
 

@@ -74,8 +74,21 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.dry_run:
         md_files = sorted(wiki_dir.rglob("*.md"))
-        print(f"Would audit wiki at {wiki_dir}")
-        print(f"  Would scan {len(md_files)} .md files")
+        checks = [
+            "dead_links",
+            "thin_articles",
+            "near_duplicates",
+            "missing_sections",
+            "suspicious_concepts",
+            "stale_content",
+        ]
+        result = {"files": len(md_files), "checks": checks, "dry_run": True}
+        if args.json_output:
+            print(json.dumps(result, indent=2))
+            return
+        print(f"Scanned {len(md_files)} files.")
+        print(f"Would check: {', '.join(checks)}.")
+        print("Add --json for machine output.")
         return
 
     config_path = args.config
