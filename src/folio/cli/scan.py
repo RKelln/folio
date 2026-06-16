@@ -116,9 +116,6 @@ def main(argv: list[str] | None = None) -> None:
         print(json.dumps(output_data, indent=2, default=str))
         return
 
-    if args.output and not args.json_output:
-        pass
-
     total = report.get("total_files", 0)
     by_ext = report.get("by_extension", {})
     by_funder = report.get("by_funder", {})

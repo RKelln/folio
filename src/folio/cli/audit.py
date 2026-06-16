@@ -97,9 +97,7 @@ def main(argv: list[str] | None = None) -> None:
         config = load_project_config(config_path)
         if config.audit:
             audit_cfg = getattr(config, "audit", None)
-            if isinstance(audit_cfg, dict):
-                pass
-            else:
+            if not isinstance(audit_cfg, dict):
                 audit_cfg = None
 
     if args.required_sections:

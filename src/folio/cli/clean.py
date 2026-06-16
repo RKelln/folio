@@ -82,9 +82,7 @@ def main(argv: list[str] | None = None) -> None:
     config = load_project_config(config_path) if Path(config_path).exists() else None
 
     cleaner_config = config.classification if config and hasattr(config, "classification") else {}
-    if isinstance(cleaner_config, dict):
-        cleaner_config = cleaner_config
-    else:
+    if not isinstance(cleaner_config, dict):
         cleaner_config = {}
 
     if args.file:

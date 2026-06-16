@@ -368,15 +368,6 @@ _SELECTIONS: dict[str, str | None] = {
     "recipes": None,
 }
 
-_SECTION_PATTERN = re.compile(r"^([A-Z][A-Z /]+)\n─+$", re.MULTILINE)
-
-
-def _extract_sections(text: str) -> list[str]:
-    sections = []
-    for match in _SECTION_PATTERN.finditer(text):
-        sections.append(match.group(1))
-    return sections
-
 
 def _extract_sections_with_content(text: str) -> list[dict[str, str]]:
     """Split guide text into sections with titles and content."""
