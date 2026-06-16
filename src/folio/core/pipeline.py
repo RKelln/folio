@@ -728,8 +728,29 @@ def _run_wiki(config: ProjectConfig) -> dict:
     print(f"  Initializing wiki project at {wiki_dir}...")
     try:
         wiki_config = {
+            "version": 1,
+            "project": config.org.name,
             "pack": config.wiki.sage_wiki_pack if hasattr(config.wiki, "sage_wiki_pack") else "arts-org",
+            "sources": [{"path": "raw", "type": "auto", "watch": False}],
+            "output": "wiki",
         }
+        llm = config.llm
+        if llm and hasattr(llm, "provider"):
+            fetch_model = getattr(llm, "fast_model", None)
+            write_model = getattr(llm, "quality_model", None)
+            wiki_config["api"] = {
+                "provider": "openai-compatible" if "deepseek" in str(llm.base_url) else llm.provider,
+                "base_url": llm.base_url,
+                "api_key": f"${{{llm.api_key_env}}}",
+            }
+            wiki_config["models"] = {
+                "summarize": fetch_model or write_model or "deepseek-chat",
+                "extract": fetch_model or write_model or "deepseek-chat",
+                "write": write_model or fetch_model or "deepseek-chat",
+                "lint": fetch_model or write_model or "deepseek-chat",
+                "query": write_model or fetch_model or "deepseek-chat",
+            }
+            wiki_config["embed"] = {"provider": "auto"}
         backend.init(wiki_dir, wiki_config)
     except Exception as exc:
         return {
