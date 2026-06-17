@@ -36,6 +36,10 @@ datalab_md/
 .pytest_cache/
 .coverage
 htmlcov/
+coverage.json
+
+# Local agent config
+.opencode/
 
 # Org-specific archive deployments (separate repos)
 ia-library/
