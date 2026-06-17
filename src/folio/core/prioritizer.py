@@ -31,7 +31,7 @@ from folio.core.frontmatter import (
     parse_frontmatter,
     update_frontmatter,
 )
-from folio.core.manifest import load_manifest, save_manifest
+from folio.core.manifest import load_manifest, save_manifest, update_file, recalculate_summary
 from folio.core.throttle import RateLimiter
 
 # ── Default configuration ──────────────────────────────────────────────────────
@@ -963,4 +963,16 @@ def prioritize_directory(
                 summary["success"] = summary.get("success", 0) + 1
 
     summary["wall_seconds"] = time.perf_counter() - wall_start
+
+    # Sync priority data back into the canonical manifest (manifest.json)
+    # so recalculate_summary can include prioritize costs and priorities.
+    canonical_path = directory / "manifest.json"
+    if canonical_path.exists():
+        canonical = load_manifest(canonical_path)
+        for group_key, group_result in manifest.get("completed_groups", {}).items():
+            for fname, priority in group_result.get("priorities", {}).items():
+                update_file(canonical, fname, priority=int(priority))
+        recalculate_summary(canonical)
+        save_manifest(canonical, canonical_path)
+
     return manifest

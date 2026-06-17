@@ -24,6 +24,16 @@ class OpenAICompatibleProvider(LLMProvider):
         self._api_key = api_key or (
             os.environ.get(api_key_env, '') if api_key_env else ''
         )
+        self._client = None
+
+    def _get_client(self):
+        if self._client is None:
+            from openai import OpenAI
+            self._client = OpenAI(
+                base_url=self._base_url,
+                api_key=self._api_key,
+            )
+        return self._client
 
     def complete(
         self,
@@ -48,12 +58,7 @@ class OpenAICompatibleProvider(LLMProvider):
         max_tokens: int | None = None,
         **extra_params,
     ) -> tuple[str, dict]:
-        from openai import OpenAI
-
-        client = OpenAI(
-            base_url=self._base_url,
-            api_key=self._api_key,
-        )
+        client = self._get_client()
         messages = [
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_prompt},

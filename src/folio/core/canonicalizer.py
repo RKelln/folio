@@ -120,6 +120,12 @@ DEFAULT_CANONICALIZE_CONFIG: dict = {
     # share at least this Jaccard similarity on word tokens.
     "dedup_name_threshold": 0.25,
 
+    # Maximum number of files to run all-pairs dedup on.  O(n^2) with
+    # SequenceMatcher — 5000 files = ~12.5M comparisons.  If exceeded, dedup
+    # is skipped with a warning.  Set to 0 or a very high number to force
+    # dedup regardless.
+    "max_files_for_dedup": 2000,
+
     # Minimum content length in chars for a submission file to be considered
     # authoritative (shorter files may be corrupted and demoted).
     "min_content_length": 800,
@@ -233,6 +239,16 @@ def _detect_duplicates(files: list[Path], config: dict) -> list[tuple[Path, Path
 
     Returns a list of ``(path_a, path_b)`` pairs that pass both filters.
     """
+    max_files = config.get("max_files_for_dedup", 2000)
+    if max_files > 0 and len(files) > max_files:
+        logger.warning(
+            "Skipping dedup: %d files exceeds max_files_for_dedup (%d). "
+            "Increase max_files_for_dedup in canonicalize config to force dedup.",
+            len(files),
+            max_files,
+        )
+        return []
+
     content_threshold = config.get("dedup_content_threshold", 0.70)
     name_threshold = config.get("dedup_name_threshold", 0.25)
 

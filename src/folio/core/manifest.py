@@ -3,6 +3,12 @@
 The manifest is a JSON file tracking per-file status, tier, costs,
 and metadata through the pipeline. Used for checkpoint/resume and
 inter-stage communication.
+
+This module is the CANONICAL manifest implementation.  Other stages may
+extend the schema (e.g. ``"stages"`` in pipeline.py, ``"completed_groups"``
+in prioritizer.py), but the base ``"files"`` and ``"summary"`` keys must
+remain as defined here so ``recalculate_summary`` and other utilities
+work across all consumers.
 """
 
 from __future__ import annotations
@@ -10,6 +16,41 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import TypedDict
+
+
+class FileEntry(TypedDict, total=False):
+    """Per-file entry in the manifest ``files`` dict."""
+    status: str
+    tier: str
+    funder: str
+    doc_types: list[str]
+    rewrite_cost_usd: float
+    prioritize_cost_usd: float
+    priority: int
+
+
+class ManifestSummary(TypedDict, total=False):
+    """Aggregated counts in the manifest ``summary`` dict."""
+    total_files: int
+    by_status: dict[str, int]
+    by_tier: dict[str, int]
+    by_funder: dict[str, int]
+    total_cost_usd: float
+
+
+class Manifest(TypedDict, total=False):
+    """Canonical manifest schema.
+
+    Extension keys (``stages``, ``completed_groups``, etc.) may be
+    added by individual pipeline stages, but the base ``files`` and
+    ``summary`` keys must match this schema.
+    """
+    project: str
+    generated: str
+    updated: str
+    files: dict[str, FileEntry]
+    summary: ManifestSummary
 
 
 def create_manifest(project_name: str = "folio") -> dict:
