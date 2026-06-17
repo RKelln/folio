@@ -30,6 +30,7 @@ _COMMANDS = {
     "guide": "folio.cli.guide",
     "teach": "folio.cli.teach",
     "convert": "folio.cli.convert",
+    "repack": "folio.cli.repack",
     "test-skills": "folio.cli.test_skills",
 }
 

@@ -2,9 +2,26 @@
 
 ## Purpose
 
-folio builds a knowledge base from an organization's document archive (grant applications, reports, budgets, exhibition records) that AI coding agents can use to write grants, answer questions, and understand organizational patterns. Designed for arts organizations but works for any document-heavy non-profit.
+folio builds a knowledge base from an organization's document archive (grant applications, reports, budgets, exhibition records) that AI coding agents can use to write grants, answer questions, and understand organizational patterns.
 
-**If you are helping a new organization set up folio, start with README.md** — it has the quickstart. This file covers how to build and modify tooling in this repo.
+## Which file to read
+
+| You are… | Read |
+|-----------|------|
+| An agent helping a new org set up folio | [docs/getting-started.md](docs/getting-started.md) — full walkthrough |
+| An agent using an already-built library to write grants | [README.md](README.md) — commands + doc links |
+| An agent modifying folio source code | This file — conventions, module table, rules |
+
+## If you're helping an org set up folio for the first time
+
+1. Read [docs/getting-started.md](docs/getting-started.md) — it walks through install → init → archive → pipeline → wiki → skills
+2. Read [docs/installation.md](docs/installation.md) for dependency setup
+3. Run `folio init --guided` to create the org's `folio.yaml`
+4. Follow the pipeline stages in order — each has `--dry-run`
+5. After the pipeline completes, run `folio skills --platform <name>` to generate agent instructions
+6. See [docs/pipelines.md](docs/pipelines.md) for stage-by-stage reference
+
+No Python code changes are needed to onboard a new org — only YAML config and markdown templates.
 
 ## Rules for All Code
 
@@ -77,7 +94,7 @@ Each module does one job well:
 | `adapters/wiki/` | Wiki backend integrations |
 | `adapters/llm/` | LLM provider abstraction |
 | `adapters/sources/` | Document source connectors |
-| `config/` | Config loading and Pydantic validation |
+| `config/` | Config loading and dataclass validation |
 | `cli/` | CLI entry points (thin wrappers around core) |
 | `cli/guide.py` | Built-in agent reference guide (argparse-based with --dry-run and --json) |
 

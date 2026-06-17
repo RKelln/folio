@@ -1,5 +1,7 @@
 # Documents
 
+- [Getting Started](getting-started.md) — full onboarding walkthrough
+- [Installation](installation.md) — dependencies, API keys, converters
 - [Pipeline stages](pipelines.md) — how the pipeline works end-to-end
 - [Configuration](config.md) — folio.yaml reference
 - [Converters](converters.md) — PDF/DOCX → markdown converter options

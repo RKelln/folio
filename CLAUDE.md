@@ -53,18 +53,21 @@ bd close <id>         # Complete work
 
 ## Build & Test
 
-_Add your build and test commands here_
-
 ```bash
-# Example:
-# npm install
-# npm test
+uv run pytest tests/ -v     # 528 tests, ~3s
+uv run ruff check src/      # Lint
+uv run mypy src/            # Type check (future)
 ```
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+folio turns arts org document archives into searchable knowledge bases. Architecture in AGENTS.md module table:
 
-## Conventions & Patterns
+| Layer | Modules |
+|-------|---------|
+| **CLI** (`cli/`) | 15 thin argparse wrappers around core |
+| **Core** (`core/`) | cleaner, classifier, rewriter, prioritizer, canonicalizer, ingester, auditor, scanner, frontmatter, manifest, skills, throttle, errors |
+| **Adapters** (`adapters/`) | converters/ (PDF→MD), wiki/ (sage-wiki), llm/ (OpenAI-compatible), sources/ |
+| **Config** (`config/`) | schema (dataclasses), loader (deep-merge YAML), defaults.yaml |
 
-_Add your project-specific conventions here_
+See [AGENTS.md](AGENTS.md) for full conventions, rules, and project structure.
