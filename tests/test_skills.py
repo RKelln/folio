@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -21,11 +22,11 @@ import pytest
 from folio.config.schema import (
     AgentmapConfig,
     LLMConfig,
-    OrgConfig,
-    PathsConfig,
     ProjectConfig,
     WikiConfig,
 )
+from tests.conftest import make_test_config
+
 from folio.core.skills import (
     _CORE_DIR,
     _PLACEHOLDER_RE,
@@ -39,33 +40,14 @@ from folio.core.skills import (
 # Helpers
 # ──────────────────────────────────────────────────────────────────────
 
-IA_DIR = Path("/home/ryankelln/Documents/Work/IA_board/ia-library")
+_DEFAULT_IA_DIR = Path(__file__).resolve().parents[2] / "ia-library"
+IA_DIR = Path(os.environ.get("IA_LIBRARY_PATH", _DEFAULT_IA_DIR))
 IA_CONFIG_EXISTS = IA_DIR.exists() and (IA_DIR / "folio.yaml").exists()
 
 
 def _load_ia_config() -> ProjectConfig:
     from folio.config.loader import load_project_config
     return load_project_config(IA_DIR / "folio.yaml")
-
-
-def _make_config(**overrides) -> ProjectConfig:
-    """Build a minimal config with overrides as kwargs."""
-    defaults = {
-        "project_name": "Test Project",
-        "org": OrgConfig(name="Test Organization", abbreviation="TEST", description="A test organization."),
-        "funders": {"OAC": "Ontario Arts Council", "TAC": "Toronto Arts Council"},
-        "doc_types": ["application", "report", "budget"],
-        "paths": PathsConfig(
-            raw_archive="./archive/",
-            rewrite_md="./markdown/",
-            wiki_project="./.folio/sage-wiki/",
-        ),
-        "wiki": WikiConfig(type="null"),
-        "agentmap": AgentmapConfig(enabled=False, binary_path="agentmap"),
-        "llm": LLMConfig(),
-    }
-    defaults.update(overrides)
-    return ProjectConfig(**defaults)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -77,7 +59,7 @@ class TestBuildContext:
 
     @pytest.fixture
     def ctx(self):
-        return build_context(_make_config())
+        return build_context(make_test_config())
 
     def test_org_fields(self, ctx):
         assert ctx["org_name"] == "Test Organization"
@@ -108,7 +90,7 @@ class TestBuildContext:
         assert ctx["wiki_enabled_str"] == "false"
 
     def test_wiki_enabled(self):
-        ctx = build_context(_make_config(wiki=WikiConfig(type="sage-wiki")))
+        ctx = build_context(make_test_config(wiki=WikiConfig(type="sage-wiki")))
         assert ctx["wiki_enabled"] is True
         assert ctx["wiki_enabled_str"] == "true"
 
@@ -116,7 +98,7 @@ class TestBuildContext:
         assert ctx["agentmap_enabled"] == "false"
 
     def test_agentmap_enabled(self):
-        ctx = build_context(_make_config(agentmap=AgentmapConfig(enabled=True)))
+        ctx = build_context(make_test_config(agentmap=AgentmapConfig(enabled=True)))
         assert ctx["agentmap_enabled"] == "true"
 
     def test_tool_sections_always_has_file_search(self, ctx):
@@ -126,25 +108,25 @@ class TestBuildContext:
         assert "sage-wiki (cross-document synthesis)" not in ctx["tool_sections"]
 
     def test_tool_sections_wiki_when_enabled(self):
-        ctx = build_context(_make_config(wiki=WikiConfig(type="sage-wiki")))
+        ctx = build_context(make_test_config(wiki=WikiConfig(type="sage-wiki")))
         assert "sage-wiki" in ctx["tool_sections"]
 
     def test_tool_sections_no_agentmap_when_disabled(self, ctx):
         assert "agentmap (section-level search)" not in ctx["tool_sections"]
 
     def test_tool_sections_agentmap_when_enabled(self):
-        ctx = build_context(_make_config(agentmap=AgentmapConfig(enabled=True)))
+        ctx = build_context(make_test_config(agentmap=AgentmapConfig(enabled=True)))
         assert "agentmap" in ctx["tool_sections"]
 
     def test_combined_workflow_when_both_enabled(self):
-        ctx = build_context(_make_config(
+        ctx = build_context(make_test_config(
             wiki=WikiConfig(type="sage-wiki"),
             agentmap=AgentmapConfig(enabled=True),
         ))
         assert "Combined workflow" in ctx["tool_sections"]
 
     def test_no_combined_workflow_when_only_wiki(self):
-        ctx = build_context(_make_config(wiki=WikiConfig(type="sage-wiki")))
+        ctx = build_context(make_test_config(wiki=WikiConfig(type="sage-wiki")))
         assert "Combined workflow" not in ctx["tool_sections"]
 
     def test_funder_concept_rows(self, ctx):
@@ -154,15 +136,15 @@ class TestBuildContext:
         assert "wiki/concepts/" in rows
 
     def test_empty_funders_defaults_abbrev(self):
-        ctx = build_context(_make_config(funders={}))
+        ctx = build_context(make_test_config(funders={}))
         assert ctx["funder_abbrev"] == "FUNDER"
 
     def test_agentmap_step_when_enabled(self):
-        ctx = build_context(_make_config(agentmap=AgentmapConfig(enabled=True)))
+        ctx = build_context(make_test_config(agentmap=AgentmapConfig(enabled=True)))
         assert "agentmap search" in ctx["agentmap_step"]
 
     def test_agentmap_step_when_disabled(self):
-        ctx = build_context(_make_config(agentmap=AgentmapConfig(enabled=False)))
+        ctx = build_context(make_test_config(agentmap=AgentmapConfig(enabled=False)))
         assert ctx["agentmap_step"] == ""
 
     # ── IA library integration ──
@@ -256,7 +238,7 @@ class TestFillTemplate:
 
     def test_all_core_templates_fill_clean(self, caplog, tmp_path):
         """Every core template must fill all placeholders against a full config."""
-        ctx = build_context(_make_config(
+        ctx = build_context(make_test_config(
             wiki=WikiConfig(type="sage-wiki"),
             agentmap=AgentmapConfig(enabled=True),
         ))
@@ -278,7 +260,7 @@ class TestGenerateSkills:
 
     @pytest.fixture
     def cfg(self):
-        return _make_config()
+        return make_test_config()
 
     def test_unknown_platform_raises(self, cfg):
         with pytest.raises(ValueError, match="Unknown platform"):
@@ -342,7 +324,7 @@ class TestGenerateSkills:
         assert "Grant Writing Craft" in content
 
     def test_hermes_no_unfilled_placeholders(self, tmp_path):
-        cfg = _make_config(
+        cfg = make_test_config(
             wiki=WikiConfig(type="sage-wiki"),
             agentmap=AgentmapConfig(enabled=True),
         )
@@ -410,7 +392,7 @@ class TestOpenCodeGeneration:
 
     @pytest.fixture
     def cfg(self):
-        return _make_config(
+        return make_test_config(
             wiki=WikiConfig(type="sage-wiki"),
             agentmap=AgentmapConfig(enabled=True),
         )
@@ -462,7 +444,7 @@ class TestOpenCodeGeneration:
         assert "{funder_table}" not in skill_content
 
     def test_wiki_disabled_hides_sage_wiki(self, tmp_path):
-        cfg = _make_config(wiki=WikiConfig(type="null"))
+        cfg = make_test_config(wiki=WikiConfig(type="null"))
         result = generate_skills(cfg, "opencode", tmp_path)
         content = result["files_written"][0].read_text()
         # The _tool-sage-wiki section should not appear, but the librarian
@@ -470,7 +452,7 @@ class TestOpenCodeGeneration:
         assert "### sage-wiki (cross-document synthesis)" not in content
 
     def test_agentmap_disabled_hides_agentmap(self, tmp_path):
-        cfg = _make_config(agentmap=AgentmapConfig(enabled=False))
+        cfg = make_test_config(agentmap=AgentmapConfig(enabled=False))
         result = generate_skills(cfg, "opencode", tmp_path)
         content = result["files_written"][0].read_text()
         # The _tool-agentmap section should not appear, but the headings.yaml
@@ -798,7 +780,7 @@ class TestCrossPlatformConsistency:
 
     @pytest.fixture
     def full_cfg(self):
-        return _make_config(
+        return make_test_config(
             wiki=WikiConfig(type="sage-wiki"),
             agentmap=AgentmapConfig(enabled=True),
         )
@@ -825,7 +807,7 @@ class TestCrossPlatformConsistency:
                 assert fp.stat().st_size > 0, f"{fp} is empty"
 
     def test_all_platforms_warnings_empty_with_full_config(self, tmp_path):
-        cfg = _make_config(
+        cfg = make_test_config(
             wiki=WikiConfig(type="sage-wiki"),
             agentmap=AgentmapConfig(enabled=True),
         )

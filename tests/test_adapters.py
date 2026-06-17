@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import types
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,25 +14,23 @@ from folio.adapters.wiki import (
     SageWikiBackend,
     get_wiki_backend,
 )
+from folio.config.schema import ConverterConfig, LLMConfig, ProjectConfig, WikiConfig
 
 
 def _make_config(**kwargs):
-    return types.SimpleNamespace(**kwargs)
+    return ProjectConfig(**kwargs)
 
 
 def _make_converter_config(converter_type="docling", pipeline_id=""):
-    converter = types.SimpleNamespace(type=converter_type, datalab_pipeline_id=pipeline_id)
-    return _make_config(converter=converter)
+    return ProjectConfig(converter=ConverterConfig(type=converter_type, datalab_pipeline_id=pipeline_id))
 
 
 def _make_wiki_config(wiki_type="sage-wiki"):
-    wiki = types.SimpleNamespace(type=wiki_type)
-    return _make_config(wiki=wiki)
+    return ProjectConfig(wiki=WikiConfig(type=wiki_type))
 
 
 def _make_llm_config(base_url="https://api.example.com", api_key_env="MY_KEY"):
-    llm = types.SimpleNamespace(base_url=base_url, api_key_env=api_key_env)
-    return _make_config(llm=llm)
+    return ProjectConfig(llm=LLMConfig(base_url=base_url, api_key_env=api_key_env))
 
 
 class TestConverterFactory:

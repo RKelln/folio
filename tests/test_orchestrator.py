@@ -11,13 +11,14 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 SCENARIOS_DIR = Path(__file__).parent / "agent_scenarios"
 
-IA_LIBRARY = Path("/home/ryankelln/Documents/Work/IA_board/ia-library")
+IA_LIBRARY = Path(os.environ.get("IA_LIBRARY_PATH", Path(__file__).resolve().parents[2] / "ia-library"))
 IA_CONFIG = IA_LIBRARY / "folio.yaml"
 IA_AVAILABLE = IA_CONFIG.exists()
 
@@ -93,46 +94,15 @@ def test_scenarios_have_evaluation_criteria():
 # Prompt generation tests (always run, don't need IA library)
 # ──────────────────────────────────────────────────────────────────────
 
-def test_prompts_can_be_generated(scenario_dir, tmp_path):
+def test_prompts_can_be_generated(scenario_dir, minimal_folio_yaml):
     """Manual mode generates prompts for every scenario."""
     from folio.core.orchestrator import load_scenarios, run_manual
 
-    # Use a minimal temp config
-    config = tmp_path / "folio.yaml"
-    config.write_text("""\
-project:
-  name: Test
-org:
-  name: Test Org
-  abbreviation: TO
-paths:
-  raw_archive: ./archive/
-  raw_md: ./.folio/converted/
-  clean_md: ./.folio/cleaned/
-  rewrite_md: ./markdown/
-  wiki_project: ./.folio/sage-wiki/
-funders:
-  TEST: Test Funder
-doc_types:
-  - application
-llm:
-  provider: openai_compatible
-  base_url: https://api.example.com
-  models:
-    fast: fast
-    quality: pro
-  pricing:
-    input_per_million: 0.14
-    output_per_million: 0.28
-converter:
-  type: marker
-wiki:
-  type: "null"
-""")
+    config = minimal_folio_yaml / "folio.yaml"
 
     for yaml_file in sorted(SCENARIOS_DIR.glob("*.yaml")):
         scenarios = load_scenarios(yaml_file)
-        results = run_manual(scenarios, config, tmp_path / "output")
+        results = run_manual(scenarios, config, minimal_folio_yaml / "output")
         assert len(results) == len(scenarios)
         for result in results:
             assert result.status == "manual"
@@ -140,52 +110,22 @@ wiki:
 
         # Verify prompt files were written
         for s in scenarios:
-            prompt_file = tmp_path / "output" / "agent_prompts" / f"{s.id}.md"
+            prompt_file = minimal_folio_yaml / "output" / "agent_prompts" / f"{s.id}.md"
             assert prompt_file.exists(), f"Missing prompt file for {s.id}"
             content = prompt_file.read_text()
             assert s.name in content
             assert len(content) > 100, f"Prompt too short for {s.id}"
 
 
-def test_prompt_includes_task(scenario_dir, tmp_path):
+def test_prompt_includes_task(scenario_dir, minimal_folio_yaml):
     """Generated prompts must include the scenario task text."""
     from folio.core.orchestrator import load_scenarios, run_manual
 
-    config = tmp_path / "folio.yaml"
-    config.write_text("""\
-project:
-  name: Test
-org:
-  name: Test Org
-  abbreviation: TO
-paths:
-  raw_archive: ./archive/
-  raw_md: ./.folio/converted/
-  clean_md: ./.folio/cleaned/
-  rewrite_md: ./markdown/
-  wiki_project: ./.folio/sage-wiki/
-funders:
-  TEST: Test Funder
-doc_types:
-  - application
-llm:
-  provider: openai_compatible
-  base_url: https://api.example.com
-  models:
-    fast: fast
-    quality: pro
-  pricing:
-    input_per_million: 0.14
-    output_per_million: 0.28
-converter:
-  type: marker
-wiki:
-  type: "null"
-""")
+    config = minimal_folio_yaml / "folio.yaml"
 
     for yaml_file in sorted(SCENARIOS_DIR.glob("*.yaml")):
         for scenario in load_scenarios(yaml_file):
-            results = run_manual([scenario], config, tmp_path / "output")
+            results = run_manual([scenario], config, minimal_folio_yaml / "output")
             prompt = results[0].prompt
             # Task text should appear in the prompt (normalize whitespace)
             task_normalized = " ".join(scenario.task.split())

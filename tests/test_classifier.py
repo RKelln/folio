@@ -8,8 +8,8 @@ from folio.core.classifier import (
     parse_legacy_eval_condition,
     _detect_funder,
     _detect_doc_types,
-    _compile_patterns,
-    _analyze_content,
+    compile_patterns,
+    analyze_content,
     _make_context,
     _evaluate_skip_rules,
     _evaluate_tier_rules,
@@ -618,7 +618,7 @@ class TestDetectDocTypes:
 
     @pytest.fixture
     def compiled(self, doc_type_config):
-        return _compile_patterns(doc_type_config)
+        return compile_patterns(doc_type_config)
 
     def test_single_doc_type(self, compiled):
         result = _detect_doc_types("/tmp/OAC__2024_Grant__Application.md", compiled)
@@ -644,7 +644,7 @@ class TestDetectDocTypes:
         assert "cv" in result
 
     def test_case_insensitive_regex(self, compiled):
-        compiled2 = _compile_patterns({
+        compiled2 = compile_patterns({
             "doc_types": {"application": [r"(?i)application"]},
             "form_chrome": [],
             "draft_markers": [],
@@ -656,17 +656,17 @@ class TestDetectDocTypes:
 class TestAnalyzeContent:
     @pytest.fixture
     def empty_compiled(self):
-        return _compile_patterns({"doc_types": {}, "form_chrome": [], "draft_markers": []})
+        return compile_patterns({"doc_types": {}, "form_chrome": [], "draft_markers": []})
 
     def test_empty_text(self, empty_compiled):
-        result = _analyze_content("", empty_compiled)
+        result = analyze_content("", empty_compiled)
         assert result["total_lines"] == 1
         assert result["content_lines"] == 0
         assert result["corruption_score"] == 0.0
 
     def test_simple_content(self, empty_compiled):
         text = "# Heading\n\nSome content here.\n\nMore content."
-        result = _analyze_content(text, empty_compiled)
+        result = analyze_content(text, empty_compiled)
         assert result["total_lines"] == 5
         assert result["content_lines"] == 3
         assert result["has_headings"] is True
@@ -675,64 +675,64 @@ class TestAnalyzeContent:
 
     def test_headings_detected(self, empty_compiled):
         text = "# Title\n## Section 1\n## Section 2\nbody text\n"
-        result = _analyze_content(text, empty_compiled)
+        result = analyze_content(text, empty_compiled)
         assert result["has_headings"] is True
 
     def test_tables_detected(self, empty_compiled):
         text = "| col1 | col2 |\n|------|------|\n| a    | b    |\n"
-        result = _analyze_content(text, empty_compiled)
+        result = analyze_content(text, empty_compiled)
         assert result["has_tables"] is True
 
     def test_corruption_single_char(self, empty_compiled):
         text = "A\nB\nC\nThis is actual content.\n"
-        result = _analyze_content(text, empty_compiled)
+        result = analyze_content(text, empty_compiled)
         assert result["corruption_score"] > 0
 
     def test_duplicate_headings(self, empty_compiled):
         text = "# Same\n# Same\n# Different\n"
-        result = _analyze_content(text, empty_compiled)
+        result = analyze_content(text, empty_compiled)
         assert result["duplicate_heading_count"] == 1
 
     def test_word_count_annotations(self, empty_compiled):
         text = "500 words\n1000 words\nOrdinary line.\n"
-        result = _analyze_content(text, empty_compiled)
+        result = analyze_content(text, empty_compiled)
         assert result["word_count_annotation_count"] == 2
 
     def test_form_chrome_detected(self):
-        compiled = _compile_patterns({
+        compiled = compile_patterns({
             "doc_types": {},
             "form_chrome": [r"\[X\]", r"Please select"],
             "draft_markers": [],
         })
         text = "Please select one:\n[X] Option A\n[ ] Option B\nContent here.\n"
-        result = _analyze_content(text, compiled)
+        result = analyze_content(text, compiled)
         assert result["form_chrome_count"] >= 1
 
     def test_draft_markers_detected(self):
-        compiled = _compile_patterns({
+        compiled = compile_patterns({
             "doc_types": {},
             "form_chrome": [],
             "draft_markers": [r"DRAFT", r"TODO"],
         })
         text = "DRAFT - do not distribute\nTODO: finish this\nRegular content.\n"
-        result = _analyze_content(text, compiled)
+        result = analyze_content(text, compiled)
         assert result["draft_marker_count"] >= 1
 
     def test_image_markers(self, empty_compiled):
         text = "<!-- image -->\n[IMAGE]\nReal content.\n"
-        result = _analyze_content(text, empty_compiled)
+        result = analyze_content(text, empty_compiled)
         assert result["image_marker_count"] == 1
 
     def test_avg_content_line_length(self, empty_compiled):
         text = "short\nA much longer line with many characters\nmedium\n"
-        result = _analyze_content(text, empty_compiled)
+        result = analyze_content(text, empty_compiled)
         assert result["avg_content_line_length"] > 0
 
     def test_corruption_disabled(self):
-        compiled = _compile_patterns({"doc_types": {}, "form_chrome": [], "draft_markers": []})
+        compiled = compile_patterns({"doc_types": {}, "form_chrome": [], "draft_markers": []})
         corruption_cfg = {"single_char_alpha": False, "bare_digits": False}
         text = "A\nB\n1\nactual\n"
-        result = _analyze_content(text, compiled, corruption_cfg)
+        result = analyze_content(text, compiled, corruption_cfg)
         assert result["corruption_score"] == 0.0
 
 
