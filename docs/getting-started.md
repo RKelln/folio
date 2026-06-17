@@ -5,9 +5,8 @@ Step-by-step walkthrough for setting up folio at a new organization. For an AI a
 ## 1. Prerequisites
 
 You need:
-- **Python 3.10+** with `uv` or `pipx`
-- **DEEPSEEK_API_KEY** (required — LLM calls)
-- **OPENAI_API_KEY** (optional — wiki embeddings)
+- **Python 3.10+** with `uv` (recommended) or `pipx`
+- **An LLM API key** (OpenAI, DeepSeek, Groq, or local Ollama — any OpenAI-compatible provider)
 - **Go** (optional — for sage-wiki and agentmap binaries)
 
 See [docs/installation.md](installation.md) for full dependency setup commands per platform.
@@ -15,12 +14,11 @@ See [docs/installation.md](installation.md) for full dependency setup commands p
 ## 2. Install folio
 
 ```bash
-pipx install folio
+git clone https://github.com/anomalyco/folio
+uv tool install --editable ./folio
 # verify:
 folio --version
 ```
-
-If working from the folio source repo: `uv tool install --editable .`
 
 ## 3. Create your org library
 

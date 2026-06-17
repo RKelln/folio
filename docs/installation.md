@@ -9,7 +9,7 @@ Everything needed to install folio and its dependencies.
 | Python 3.10+ | `python.org` or system package manager |
 | `uv` (recommended) | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | `pipx` (alternative) | `python -m pip install --user pipx` |
-| folio | `pipx install folio` or `uv tool install folio` |
+| folio | `uv tool install folio` or `pipx install folio` |
 
 Local dev install: `cd folio && uv tool install --editable .`
 
@@ -21,11 +21,14 @@ Set in `.env` in your org library directory (folio auto-loads it):
 
 | Variable | Required | Purpose | Get it from |
 |----------|----------|---------|-------------|
-| `DEEPSEEK_API_KEY` | Yes | LLM calls (rewrite, prioritize, wiki query) | [platform.deepseek.com](https://platform.deepseek.com) |
-| `OPENAI_API_KEY` | Optional | Wiki embeddings (text-embedding-3-small) | [platform.openai.com](https://platform.openai.com) |
+| `OPENAI_API_KEY` | Yes* | LLM calls (openai_compatible provider default) | [platform.openai.com](https://platform.openai.com) |
+| `DEEPSEEK_API_KEY` | Yes* | LLM calls (when using DeepSeek) | [platform.deepseek.com](https://platform.deepseek.com) |
+| `GROQ_API_KEY` | Yes* | LLM calls (when using Groq) | [console.groq.com](https://console.groq.com) |
 | `DATALAB_API_KEY` | Optional | Datalab converter (legacy) | [datalab.to](https://datalab.to) |
 
-DeepSeek pricing (as of 2026-06): $0.14/M input tokens, $0.28/M output tokens. A typical 1000-file archive costs ~$4-12 in LLM fees.
+*At least one LLM API key is required. folio works with any OpenAI-compatible provider — set the matching env var and configure `llm.base_url`, `llm.api_key_env`, and `llm.models` in `folio.yaml`.
+
+Example pricing (budget tier): ~$0.14/M input tokens. A typical 1000-file archive costs ~$4-12 in LLM fees.
 
 ## Converters
 
@@ -74,7 +77,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # or: sudo apt install pipx && pipx ensurepath
 
 # folio
-pipx install folio
+uv tool install folio
 
 # Converter (docling)
 uv pip install docling
@@ -98,7 +101,7 @@ brew install uv
 # or: brew install pipx && pipx ensurepath
 
 # folio
-pipx install folio
+uv tool install folio
 
 # Converter (docling)
 uv pip install docling
@@ -131,10 +134,10 @@ folio scan                  # Should enumerate your archive/ files
 
 ## Troubleshooting
 
-**`folio: command not found`** — The `~/.local/bin` or pipx bin directory isn't on PATH. Add `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` or `~/.zshrc`.
+**`folio: command not found`** — The `~/.local/bin` or uv tool bin directory isn't on PATH. Add `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` or `~/.zshrc`.
 
 **`sage-wiki: command not found`** — Go binaries go to `~/go/bin/`. Add `export PATH="$HOME/go/bin:$PATH"` to your shell config, or set `wiki.type: "null"` in folio.yaml.
 
 **PDF conversion fails** — Try an alternative converter (`marker-pdf` or `pandoc`). Some PDFs are scanned images — these won't convert cleanly with any tool.
 
-**`DEEPSEEK_API_KEY not set`** — Create a `.env` file in your org library directory with `DEEPSEEK_API_KEY=sk-...`. The `.env` must be in the same directory as `folio.yaml`.
+**`API key not set`** — Create a `.env` file in your org library directory with your provider's API key (e.g. `OPENAI_API_KEY=sk-...` or `DEEPSEEK_API_KEY=sk-...`). The `.env` must be in the same directory as `folio.yaml`.
