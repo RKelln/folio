@@ -31,7 +31,7 @@ from folio.core.frontmatter import (
     parse_frontmatter,
     update_frontmatter,
 )
-from folio.core.manifest import load_manifest, save_manifest, update_file, recalculate_summary
+from folio.core.manifest import load_manifest, recalculate_summary, save_manifest, update_file
 from folio.core.throttle import RateLimiter
 
 # ── Default configuration ──────────────────────────────────────────────────────
@@ -760,7 +760,7 @@ def prioritize_directory(
         digest_max = proc_cfg.get("digest_max_chars", 6000)
         lines: list[str] = []
         lines.append(f"\n  {'─'*80}")
-        lines.append(f"  DRY RUN — no API calls will be made")
+        lines.append("  DRY RUN — no API calls will be made")
         lines.append(f"  {'─'*80}")
         lines.append(
             f"  {'Year':<16} {'Files':>6} {'Est.Chars':>10} "

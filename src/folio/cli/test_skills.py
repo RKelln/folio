@@ -14,7 +14,6 @@ from pathlib import Path
 
 from folio import __version__
 from folio.core.orchestrator import (
-    EvalResult,
     format_report,
     load_scenarios,
     run_agent,

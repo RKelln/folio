@@ -115,8 +115,8 @@ def build_context(config: ProjectConfig) -> dict:
         "api_key_env": config.llm.api_key_env,
         "wiki_block": (
             '| "How has our programming changed across years?" | `sage-wiki query "..."` (cross-document synthesis) |\n'
-            '| "Who are the key personnel on this grant?" | `sage-wiki search "personnel {org_abbreviation}"` |'
-        ).format(org_abbreviation=org.abbreviation) if wiki_enabled else "",
+            f'| "Who are the key personnel on this grant?" | `sage-wiki search "personnel {org.abbreviation}"` |'
+        ) if wiki_enabled else "",
     }
 
     sections: list[str] = []

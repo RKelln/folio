@@ -7,14 +7,12 @@ skills, etc.) into an org library directory.
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
 
 from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.skills import generate_skills
-
 
 PLATFORM_FILES: dict[str, list[tuple[str, str]]] = {
     "opencode": [

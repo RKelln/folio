@@ -240,7 +240,7 @@ def format_scan_report(report: dict) -> str:
         lines.append(f"  LLM rewrite: ${costs.get('llm_rewrite_usd', 0):.2f}")
         lines.append(f"  LLM prioritize: ${costs.get('llm_prioritize_usd', 0):.2f}")
         lines.append(f"  Wiki compile: ${costs.get('wiki_compile_usd', 0):.2f}")
-        lines.append(f"  ─────────────────")
+        lines.append("  ─────────────────")
         lines.append(f"  Total: ${costs.get('total_usd', 0):.2f}")
 
     time_mins = report.get("estimated_time_minutes")

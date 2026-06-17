@@ -14,8 +14,8 @@ work across all consumers.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import TypedDict
 
 
@@ -139,11 +139,11 @@ def manifest_summary_text(manifest: dict) -> str:
         f"Project: {manifest.get('project', 'folio')}",
         f"Generated: {manifest.get('generated', '?')}",
         f"Updated:   {manifest.get('updated', '?')}",
-        f"",
+        "",
         f"Total files: {s['total_files']}",
         f"Total cost:  ${s['total_cost_usd']:.4f} USD",
-        f"",
-        f"By status:",
+        "",
+        "By status:",
     ]
     for status, count in sorted(s.get("by_status", {}).items()):
         lines.append(f"  {status}: {count}")

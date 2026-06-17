@@ -415,11 +415,11 @@ class _LegacyParser:
             return {"type": "has_doc_type", "value": args[0]}
         if name == "has_any_type":
             if len(args) < 1:
-                raise _ParseError(f"has_any_type expects at least 1 argument")
+                raise _ParseError("has_any_type expects at least 1 argument")
             return {"type": "has_any_type", "values": args}
         if name == "path_contains":
             if len(args) < 1:
-                raise _ParseError(f"path_contains expects at least 1 argument")
+                raise _ParseError("path_contains expects at least 1 argument")
             return {"type": "path_contains", "values": args}
         raise _ParseError(f"Unknown function: {name}")
 
@@ -427,7 +427,7 @@ class _LegacyParser:
     def _build_method_call(obj: str, method: str, args: list[str]) -> dict:
         if obj == "filename" and method == "startswith":
             if len(args) != 1:
-                raise _ParseError(f"filename.startswith expects 1 argument")
+                raise _ParseError("filename.startswith expects 1 argument")
             return {"type": "filename_starts_with", "value": args[0]}
         raise _ParseError(f"Unknown method call: {obj}.{method}")
 

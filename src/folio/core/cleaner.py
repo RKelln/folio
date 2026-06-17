@@ -11,7 +11,6 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-
 _BASE64_IMAGE = re.compile(r'!\[Image\]\(data:image/\w+;base64,[A-Za-z0-9+/=]+\)')
 _HTML_COMMENT_IMAGE = re.compile(r'<!--\s*image\s*-->', re.IGNORECASE)
 _STANDALONE_IMAGE_PLACEHOLDER = re.compile(r'^\[IMAGE\]\s*$', re.MULTILINE)

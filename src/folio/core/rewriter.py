@@ -18,15 +18,15 @@ import logging
 import os
 import re
 import textwrap
-import time
 import threading
+import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
+from folio.core.classifier import detect_language
 from folio.core.errors import FileStatus, ProcessingTier
-from folio.core.throttle import RateLimiter
 from folio.core.frontmatter import (
     apply_frontmatter,
     dict_to_frontmatter,
@@ -35,8 +35,14 @@ from folio.core.frontmatter import (
     strip_existing_frontmatter,
     update_frontmatter,
 )
-from folio.core.classifier import detect_language
-from folio.core.manifest import create_manifest, load_manifest, save_manifest, update_file, recalculate_summary
+from folio.core.manifest import (
+    create_manifest,
+    load_manifest,
+    recalculate_summary,
+    save_manifest,
+    update_file,
+)
+from folio.core.throttle import RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -1078,7 +1084,7 @@ def _dry_run_summary(
 
     lines = [
         f"\n{'─' * 80}",
-        f"  DRY RUN — no API calls will be made",
+        "  DRY RUN — no API calls will be made",
         f"  {Path.cwd() / output_dir}  ({len(entries)} files)",
         f"{'─' * 80}",
         f"  {'Tier':<12} {'Files':>6} {'KB':>8} {'In $':>8} {'Out $':>8} {'Total $':>8} {'Serial':>8} {'//{max_workers}':>8}",
@@ -1165,7 +1171,7 @@ def print_summary(summary: dict, config: Any | None = None, prefix: str = "  ") 
         f"  Empty (remove):  {empty:>6}",
         f"  Errors:          {errors:>6}",
         f"  Skipped:         {skipped:>6}",
-        f"",
+        "",
         f"  Input tokens:    {in_tok:>10,}",
         f"  Output tokens:   {out_tok:>10,}",
         f"  Cost:             ${cost:>9.4f}",

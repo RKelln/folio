@@ -539,7 +539,7 @@ def _run_clean(config: ProjectConfig) -> dict:
 
 
 def _run_canonicalize(config: ProjectConfig) -> dict:
-    from folio.core.canonicalizer import canonicalize_directory, DEFAULT_CANONICALIZE_CONFIG
+    from folio.core.canonicalizer import DEFAULT_CANONICALIZE_CONFIG, canonicalize_directory
 
     clean_dir = Path(config.paths.clean_md)
     archive_dir = Path(config.paths.rewrite_md) / ".non_canonical"
@@ -589,7 +589,7 @@ def _run_canonicalize(config: ProjectConfig) -> dict:
 
 
 def _run_classify(config: ProjectConfig) -> dict:
-    from folio.core.classifier import classify_directory, build_classify_config
+    from folio.core.classifier import build_classify_config, classify_directory
 
     clean_dir = Path(config.paths.clean_md)
 
@@ -699,6 +699,7 @@ def _run_prioritize(config: ProjectConfig) -> dict:
 
 def _run_wiki(config: ProjectConfig) -> dict:
     import os
+
     from folio.adapters.wiki import get_wiki_backend
 
     wiki_type = config.wiki.type if hasattr(config.wiki, "type") else "null"
@@ -773,10 +774,10 @@ def _run_wiki(config: ProjectConfig) -> dict:
             print(f"  Wiki linked to {len(md_files)} documents in {rewrite_dir}")
             backend.add_documents(md_files)
 
-    print(f"  Compiling wiki...")
+    print("  Compiling wiki...")
     try:
         backend.compile()
-        print(f"  Wiki compiled successfully")
+        print("  Wiki compiled successfully")
 
         # Create root wiki/ symlink pointing to the compiled output
         root_wiki = Path(config.paths.wiki_project)

@@ -15,7 +15,7 @@ import json
 import sys
 
 from folio import __version__
-from folio.config.loader import load_config_or_exit, load_project_config
+from folio.config.loader import load_config_or_exit
 from folio.core.pipeline import (
     AVAILABLE_STAGES,
     _estimate_pipeline,

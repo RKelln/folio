@@ -13,11 +13,11 @@ from __future__ import annotations
 import json
 import logging
 import re
-import sys
-import yaml
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from folio.config.loader import load_project_config
 from folio.core.skills import generate_skills
@@ -395,7 +395,7 @@ def format_report(results: list[EvalResult], verbose: bool = False) -> str:
     manual = sum(1 for r in results if r.status == "manual")
     errors = sum(1 for r in results if r.status == "error")
 
-    lines.append(f"## Summary")
+    lines.append("## Summary")
     lines.append(f"- **Total scenarios**: {len(results)}")
     lines.append(f"- **Passed**: {passed}")
     lines.append(f"- **Failed**: {failed}")
