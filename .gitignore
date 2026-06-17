@@ -38,8 +38,11 @@ datalab_md/
 htmlcov/
 coverage.json
 
-# Local agent config
-.opencode/
+# Local agent config (track commands, ignore local skills)
+.opencode/skills/
+
+# Release artifacts
+dist/
 
 # Org-specific archive deployments (separate repos)
 ia-library/
