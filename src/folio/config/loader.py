@@ -7,8 +7,9 @@ Resolves paths, validates against the schema, and returns a typed config object.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
+import sys
 from importlib import resources
+from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
@@ -74,7 +75,7 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
         raw_md=_resolve_path("raw_md", "./raw_md/"),
         clean_md=_resolve_path("clean_md", "./clean_md/"),
         rewrite_md=_resolve_path("rewrite_md", "./rewrite_md/"),
-        wiki_project=_resolve_path("wiki_project", "./wiki/"),
+        wiki_project=_resolve_path("wiki_project", "./.folio/sage-wiki/"),
     )
 
     converter_data = data.get("converter", {})
@@ -220,6 +221,31 @@ def _validate(config: ProjectConfig) -> None:
             f"Raw archive directory does not exist: {config.paths.raw_archive}\n"
             f"Run 'folio init' or create this directory before running the pipeline."
         )
+
+
+def load_config_or_exit(config_path: str | Path) -> ProjectConfig:
+    """Load config from *config_path*, printing an error and exiting if not found.
+
+    Use for commands that require configuration (pipeline, rewrite, etc.).
+    """
+    if not Path(config_path).exists():
+        print(
+            "folio.yaml not found. This command requires configuration. Run 'folio init' first.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return load_project_config(config_path)
+
+
+def load_config_or_warn(config_path: str | Path) -> ProjectConfig | None:
+    """Load config from *config_path* if it exists, else warn and return ``None``.
+
+    Use for commands that can operate with defaults (scan, clean, classify, etc.).
+    """
+    if not Path(config_path).exists():
+        logger.warning("folio.yaml not found. Using defaults.")
+        return None
+    return load_project_config(config_path)
 
 
 def load_project_config(config_path: str | Path | None = None) -> ProjectConfig:
