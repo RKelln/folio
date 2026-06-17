@@ -72,3 +72,4 @@ class ProjectConfig:
     headings: dict = field(default_factory=dict)
     rewrite: dict = field(default_factory=dict)
     prioritize: dict = field(default_factory=dict)
+    audit: dict = field(default_factory=dict)

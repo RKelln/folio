@@ -39,7 +39,6 @@ from folio.core.classifier import detect_language
 from folio.core.manifest import create_manifest, load_manifest, save_manifest, update_file, recalculate_summary
 
 logger = logging.getLogger(__name__)
-from folio.core.throttle import RateLimiter
 
 # ── Tier alias mapping ─────────────────────────────────────────────────────────
 
