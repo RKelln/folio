@@ -14,7 +14,7 @@ See [docs/installation.md](installation.md) for full dependency setup commands p
 ## 2. Install folio
 
 ```bash
-git clone https://github.com/anomalyco/folio
+git clone https://github.com/RKelln/folio
 uv tool install --editable ./folio
 # verify:
 folio --version

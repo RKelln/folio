@@ -14,7 +14,11 @@ Turn an arts organization's document archive into a searchable knowledge base th
 ## Quickstart
 
 ```bash
-git clone https://github.com/anomalyco/folio
+# Quick install (run anywhere):
+uv tool install git+https://github.com/RKelln/folio@latest
+
+# Clone if you want to customize or have agents learn about folio:
+git clone https://github.com/RKelln/folio
 uv tool install --editable ./folio
 
 mkdir my-org-library && cd my-org-library
