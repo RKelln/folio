@@ -1,12 +1,12 @@
 """Tests for folio skills generation — build_context, generate_skills, and template filling.
 
 Covers:
-- build_context() with minimal, full, and IA library configs
+- build_context() with minimal, full, and org library configs
 - _fill_template() placeholder substitution and warnings
 - generate_skills() for all 4 platforms
 - OpenCode-specific output structure
 - CLI integration for `folio skills`
-- End-to-end IA library skills generation
+- End-to-end org library skills generation
 """
 
 from __future__ import annotations
@@ -147,9 +147,9 @@ class TestBuildContext:
         ctx = build_context(make_test_config(agentmap=AgentmapConfig(enabled=False)))
         assert ctx["agentmap_step"] == ""
 
-    # ── IA library integration ──
+    # ── org library integration ──
 
-    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="org library not available")
     def test_library_required_keys(self):
         ctx = build_context(_load_library_config())
         required = [
@@ -164,33 +164,33 @@ class TestBuildContext:
         for key in required:
             assert key in ctx, f"Missing key: {key}"
 
-    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="org library not available")
     def test_library_org_identity(self):
         ctx = build_context(_load_library_config())
         assert ctx["org_name"] == "InterAccess"
         assert ctx["org_abbreviation"] == "IA"
         assert ctx["org_slug"] == "interaccess"
 
-    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="org library not available")
     def test_library_five_funders(self):
         ctx = build_context(_load_library_config())
         ft = ctx["funder_table"]
         for abbr in ("CCA", "OAC", "TAC", "BCAH"):
             assert abbr in ft
 
-    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="org library not available")
     def test_library_paths_are_local(self):
         ctx = build_context(_load_library_config())
         assert "markdown" in ctx["rewrite_md_path"]
         assert "sage-wiki" in ctx["wiki_path"]
 
-    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="org library not available")
     def test_library_wiki_and_agentmap_enabled(self):
         ctx = build_context(_load_library_config())
         assert ctx["wiki_enabled"] is True
         assert ctx["agentmap_enabled"] == "true"
 
-    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="org library not available")
     def test_library_all_tool_sections_present(self):
         ctx = build_context(_load_library_config())
         sections = ctx["tool_sections"]
@@ -682,10 +682,10 @@ wiki:
 
 
 # ══════════════════════════════════════════════════════════════════════
-# IA library end-to-end
+# org library end-to-end
 # ══════════════════════════════════════════════════════════════════════
 
-@pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+@pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="org library not available")
 class TestIALibrarySkills:
     """End-to-end skills generation from the real InterAccess library."""
 
@@ -752,7 +752,7 @@ class TestIALibrarySkills:
         assert "Grant Writing Craft" in content
 
     def test_generate_to_library_in_place(self):
-        """Generate opencode skills directly into the IA library directory."""
+        """Generate opencode skills directly into the org library directory."""
         from folio.cli.skills import main
         import shutil
 
@@ -793,7 +793,7 @@ class TestCrossPlatformConsistency:
                 f"Org name not found in {platform} output"
             )
 
-    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="org library not available")
     def test_all_platforms_from_library_config(self, tmp_path):
         config = _load_library_config()
         for platform in ("opencode", "claude", "openclaw", "hermes"):

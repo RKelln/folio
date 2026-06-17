@@ -91,7 +91,7 @@ def test_scenarios_have_evaluation_criteria():
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Prompt generation tests (always run, don't need IA library)
+# Prompt generation tests (always run, don't need org library)
 # ──────────────────────────────────────────────────────────────────────
 
 def test_prompts_can_be_generated(scenario_dir, minimal_folio_yaml):
@@ -140,7 +140,7 @@ def test_prompt_includes_task(scenario_dir, minimal_folio_yaml):
 # Org library integration (requires a library to be set up)
 # ──────────────────────────────────────────────────────────────────────
 
-@pytest.mark.skipif(not LIBRARY_AVAILABLE, reason="IA library not available")
+@pytest.mark.skipif(not LIBRARY_AVAILABLE, reason="org library not available")
 class TestIALibraryOrchestrator:
     """End-to-end tests using the real InterAccess library."""
 
