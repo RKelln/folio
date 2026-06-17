@@ -45,9 +45,36 @@ class SageWikiBackend(WikiBackend):
         else:
             raw_link.mkdir(exist_ok=True)
 
+    def _run_wiki_command(self, *args: str, timeout: int | None = None) -> str:
+        if self._project_dir is None:
+            raise RuntimeError("Wiki not initialized. Call init() first.")
+        cmd_name = args[1] if len(args) > 1 else args[0]
+        try:
+            result = subprocess.run(
+                list(args),
+                cwd=str(self._project_dir),
+                timeout=timeout,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            if e.stderr:
+                logger.error("sage-wiki %s stderr:\n%s", cmd_name, e.stderr.strip())
+            return ""
+        except subprocess.TimeoutExpired as e:
+            if e.stderr:
+                stderr_str = e.stderr.decode() if isinstance(e.stderr, bytes) else str(e.stderr)
+                logger.error(
+                    "sage-wiki %s timed out after %ds — stderr:\n%s",
+                    cmd_name,
+                    e.timeout if e.timeout is not None else 0,
+                    stderr_str,
+                )
+            return ""
+        return result.stdout
+
     def add_documents(self, source_paths: list[Path]) -> None:
-        # Documents are visible via the raw/ symlink to the markdown directory.
-        # No copying needed.
         pass
 
     def compile(self) -> None:
@@ -76,141 +103,37 @@ class SageWikiBackend(WikiBackend):
             raise
 
     def search(self, query: str) -> str:
-        if self._project_dir is None:
-            raise RuntimeError("Wiki not initialized. Call init() first.")
-        try:
-            result = subprocess.run(
-                ["sage-wiki", "search", query],
-                cwd=str(self._project_dir),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error("sage-wiki search failed: %s", e)
-            return ""
-        return result.stdout
+        return self._run_wiki_command("sage-wiki", "search", query, timeout=60)
 
     def query(self, question: str) -> str:
-        if self._project_dir is None:
-            raise RuntimeError("Wiki not initialized. Call init() first.")
-        try:
-            result = subprocess.run(
-                ["sage-wiki", "query", question],
-                cwd=str(self._project_dir),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error("sage-wiki query failed: %s", e)
-            return ""
-        return result.stdout
+        return self._run_wiki_command("sage-wiki", "query", question, timeout=60)
 
     def status(self) -> str:
-        if self._project_dir is None:
-            raise RuntimeError("Wiki not initialized. Call init() first.")
-        try:
-            result = subprocess.run(
-                ["sage-wiki", "status", "--json"],
-                cwd=str(self._project_dir),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error("sage-wiki status failed: %s", e)
-            return ""
-        return result.stdout
+        return self._run_wiki_command("sage-wiki", "status", "--json", timeout=300)
 
     def doctor(self) -> str:
-        if self._project_dir is None:
-            raise RuntimeError("Wiki not initialized. Call init() first.")
-        try:
-            result = subprocess.run(
-                ["sage-wiki", "doctor"],
-                cwd=str(self._project_dir),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error("sage-wiki doctor failed: %s", e)
-            return ""
-        return result.stdout
+        return self._run_wiki_command("sage-wiki", "doctor", timeout=300)
 
     def lint(self, pass_name: str | None = None, fix: bool = False) -> str:
-        if self._project_dir is None:
-            raise RuntimeError("Wiki not initialized. Call init() first.")
         cmd = ["sage-wiki", "lint"]
         if pass_name is not None:
             cmd.extend(["--pass", pass_name])
         if fix:
             cmd.append("--fix")
-        try:
-            result = subprocess.run(
-                cmd,
-                cwd=str(self._project_dir),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error("sage-wiki lint failed: %s", e)
-            return ""
-        return result.stdout
+        return self._run_wiki_command(*cmd, timeout=300)
 
     def coverage(self) -> str:
-        if self._project_dir is None:
-            raise RuntimeError("Wiki not initialized. Call init() first.")
-        try:
-            result = subprocess.run(
-                ["sage-wiki", "coverage"],
-                cwd=str(self._project_dir),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error("sage-wiki coverage failed: %s", e)
-            return ""
-        return result.stdout
+        return self._run_wiki_command("sage-wiki", "coverage", timeout=300)
 
     def diff(self) -> str:
-        if self._project_dir is None:
-            raise RuntimeError("Wiki not initialized. Call init() first.")
-        try:
-            result = subprocess.run(
-                ["sage-wiki", "diff", "--json"],
-                cwd=str(self._project_dir),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error("sage-wiki diff failed: %s", e)
-            return ""
-        return result.stdout
+        return self._run_wiki_command("sage-wiki", "diff", "--json", timeout=300)
 
-    def verify(self, all: bool = False, since: str | None = None, limit: int | None = None) -> str:
-        if self._project_dir is None:
-            raise RuntimeError("Wiki not initialized. Call init() first.")
+    def verify(self, all_files: bool = False, since: str | None = None, limit: int | None = None) -> str:
         cmd = ["sage-wiki", "verify"]
-        if all:
+        if all_files:
             cmd.append("--all")
         if since is not None:
             cmd.extend(["--since", since])
         if limit is not None:
             cmd.extend(["--limit", str(limit)])
-        try:
-            result = subprocess.run(
-                cmd,
-                cwd=str(self._project_dir),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error("sage-wiki verify failed: %s", e)
-            return ""
-        return result.stdout
+        return self._run_wiki_command(*cmd, timeout=300)

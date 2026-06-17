@@ -28,7 +28,11 @@ class LocalSource(DocumentSource):
             if file_path.suffix.lower() not in self.SUPPORTED_EXTENSIONS:
                 continue
 
-            stat = file_path.stat()
+            try:
+                stat = file_path.stat()
+            except (OSError, PermissionError):
+                continue
+
             mtime = datetime.datetime.fromtimestamp(
                 stat.st_mtime, tz=datetime.timezone.utc
             ).isoformat()

@@ -28,6 +28,9 @@ class Converter(ABC):
     def convert(self, source: Path) -> str | None:
         """Convert a file to markdown.
 
+        Implementations must NOT raise exceptions on failure;
+        log the error and return None instead.
+
         Args:
             source: Path to the source file.
 

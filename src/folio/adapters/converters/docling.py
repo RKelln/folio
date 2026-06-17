@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 
 from folio.adapters.converters.base import Converter
@@ -15,6 +16,7 @@ class DoclingConverter(Converter):
 
     def __init__(self):
         self._model = None
+        self._model_lock = threading.Lock()
 
     @property
     def name(self) -> str:
@@ -26,8 +28,10 @@ class DoclingConverter(Converter):
 
     def _ensure_model(self):
         if self._model is None:
-            from docling.document_converter import DocumentConverter
-            self._model = DocumentConverter()
+            with self._model_lock:
+                if self._model is None:
+                    from docling.document_converter import DocumentConverter
+                    self._model = DocumentConverter()
         return self._model
 
     def convert(self, source: Path) -> str | None:

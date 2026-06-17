@@ -15,16 +15,22 @@ from folio.adapters.converters.docling import DoclingConverter
 
 
 def get_converter(config) -> Converter:
-    """Return the configured converter instance."""
+    """Return the configured converter instance.
+
+    Accepts either a converter-type string (e.g. 'docling', 'datalab')
+    or a config object with a ``converter.type`` attribute.
+    """
     if config is None:
         return DoclingConverter()
-    converter_type = 'docling'
-    if hasattr(config.converter, 'type'):
-        converter_type = getattr(config.converter, 'type', 'docling')
+    if isinstance(config, str):
+        converter_type = config
+        pipeline_id = ''
+    else:
+        converter_type = getattr(getattr(config, 'converter', None), 'type', 'docling')
+        pipeline_id = getattr(getattr(config, 'converter', None), 'datalab_pipeline_id', '')
     if converter_type == 'docling':
         return DoclingConverter()
     if converter_type == 'datalab':
-        pipeline_id = getattr(config.converter, 'datalab_pipeline_id', '')
         return DatalabConverter(pipeline_id)
     if converter_type == 'marker':
         raise NotImplementedError("Marker converter not yet implemented")

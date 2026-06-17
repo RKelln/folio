@@ -13,7 +13,7 @@ from folio.adapters.wiki.base import WikiBackend
 class NullWikiBackend(WikiBackend):
     """No-op wiki backend. All operations return empty or placeholder results."""
 
-    def init(self, project_dir: Path, config: dict) -> None:
+    def init(self, project_dir: Path, config: dict, source_dir: Path | None = None) -> None:
         pass
 
     def add_documents(self, source_paths: list[Path]) -> None:
@@ -43,5 +43,5 @@ class NullWikiBackend(WikiBackend):
     def diff(self) -> str:
         return "Wiki not configured. Run with a wiki backend to enable diff."
 
-    def verify(self, all: bool = False, since: str | None = None, limit: int | None = None) -> str:
+    def verify(self, all_files: bool = False, since: str | None = None, limit: int | None = None) -> str:
         return "Wiki not configured. Run with a wiki backend to enable verify."

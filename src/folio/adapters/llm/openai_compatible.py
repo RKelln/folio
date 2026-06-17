@@ -7,6 +7,7 @@ OpenAI chat completions interface.
 from __future__ import annotations
 
 import os
+import threading
 from typing import Any
 
 from folio.adapters.llm.base import LLMProvider
@@ -22,18 +23,21 @@ class OpenAICompatibleProvider(LLMProvider):
         api_key_env: str | None = None,
     ):
         self._base_url = base_url
-        self._api_key = api_key or (
+        self._api_key = api_key if api_key is not None else (
             os.environ.get(api_key_env, '') if api_key_env else ''
         )
+        self._lock = threading.Lock()
         self._client = None
 
     def _get_client(self):
         if self._client is None:
-            from openai import OpenAI
-            self._client = OpenAI(
-                base_url=self._base_url,
-                api_key=self._api_key,
-            )
+            with self._lock:
+                if self._client is None:
+                    from openai import OpenAI
+                    self._client = OpenAI(
+                        base_url=self._base_url,
+                        api_key=self._api_key,
+                    )
         return self._client
 
     def complete(
@@ -71,8 +75,9 @@ class OpenAICompatibleProvider(LLMProvider):
             kwargs['max_tokens'] = max_tokens
         kwargs['temperature'] = temperature
 
-        reasoning_effort = extra_params.pop('reasoning_effort', None)
-        thinking_enabled = extra_params.pop('thinking_enabled', None)
+        params = dict(extra_params)
+        reasoning_effort = params.pop('reasoning_effort', None)
+        thinking_enabled = params.pop('thinking_enabled', None)
 
         model_lower = (model or '').lower()
         if reasoning_effort and model_lower.startswith("deepseek"):
@@ -80,7 +85,7 @@ class OpenAICompatibleProvider(LLMProvider):
         if thinking_enabled is not None and model_lower.startswith("deepseek"):
             kwargs['extra_body'] = {"thinking": {"type": "enabled" if thinking_enabled else "disabled"}}
 
-        kwargs.update(extra_params)
+        kwargs.update(params)
 
         response = client.chat.completions.create(messages=messages, **kwargs)
         text = response.choices[0].message.content or ''
