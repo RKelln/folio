@@ -8,15 +8,16 @@ folio supports pluggable wiki compilation backends. Each backend implements the
 ## Interface: `WikiBackend`
 
 All wiki backends inherit from `WikiBackend` (`src/folio/adapters/wiki/base.py:7`)
-and must implement five methods:
+and must implement eleven methods:
 
-### `init(project_dir: Path, config: dict) -> None`
+### `init(project_dir: Path, config: dict, source_dir: Path | None = None) -> None`
 
 Initialize a new wiki project on disk. Creates the project directory, writes a
 `config.yaml` file, and sets up the `raw/` directory for incoming documents.
 
 - **project_dir** — absolute path to the wiki project root (typically `./.folio/sage-wiki/`)
 - **config** — a dict of wiki-specific configuration (e.g. pack name)
+- **source_dir** — optional path to markdown source files (defaults to None)
 
 ### `add_documents(source_paths: list[Path]) -> None`
 
@@ -45,6 +46,38 @@ Ask a natural-language question and receive a synthesized answer drawn from
 wiki content.
 
 - **question** — natural-language question string
+
+### `status() -> str`
+
+Return wiki project status information (article count, last compile time, etc.)
+as a plain-text string.
+
+### `doctor() -> str`
+
+Run diagnostic checks on the wiki project (config validity, file structure,
+symlink health) and return a report.
+
+### `lint(pass_name: str | None = None) -> str`
+
+Run linting rules against wiki content. Optionally filter by pass name.
+
+### `coverage() -> str`
+
+Report concept coverage statistics — which documents have concepts extracted,
+which are missing, and coverage ratio.
+
+### `diff(since: str | None = None) -> str`
+
+Show what changed in the wiki since the last compile or a given time.
+
+### `verify(all_files: bool = False, since: str | None = None, limit: int | None = None) -> str`
+
+Run integrity verification on wiki articles. Checks for broken links, missing
+concepts, and structural issues.
+
+- **all_files** — verify all files, not just changed ones
+- **since** — only check files changed since this date
+- **limit** — maximum number of files to check
 
 ---
 
@@ -97,7 +130,19 @@ wiki:
 
 5. **`query(question)`** runs `sage-wiki query <question>` and returns the synthesized answer from stdout.
 
-On search/query failure, the backend logs the error and returns an empty string.
+6. **`status()`** runs `sage-wiki status` and returns project health information.
+
+7. **`doctor()`** runs `sage-wiki doctor` for diagnostic checks.
+
+8. **`lint(pass_name)`** runs `sage-wiki lint` with optional pass filter for content quality rules.
+
+9. **`coverage()`** runs `sage-wiki coverage` to report concept extraction coverage.
+
+10. **`diff(since)`** runs `sage-wiki diff` to show what changed since last compile.
+
+11. **`verify(all_files, since, limit)`** runs `sage-wiki verify` for integrity checks on articles.
+
+On subprocess failure, the backend logs the error and returns an empty string.
 
 #### Query language
 

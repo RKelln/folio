@@ -80,7 +80,7 @@ All commands support `--dry-run` and `--json`. Run `folio <cmd> --help` for deta
 
 **Why flat filenames?** `FUNDER__Year_Program__Type__Description.ext` is machine-parseable. The [file naming doc](docs/file-naming.md) explains why.
 
-**My archive is a mess of nested folders.** Use the pipeline step by step — start with `folio convert`, then `folio clean`, then review before `folio rewrite`. Soon: `folio repack` for nested → flat migration.
+**My archive is a mess of nested folders.** Use the pipeline step by step — start with `folio convert`, then `folio clean`, then review before `folio rewrite`. Use `folio repack` for nested → flat migration.
 
 ## For AI agents
 
