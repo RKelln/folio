@@ -152,6 +152,15 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     if args.all_verbose:
+        if args.json_output:
+            result = validate_directory(
+                source,
+                config,
+                sample=args.sample,
+                tier=args.tier,
+            )
+            print(json.dumps(result, indent=2, default=str))
+            return
         for fpath in md_files:
             result = validate_file(fpath, config)
             status = "PASS" if not result["issues"] else f"{len(result['issues'])} issues"

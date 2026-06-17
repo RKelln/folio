@@ -393,7 +393,15 @@ def validate_directory(
 
     tier_filter: set[str] | None = None
     if tier and tier in ("full", "light", "minimal"):
-        manifest_path = path.parent / ".folio" / "manifest.json"
+        manifest_path = path / "manifest.json"
+        if not manifest_path.exists():
+            manifest_path = path.parent / ".folio" / "manifest.json"
+        if not manifest_path.exists():
+            logger.warning(
+                "Manifest not found at %s or %s — tier filter will return no files.",
+                path / "manifest.json",
+                path.parent / ".folio" / "manifest.json",
+            )
         manifest = load_manifest(manifest_path)
         tier_filter = set()
         for fname, entry in manifest.get("files", {}).items():
