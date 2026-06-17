@@ -34,6 +34,7 @@ _COMMANDS = {
     "test-skills": "folio.cli.test_skills",
     "wiki": "folio.cli.wiki",
     "install-agent": "folio.cli.install_agent",
+    "validate": "folio.cli.validate",
 }
 
 
