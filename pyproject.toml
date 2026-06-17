@@ -76,3 +76,26 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+markers = [
+    "slow: tests that take >1s",
+    "integration: tests needing IA library or external deps",
+    "llm: tests that call LLM APIs",
+]
+
+[tool.coverage.run]
+source = ["folio"]
+omit = [
+    "*/web/*",
+    "*/service/*",
+]
+
+[tool.coverage.report]
+fail_under = 50
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
