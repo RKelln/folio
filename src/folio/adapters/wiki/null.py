@@ -27,3 +27,21 @@ class NullWikiBackend(WikiBackend):
 
     def query(self, question: str) -> str:
         return "Wiki not configured. Run with a wiki backend to enable search."
+
+    def status(self) -> str:
+        return "Wiki not configured. Run with a wiki backend to enable status."
+
+    def doctor(self) -> str:
+        return "Wiki not configured. Run with a wiki backend to enable doctor."
+
+    def lint(self, pass_name: str | None = None, fix: bool = False) -> str:
+        return "Wiki not configured. Run with a wiki backend to enable lint."
+
+    def coverage(self) -> str:
+        return "Wiki not configured. Run with a wiki backend to enable coverage."
+
+    def diff(self) -> str:
+        return "Wiki not configured. Run with a wiki backend to enable diff."
+
+    def verify(self, all: bool = False, since: str | None = None, limit: int | None = None) -> str:
+        return "Wiki not configured. Run with a wiki backend to enable verify."

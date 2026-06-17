@@ -32,6 +32,8 @@ _COMMANDS = {
     "convert": "folio.cli.convert",
     "repack": "folio.cli.repack",
     "test-skills": "folio.cli.test_skills",
+    "wiki": "folio.cli.wiki",
+    "install-agent": "folio.cli.install_agent",
 }
 
 

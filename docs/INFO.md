@@ -8,4 +8,5 @@
 - [Wiki backends](wiki-backends.md) — wiki compilation backends
 - [Frontmatter](frontmatter.md) — YAML frontmatter field reference
 - [File naming](file-naming.md) — filename convention reference
+- [Agent Workflows](agent-workflows.md) — worked examples for common agent tasks
 - [Skills](skills.md) — agent skills architecture

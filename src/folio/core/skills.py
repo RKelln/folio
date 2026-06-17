@@ -113,6 +113,10 @@ def build_context(config: ProjectConfig) -> dict:
         "wiki_enabled": wiki_enabled,
         "wiki_enabled_str": str(wiki_enabled).lower(),
         "api_key_env": config.llm.api_key_env,
+        "wiki_block": (
+            '| "How has our programming changed across years?" | `sage-wiki query "..."` (cross-document synthesis) |\n'
+            '| "Who are the key personnel on this grant?" | `sage-wiki search "personnel {org_abbreviation}"` |'
+        ).format(org_abbreviation=org.abbreviation) if wiki_enabled else "",
     }
 
     sections: list[str] = []
@@ -123,6 +127,11 @@ def build_context(config: ProjectConfig) -> dict:
 
     if agentmap_enabled:
         sections.append(_fill_core("_tool-agentmap.md", ctx))
+
+    if wiki_enabled:
+        sections.append(_fill_core("_wiki-maintenance.md", ctx))
+
+    sections.append(_fill_core("_librarian.md", ctx))
 
     if wiki_enabled and agentmap_enabled:
         sections.append("""### Combined workflow

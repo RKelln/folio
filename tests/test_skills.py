@@ -122,14 +122,14 @@ class TestBuildContext:
         assert "File search" in ctx["tool_sections"]
 
     def test_tool_sections_no_wiki_when_disabled(self, ctx):
-        assert "sage-wiki" not in ctx["tool_sections"]
+        assert "sage-wiki (cross-document synthesis)" not in ctx["tool_sections"]
 
     def test_tool_sections_wiki_when_enabled(self):
         ctx = build_context(_make_config(wiki=WikiConfig(type="sage-wiki")))
         assert "sage-wiki" in ctx["tool_sections"]
 
     def test_tool_sections_no_agentmap_when_disabled(self, ctx):
-        assert "agentmap" not in ctx["tool_sections"]
+        assert "agentmap (section-level search)" not in ctx["tool_sections"]
 
     def test_tool_sections_agentmap_when_enabled(self):
         ctx = build_context(_make_config(agentmap=AgentmapConfig(enabled=True)))
@@ -402,8 +402,9 @@ class TestOpenCodeGeneration:
         cfg = _make_config(wiki=WikiConfig(type="null"))
         result = generate_skills(cfg, "opencode", tmp_path)
         content = result["files_written"][0].read_text()
-        assert "sage-wiki search" not in content
-        assert "sage-wiki query" not in content
+        # The _tool-sage-wiki section should not appear, but the librarian
+        # template may mention sage-wiki in general context
+        assert "### sage-wiki (cross-document synthesis)" not in content
 
     def test_agentmap_disabled_hides_agentmap(self, tmp_path):
         cfg = _make_config(agentmap=AgentmapConfig(enabled=False))
