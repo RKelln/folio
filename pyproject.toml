@@ -44,6 +44,7 @@ folio-audit = "folio.cli.audit:main"
 folio-init = "folio.cli.init:main"
 folio-scan = "folio.cli.scan:main"
 folio-skills = "folio.cli.skills:main"
+folio-test-skills = "folio.cli.test_skills:main"
 
 [build-system]
 requires = ["setuptools>=64", "wheel"]

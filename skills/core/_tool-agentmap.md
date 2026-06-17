@@ -2,11 +2,17 @@
 
 Best for: finding specific passages by heading name, navigating documents by section.
 
+**All agentmap commands must be run from the markdown directory:**
+
 ```bash
 cd {rewrite_md_path}
 agentmap search "<heading>"                 # fuzzy-match a heading, get section content
 agentmap headings .                         # show NAV trees for all files
 ```
+
+If agentmap returns nothing, verify you're in the right directory with `pwd` — it must be the rewrite markdown directory (`{rewrite_md_path}`).
+
+**Use headings.yaml to find canonical heading names per funder.** The `headings.yaml` file in the org library root maps variant headings (like "Exhibitions & Vector Festival") to their canonical form ("Exhibitions"). Search for the canonical name to get complete results across all variant headings.
 
 ### agentmap NAV blocks — building the table of contents
 
@@ -25,6 +31,7 @@ agentmap check <file>        # validate nav block is in sync before committing
 **Bulk indexing (after pipeline rewrite):**
 
 ```bash
+cd {rewrite_md_path}
 agentmap index .             # generates skeletons for all unindexed files
 agentmap next                # prints prompt for next unchecked file
 # agent rewrites ~ descriptions in that file, saves it, then:
@@ -44,9 +51,17 @@ agentmap next                # advance to next file; repeat until done
 **Common patterns:**
 
 ```bash
+cd {rewrite_md_path}
+
 # Find a specific section across a funder's applications
-agentmap search "<section>" {rewrite_md_path}/{funder_abbrev}_*.md
+agentmap search "<section>" {funder_abbrev}_*.md
 
 # Find budget information by heading
-agentmap search "budget" {rewrite_md_path}/{funder_abbrev}_*
+agentmap search "budget" {funder_abbrev}_*
+
+# Find all headings across all files
+agentmap headings .
+
+# Search for sections using canonical names from headings.yaml
+agentmap search "Exhibitions" OAC_*.md
 ```

@@ -1,0 +1,233 @@
+# Agentic test scenarios for folio library validation.
+#
+# Each scenario defines a task for a subagent loaded with folio skills.
+# The orchestrator dispatches the task and evaluates the result against
+# the criteria defined here.
+#
+# Every scenario includes a Feedback section so agents report difficulties
+# with the library layout, tools (sage-wiki, agentmap), file quality,
+# prompt clarity, or any other friction encountered.
+#
+# Directory quick reference:
+#   markdown files:  ./markdown/
+#   wiki project:    ./.folio/sage-wiki/     (cd here for sage-wiki)
+#   wiki compiled:   ./wiki/
+#   headings:        ./headings.yaml
+
+scenarios:
+  - id: archive-search-by-funder
+    name: "Search archive by funder"
+    description: >
+      Agent must find all OAC grant applications in the archive and report
+      key metadata (years, grant amounts, document types).
+    task: |
+      Search the InterAccess grant archive for OAC (Ontario Arts Council) documents.
+
+      Directory reference:
+      - markdown files: ./markdown/
+      - sage-wiki project: ./.folio/sage-wiki/ (run sage-wiki from this directory)
+      - agentmap: run from ./markdown/ directory
+
+      Steps:
+      1. cd ./markdown/ && agentmap search "Exhibitions" to test agentmap works
+      2. cd ./.folio/sage-wiki/ && sage-wiki search "OAC operating grant" to test wiki works
+      3. Use glob to find all OAC_*.md files in ./markdown/
+      4. Read frontmatter from a sample of files to extract years and grant amounts
+      5. Report findings
+
+      Provide your answer in this format:
+      ```
+      ## OAC Archive Summary
+      ### Files Found: <count>
+      ### Year Range: <earliest>-<latest>
+      ### Grant Amounts: <list>
+      ### Document Types: <type>: <count>, ...
+
+      ## Feedback
+      [any difficulties: could you run sage-wiki/agentmap? did you need to cd first? was headings.yaml helpful?]
+      ```
+    evaluation:
+      must_contain:
+        - "OAC"
+        - "Ontario Arts Council"
+      should_contain:
+        - "Files Found:"
+        - "Year Range:"
+      min_years_found: 5
+      min_files_found: 10
+
+  - id: grant-draft-cca-community
+    name: "Draft CCA community engagement section"
+    description: >
+      Agent must draft a Community Engagement section for a CCA grant
+      application, using past applications as precedent.
+    task: |
+      Using the InterAccess grant archive, draft a "Community Engagement" section
+      for a Canada Council for the Arts (CCA) operating grant application.
+
+      Directory reference:
+      - markdown files: ./markdown/
+      - headings taxonomy: ./headings.yaml
+      - wiki: ./.folio/sage-wiki/
+
+      Steps:
+      1. Read ./headings.yaml to see what CCA sections exist (CCA has no standalone "Community Engagement" — synthesize from Services, Diversity, Outreach)
+      2. cd ./.folio/sage-wiki/ && sage-wiki search "CCA community audience" to find relevant concepts
+      3. Use glob ./markdown/CCA_*.md to find past CCA applications
+      4. Read the relevant sections from 2-3 files
+      5. Draft 200-300 words using real stats and program names
+      6. Cite your sources
+
+      Provide your answer in this format:
+      ```
+      ## Sources
+      - [filename] — [what was used]
+
+      ## Draft
+      [section text]
+
+      ## Feedback
+      [any difficulties with tool invocation, headings.yaml, or finding content?]
+      ```
+    evaluation:
+      must_contain:
+        - "Sources"
+        - "Draft"
+        - "CCA"
+      should_contain:
+        - "InterAccess"
+      min_source_count: 2
+      word_count_range: [150, 400]
+
+  - id: wiki-query-budget
+    name: "Query wiki for budget information"
+    description: >
+      Agent must use sage-wiki (with fallback to file search) to answer
+      a question about organizational budgets.
+    task: |
+      Using the InterAccess grant archive wiki, answer this question:
+
+      "What was the total operating budget trend for InterAccess from 2015 to 2025?"
+
+      Directory reference:
+      - sage-wiki project: ./.folio/sage-wiki/ (cd here first!)
+      - wiki output: ./wiki/
+      - markdown files: ./markdown/
+
+      Steps:
+      1. cd ./.folio/sage-wiki/ && sage-wiki search "operating budget" — if this fails, note the error and fall back
+      2. export $(grep DEEPSEEK_API_KEY ../../.env | xargs) && sage-wiki query "InterAccess annual operating budget by year" — the API key must be set for query
+      3. If sage-wiki is unavailable, use glob and Read on ./markdown/ files with "budget" in filename
+      4. Also check ./wiki/concepts/ for budget-related concept articles
+      5. Report the trend with specific years and amounts
+
+      Provide your answer in this format:
+      ```
+      ## Budget Trend Analysis
+      ### Sources: <list of concept articles or files>
+      ### Trend
+      [narrative description of budget trend]
+      ### Key Figures
+      | Year | Funder | Amount |
+      |------|--------|--------|
+
+      ## Feedback
+      [did sage-wiki work? If not, what error? Was the wiki output directory helpful?]
+      ```
+    evaluation:
+      must_contain:
+        - "Budget"
+        - "Trend"
+      should_contain:
+        - "OAC"
+        - "CCA"
+      min_facts: 3
+
+  - id: agentmap-section-search
+    name: "Section-level heading search with agentmap"
+    description: >
+      Agent must use agentmap to find exhibition sections across documents.
+    task: |
+      Using the InterAccess grant archive, find all documents that contain
+      exhibition-related content using agentmap.
+
+      Directory reference:
+      - agentmap: run from ./markdown/ directory
+      - headings taxonomy: ./headings.yaml
+
+      Steps:
+      1. Read ./headings.yaml to find canonical "Exhibitions" heading and its variants per funder
+      2. cd ./markdown/ && agentmap search "Exhibitions" — find all exhibition sections
+      3. cd ./markdown/ && agentmap search "Exhibition" TAC_*.md — TAC-specific
+      4. cd ./markdown/ && agentmap search "Exhibitions" OAC_*.md — OAC-specific
+      5. Summarize recurring exhibition programs across all matches
+
+      Provide your answer in this format:
+      ```
+      ## Exhibition Programs Across Grants
+      ### Agentmap Results: <count> matches across <count> files
+      ### Recurring Programs
+      - Program Name — first seen <year>, appears in <count> documents
+
+      ## Feedback
+      [did agentmap work? were the heading variants in headings.yaml helpful? any false positives?]
+      ```
+    evaluation:
+      must_contain:
+        - "Exhibition"
+        - "Agentmap"
+      min_files_found: 3
+
+  - id: multi-tool-workflow
+    name: "Combined search workflow"
+    description: >
+      Agent must use all three search tools in the recommended combined workflow
+      to answer a complex question about staffing and structure.
+    task: |
+      Using the InterAccess grant archive, answer this question using the
+      full combined workflow (sage-wiki + agentmap + file search):
+
+      "What staffing and organizational structure information exists across
+      InterAccess grant applications?"
+
+      Directory reference:
+      - Wiki: cd ./.folio/sage-wiki/ first, then run sage-wiki
+      - Agentmap: cd ./markdown/ first, then run agentmap
+      - Headings: ./headings.yaml
+      - Files: ./markdown/
+
+      Follow the combined workflow:
+      1. cd ./.folio/sage-wiki/ && sage-wiki search "staff board organization" — find relevant concepts
+      2. cd ./.folio/sage-wiki/ && sage-wiki query "InterAccess staffing and board structure over time" — synthesized answer
+      3. cd ./markdown/ && agentmap search "Staff" — exact section content from staff/board files
+      4. cd ./markdown/ && agentmap search "Board" — board composition sections
+      5. Use glob ./markdown/*Staff* ./markdown/*Board* ./markdown/*Bio* to find staff lists, board lists, bios
+      6. Read specific sections using line offsets from AGENT:NAV blocks when available
+      7. Synthesize a comprehensive answer
+
+      If sage-wiki or agentmap fail, note the error and continue with file search.
+      Do NOT give up — use glob, grep, and Read as fallback.
+
+      Provide your answer in this format:
+      ```
+      ## Staffing & Organizational Structure
+      ### Sources: [tool used for each finding]
+      ### Current Structure
+      [current staff roles and board composition]
+      ### Historical Evolution
+      [staffing changes over time]
+      ### Board Composition
+      [board size, committees, recruitment]
+
+      ## Feedback
+      [which tools worked? which didn't? how usable was the combined workflow? what would you improve?]
+      ```
+    evaluation:
+      must_contain:
+        - "Staff"
+        - "Board"
+        - "InterAccess"
+      should_contain:
+        - "Director"
+        - "Committees"
+      min_source_count: 3

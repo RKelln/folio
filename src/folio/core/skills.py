@@ -112,6 +112,7 @@ def build_context(config: ProjectConfig) -> dict:
         "agentmap_binary": config.agentmap.binary_path,
         "wiki_enabled": wiki_enabled,
         "wiki_enabled_str": str(wiki_enabled).lower(),
+        "api_key_env": config.llm.api_key_env,
     }
 
     sections: list[str] = []
@@ -126,11 +127,37 @@ def build_context(config: ProjectConfig) -> dict:
     if wiki_enabled and agentmap_enabled:
         sections.append("""### Combined workflow
 
+Use all three tools together for complex research questions. Always run tools from the correct directory.
+
+```bash
+# Step 1: Wiki concept search (from wiki project directory, no API key needed)
+cd {wiki_path}
+sage-wiki search "<topic>"
+
+# Step 2: Synthesized answer with citations (needs {api_key_env} from .env)
+export $(grep {api_key_env} {wiki_path}/../../.env | xargs)
+sage-wiki query "<question>"
+
+# Step 3: Exact section content (from markdown directory)
+cd {rewrite_md_path}
+agentmap search "<heading>"
+
+# Step 4: Jump to exact line offset
+Read(offset=s, limit=n)
+```
+
+**Workflow checklist:**
 1. `sage-wiki search` → find which documents are relevant
 2. `sage-wiki query` → synthesized answer with citations
 3. `agentmap search "<heading>"` → exact section content from candidate docs
-4. Read AGENT:NAV block → jump to exact line offset with `Read(offset=s, limit=n)`
-5. If NAV block is missing or stale → `agentmap generate <file>` then fill descriptions""")
+4. Read `AGENT:NAV` block → jump to exact line offset with `Read(offset=s, limit=n)`
+5. If `AGENT:NAV` block is missing or stale → `agentmap generate <file>` then fill descriptions
+
+**Troubleshooting:**
+- sage-wiki returns nothing → verify `pwd` is `{wiki_path}`, try a longer query
+- sage-wiki query returns 401 → run `export $(grep {api_key_env} {wiki_path}/../../.env | xargs)` first
+- agentmap returns nothing → verify `pwd` is `{rewrite_md_path}`, check `headings.yaml` for canonical heading names
+- Neither tool available → fall back to `glob`, `rg`, and `Read` on `{rewrite_md_path}`""".format(wiki_path=ctx["wiki_path"], rewrite_md_path=ctx["rewrite_md_path"], api_key_env=ctx["api_key_env"]))
 
     ctx["tool_sections"] = "\n\n".join(sections)
     ctx["agentmap_step"] = "- agentmap search -> find exact section heading" if agentmap_enabled else ""

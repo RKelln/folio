@@ -27,6 +27,7 @@ CLI_MODULES = {
     "guide": "folio.cli.guide",
     "teach": "folio.cli.teach",
     "convert": "folio.cli.convert",
+    "test-skills": "folio.cli.test_skills",
 }
 
 
@@ -93,6 +94,7 @@ REQUIRED_ARG_CLIS = [
     ("audit", 2, None),
     ("skills", 2, None),
     ("convert", 2, None),
+    ("test-skills", 2, None),
 ]
 
 

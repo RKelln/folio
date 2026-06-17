@@ -253,6 +253,13 @@ def load_project_config(config_path: str | Path | None = None) -> ProjectConfig:
         load_dotenv(config_dir / ".env")
         with open(config_path) as f:
             user_config = yaml.safe_load(f) or {}
+        # Auto-discover headings.yaml if present
+        headings_path = config_dir / "headings.yaml"
+        if headings_path.exists():
+            with open(headings_path) as f:
+                headings_yaml = yaml.safe_load(f) or {}
+            user_config["headings"] = headings_yaml
+            logger.info("Loaded heading taxonomy from %s", headings_path)
         merged = _deep_merge(defaults, user_config)
 
     config = _build_config(merged, config_dir)
