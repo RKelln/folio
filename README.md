@@ -8,7 +8,7 @@ Turn an arts organization's document archive into a searchable knowledge base th
 
 - Python 3.10+
 - `uv` (recommended) or `pipx`
-- An LLM provider API key (OpenAI-compatible — DeepSeek, OpenAI, Groq, local Ollama, etc.)
+- An LLM provider API key (OpenAI-compatible — DeepSeek, OpenAI, Anthropic, local Ollama, etc.)
 - See [Installation](docs/installation.md) for full dependency setup.
 
 ## Quickstart
@@ -17,7 +17,7 @@ Turn an arts organization's document archive into a searchable knowledge base th
 git clone https://github.com/anomalyco/folio
 uv tool install --editable ./folio
 
-mkdir my-org && cd my-org
+mkdir my-org-library && cd my-org-library
 folio init --guided                           # 6 questions, creates folio.yaml
 
 # Copy your PDFs/DOCX/XLSX into archive/, then:
@@ -30,7 +30,7 @@ folio pipeline                                # Run all 8 stages (~$0.04/10 file
 ## Org library structure
 
 ```
-my-org/
+my-org-library/
 ├── folio.yaml       # Org config — funders, doc types, paths, LLM
 ├── .env             # API keys (DEEPSEEK_API_KEY, OPENAI_API_KEY, etc.)
 ├── archive/         # Raw source files (PDF, DOCX, XLSX)
