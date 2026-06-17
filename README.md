@@ -2,19 +2,20 @@
 
 Turn an arts organization's document archive into a searchable knowledge base that AI coding agents can use to write grants, answer questions, and understand organizational patterns.
 
-**Three steps:** install → init → pipeline. No code changes — just YAML config.
+**Three steps:** clone → init → pipeline. No code changes — just YAML config.
 
 ## Prerequisites
 
 - Python 3.10+
-- `uv` or `pipx`
-- A DeepSeek API key (required). OpenAI key (optional, for wiki embeddings).
+- `uv` (recommended) or `pipx`
+- An LLM provider API key (OpenAI-compatible — DeepSeek, OpenAI, Groq, local Ollama, etc.)
 - See [Installation](docs/installation.md) for full dependency setup.
 
 ## Quickstart
 
 ```bash
-pipx install folio                            # or: uv tool install --editable .
+git clone https://github.com/anomalyco/folio
+uv tool install --editable ./folio
 
 mkdir my-org && cd my-org
 folio init --guided                           # 6 questions, creates folio.yaml
@@ -76,7 +77,7 @@ All commands support `--dry-run` and `--json`. Run `folio <cmd> --help` for deta
 
 ## FAQ
 
-**What does it cost?** ~$0.004/file with DeepSeek flash. About $12 for a 1000-file archive with tiered processing.
+**What does it cost?** ~$0.004/file with budget-tier LLMs (e.g. DeepSeek flash). About $12 for a 1000-file archive with tiered processing.
 
 **Why flat filenames?** `FUNDER__Year_Program__Type__Description.ext` is machine-parseable. The [file naming doc](docs/file-naming.md) explains why.
 
