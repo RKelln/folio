@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.1 — Cleanup & Polish — 2026-06-17
+
+Bugfix and cleanup release removing org-specific naming, stale documentation, and
+a broken flag in the release command.
+
+### Fixed
+- `uv build --check` replaced with `uv build` in release command (`--check` does not exist)
+- Conflicting `--generate-notes` flag removed from `gh release create` in release command
+
+### Changed
+- `IA_LIBRARY_PATH` env var renamed to `LIBRARY_PATH` (folio is art-org agnostic)
+- All `IA_*` variable names, function names, and test names replaced with `LIBRARY_*`
+- Default fallback directory for tests changed from `ia-library` to `org-library`
+- `.gitignore` org-library ignore pattern updated to `org-library/`
+- `docs/INFO.md` renamed to `docs/README.md` for consistency
+
+### Infrastructure
+- Removed 1,851 lines of stale implementation docs (PLAN.md, TASKS.md, HANDOFF.md, CLAUDE.md)
+- 1088 tests passing, 16 skipped
+
 ## v0.1.0 — Initial Release — 2026-06-17
 
 folio turns an arts organization's document archive into a searchable knowledge
