@@ -17,6 +17,8 @@ import yaml
 
 YEAR_FIELDS = ['written', 'period', 'period_start']
 
+YEAR_PATTERN = re.compile(r'\b(20\d{2})\b')
+
 
 # ── Parse ──────────────────────────────────────────────────────────────────────
 
@@ -33,7 +35,7 @@ def extract_year(value) -> int | None:
     if isinstance(value, (datetime.date, datetime.datetime)):
         return value.year
     if isinstance(value, str):
-        m = re.search(r'\b(20\d{2})\b', value)
+        m = YEAR_PATTERN.search(value)
         if m:
             return int(m.group(1))
     return None
@@ -334,7 +336,7 @@ def _normalize_period_values(fm_text: str) -> str:
 def _extract_years(text: str) -> list[int]:
     """Extract 4-digit years (2000-2099) from a string."""
     years = []
-    for m in re.finditer(r'\b(20\d{2})\b', text):
+    for m in YEAR_PATTERN.finditer(text):
         years.append(int(m.group(1)))
     return years
 

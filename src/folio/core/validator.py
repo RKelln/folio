@@ -10,7 +10,7 @@ import logging
 import random
 from pathlib import Path
 
-from folio.core.classifier import _analyze_content, _compile_patterns
+from folio.core.classifier import analyze_content, compile_patterns
 from folio.core.frontmatter import parse_frontmatter
 from folio.core.manifest import load_manifest
 
@@ -118,7 +118,7 @@ def validate_frontmatter(text: str, config) -> list[dict]:
 
 
 def validate_content(text: str, classification_config: dict) -> list[dict]:
-    """Check content quality using _analyze_content() from classifier.
+    """Check content quality using analyze_content() from classifier.
 
     Flags corruption_score > 0.3, form_chrome_count > 20,
     draft_marker_count > 0, avg_content_line_length < 30.
@@ -138,13 +138,13 @@ def validate_content(text: str, classification_config: dict) -> list[dict]:
     fm, body = parse_frontmatter(text)
     analysis_text = body if body else text
 
-    compiled = _compile_patterns(classification_config)
+    compiled = compile_patterns(classification_config)
     corruption_cfg = classification_config.get("corruption", {}) if classification_config else {}
 
     try:
-        metrics = _analyze_content(analysis_text, compiled, corruption_cfg)
+        metrics = analyze_content(analysis_text, compiled, corruption_cfg)
     except Exception:
-        logger.warning("_analyze_content() failed", exc_info=True)
+        logger.warning("analyze_content() failed", exc_info=True)
         return issues
 
     corruption_score = metrics.get("corruption_score", 0)

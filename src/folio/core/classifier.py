@@ -50,6 +50,7 @@ def detect_language(text: str) -> str:
 
 # ── Default configuration ─────────────────────────────────────────────────────
 
+# Read-only constant — copy before mutating
 DEFAULT_CLASSIFY_CONFIG: dict = {
     "funders": {},
     "doc_types": {},
@@ -452,7 +453,7 @@ _SINGLE_CHAR_RE = re.compile(r"^[\w]$")
 _BARE_DIGITS_RE = re.compile(r"^[\d\s]+$")
 
 
-def _compile_patterns(config: dict) -> dict:
+def compile_patterns(config: dict) -> dict:
     """Compile all regex patterns from config strings into a cache dict."""
     compiled: dict = {}
 
@@ -502,7 +503,7 @@ def _detect_doc_types(
     return types if types else ["unknown"]
 
 
-def _analyze_content(
+def analyze_content(
     text: str,
     compiled: dict,
     corruption_config: dict | None = None,
@@ -764,7 +765,7 @@ def classify_file(filepath: Path, config: dict) -> dict:
     path_str = str(filepath)
 
     funder = _detect_funder(path_str, config.get("funders", {}))
-    compiled = _compile_patterns(config)
+    compiled = compile_patterns(config)
     doc_types = _detect_doc_types(path_str, compiled)
 
     try:
@@ -776,7 +777,7 @@ def classify_file(filepath: Path, config: dict) -> dict:
     fm, body = parse_frontmatter(text)
     analysis_text = body if body else text
 
-    quality = _analyze_content(
+    quality = analyze_content(
         analysis_text,
         compiled,
         config.get("corruption", {}),

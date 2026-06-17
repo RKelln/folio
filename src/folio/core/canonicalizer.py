@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 # ── Default configuration ──────────────────────────────────────────────────────
 
+# Read-only constant — copy before mutating
 DEFAULT_CANONICALIZE_CONFIG: dict = {
     # An "application" is identified by the first N __-separated segments.
     "group_segments": 2,
@@ -150,7 +151,7 @@ def _parse_filename_segments(filename: str) -> list[str]:
     >>> _parse_filename_segments('OAC__2024_Application__final.md')
     ['OAC', '2024_Application', 'final']
     """
-    stem = filename.replace(".md", "")
+    stem = Path(filename).stem
     return [s for s in stem.split("__") if s.strip("_")]
 
 
@@ -171,7 +172,7 @@ def _score_filename(filename: str, config: dict) -> int:
     >>> _score_filename('OAC__2024_Application__draft.md', cfg) < 0
     True
     """
-    stem = filename.replace(".md", "")
+    stem = Path(filename).stem
     score = 0
     for rule in config.get("version_suffixes", []):
         m = re.search(rule["pattern"], stem)
@@ -220,8 +221,8 @@ def _detect_drafts(files: list[Path], config: dict) -> list[Path]:
                     if marker in head:
                         matched = True
                         break
-            except Exception:
-                pass
+            except (OSError, UnicodeDecodeError):
+                logger.warning("Cannot read %s for draft detection", fpath, exc_info=True)
 
         if matched:
             drafts.append(fpath)
@@ -257,7 +258,8 @@ def _detect_duplicates(files: list[Path], config: dict) -> list[tuple[Path, Path
         try:
             content = fpath.read_text(encoding="utf-8", errors="replace")
             texts[fpath] = _normalize_for_comparison(content)[:2000]
-        except Exception:
+        except (OSError, UnicodeDecodeError):
+            logger.warning("Cannot read %s for dedup comparison", fpath, exc_info=True)
             texts[fpath] = ""
 
     pairs: list[tuple[Path, Path]] = []
@@ -668,7 +670,8 @@ def _load_snippets(infos: list[dict], directory: Path, max_chars: int = 2000) ->
                     text = text[end + 3:]
             text = _normalize_for_comparison(text)
             fi["content_snippet"] = text[:max_chars]
-        except Exception:
+        except (OSError, UnicodeDecodeError):
+            logger.warning("Cannot load snippet from %s", fpath, exc_info=True)
             fi["content_snippet"] = ""
 
 

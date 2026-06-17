@@ -13,6 +13,7 @@ from pathlib import Path
 
 from folio.adapters.sources import get_source
 from folio.config.schema import ProjectConfig
+from folio.core.frontmatter import extract_year
 
 DEFAULT_TYPE_PATTERNS = {
     "application": [r'(?<![a-zA-Z])(?:Application|submission|Submitted)(?![a-zA-Z])'],
@@ -49,11 +50,7 @@ def _detect_funder(filepath: str, funders: dict[str, str]) -> str | None:
 
 
 def _detect_year(filename: str) -> int | None:
-    """Extract first 4-digit year (2000-2099) from filename."""
-    match = re.search(r'(?<![0-9])(20\d{2})(?![0-9])', filename)
-    if match:
-        return int(match.group(1))
-    return None
+    return extract_year(filename)
 
 
 def _detect_type(filepath: str, type_patterns: dict[str, list[str]]) -> list[str]:

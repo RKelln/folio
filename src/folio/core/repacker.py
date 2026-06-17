@@ -16,11 +16,11 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from folio.core.frontmatter import YEAR_PATTERN
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_FILENAME_SEP = "__"
-
-YEAR_PATTERN = re.compile(r"(?<![0-9])(20\d{2})(?![0-9])")
 
 TYPE_KEYWORDS: dict[str, list[str]] = {
     "application": [
