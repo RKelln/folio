@@ -160,7 +160,7 @@ Pipeline input, output, and intermediate directories. All paths are relative to 
 | `paths.raw_md` | `str` | `"./.folio/converted/"` | Converter output -- raw markdown produced from source files. Intermediate (hidden). |
 | `paths.clean_md` | `str` | `"./.folio/cleaned/"` | Cleaned markdown after form chrome and artifact removal. Intermediate (hidden). |
 | `paths.rewrite_md` | `str` | `"./markdown/"` | Final LLM-rewritten markdown output. This is the publishable product. Also stores `manifest.json`. |
-| `paths.wiki_project` | `str` | `"./wiki/"` | Sage-wiki project directory. Compiled wiki lives here. |
+| `paths.wiki_project` | `str` | `"./.folio/sage-wiki/"` | Sage-wiki project directory (hidden intermediate). After compile, a root `wiki/` symlink is created pointing to the compiled output. `wiki/raw/` is a symlink to `markdown/`. |
 
 Example:
 
@@ -170,7 +170,7 @@ paths:
   raw_md: "./.folio/converted/"
   clean_md: "./.folio/cleaned/"
   rewrite_md: "./markdown/"
-  wiki_project: "./wiki/"
+  wiki_project: "./.folio/sage-wiki/"
 ```
 
 ---
@@ -181,7 +181,7 @@ Controls how source documents (PDF, DOCX, XLSX) are converted to Markdown.
 
 | YAML path | Python type | Default | Description |
 |---|---|---|---|
-| `converter.type` | `str` | `"datalab"` | Converter backend: `datalab`, `marker`, `docling`, or `pandoc` |
+| `converter.type` | `str` | `"docling"` | Converter backend: `docling`, `datalab`, `marker`, or `pandoc` |
 | `converter.datalab.pipeline_id` | `str` | `""` | Datalab pipeline ID (required when type is `datalab`) |
 | `converter.datalab.api_key_env` | `str` | `"DATALAB_API_KEY"` | Environment variable name for the Datalab API key |
 
@@ -189,9 +189,9 @@ Controls how source documents (PDF, DOCX, XLSX) are converted to Markdown.
 
 | Type | Supported extensions | Description |
 |---|---|---|
+| `docling` | `.pdf`, `.docx`, `.xlsx` | IBM Docling open-source library. Local, no API key needed. **Default.** Strong table extraction. |
 | `datalab` | `.pdf`, `.docx`, `.xlsx`, `.doc`, `.xls` | IBM Datalab pipeline API. Best quality for grant forms. Requires `datalab-python-sdk` and API key. |
 | `marker` | `.pdf` | Open-source `marker-pdf` library. Local, no API key needed. Not yet implemented. |
-| `docling` | `.pdf`, `.docx`, `.xlsx` | IBM Docling open-source library. Local. Not yet implemented. |
 | `pandoc` | `.pdf`, `.docx`, `.html`, `.rst`, many more | Universal converter via Pandoc. Lowest quality for grant forms. Not yet implemented. |
 
 Example:
@@ -761,13 +761,10 @@ paths:
   raw_md: "./.folio/converted/"
   clean_md: "./.folio/cleaned/"
   rewrite_md: "./markdown/"
-  wiki_project: "./wiki/"
+  wiki_project: "./.folio/sage-wiki/"
 
 converter:
-  type: "datalab"
-  datalab:
-    pipeline_id: "abc123-my-pipeline"
-    api_key_env: "DATALAB_API_KEY"
+  type: "docling"
 
 wiki:
   type: "sage-wiki"

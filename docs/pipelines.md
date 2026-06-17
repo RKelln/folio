@@ -28,8 +28,10 @@ org-library/
   archive/          (raw_archive)      PDF, DOCX, XLSX source files
   .folio/raw_md/    (raw_md)           Converter output — raw markdown
   .folio/clean_md/  (clean_md)         Cleaned markdown
+  .folio/sage-wiki/ (wiki_project)     Sage-wiki project (hidden intermediate)
   markdown/         (rewrite_md)       Final LLM-rewritten output
-  wiki/             (wiki_project)     Wiki project directory
+  wiki/ -> .folio/sage-wiki/wiki/      Symlink to compiled wiki output
+  wiki/raw/ -> markdown/               Symlink (no file copying)
 ```
 
 ---
@@ -151,9 +153,12 @@ In dry-run mode, the scanner's estimate of conversion costs is reported but no f
 
 ### CLI
 
-Conversion runs as part of the pipeline; there is no standalone `folio convert` command. To convert a single file, use:
-
 ```bash
+folio convert --source ./archive/ --dest ./.folio/converted/
+folio convert --source ./archive/ --dest ./out/ --converter docling --dry-run
+folio convert --source ./archive/ --dest ./out/ --json
+
+# Also: single-file ingestion via folio ingest
 folio ingest --source grant.pdf --funder TAC --year 2024
 ```
 
@@ -573,20 +578,23 @@ Compiles the rewritten, prioritized markdown files into a searchable wiki knowle
 
 ### Output
 
-- `paths.wiki_project` (default: `./wiki/`) — a compiled wiki project
+- `paths.wiki_project` (default: `./.folio/sage-wiki/`) — the sage-wiki project directory (hidden intermediate)
+- Root `wiki/` symlink → `.folio/sage-wiki/wiki/` (compiled output, for convenient access)
+- `wiki/raw/` symlink → `markdown/` (no file copying)
 
 ### Wiki Backends
 
 | Backend | Description |
 |---------|-------------|
-| `sage_wiki` | Sage-wiki searchable knowledge base. Requires `sage-wiki` binary on PATH. Uses a configurable "pack" (default: `arts-org`). |
+| `sage_wiki` | Sage-wiki searchable knowledge base. Requires `sage-wiki` binary on PATH. Uses a configurable "pack" (default: `arts-org`). Receives full LLM config (api, models, embed) for compilation. Pipeline ensures API key env var is set before subprocess invocation. |
 | `null` | No wiki compilation. The pipeline ends with markdown output only. |
 
 ### How It Works
 
-1. Initializes the wiki project directory
-2. Adds all markdown files from the rewrite directory
-3. Compiles the wiki (generates search indexes, cross-references, etc.)
+1. Initializes the wiki project under `.folio/sage-wiki/`
+2. Creates a `raw/` symlink to the `markdown/` directory (no file copying)
+3. Compiles the wiki via `sage-wiki compile` subprocess (generates search indexes, cross-references, etc.)
+4. Creates root `wiki/` symlink pointing to compiled output for convenient access
 
 ### Key Configuration
 
@@ -594,7 +602,7 @@ Compiles the rewritten, prioritized markdown files into a searchable wiki knowle
 |---------------|----------|--------|
 | `wiki.type` | `folio.yaml` > `wiki` | Which backend: `sage_wiki` or `null` |
 | `wiki.sage_wiki_pack` | `folio.yaml` > `wiki` | Pack name for sage-wiki (default: `arts-org`) |
-| `paths.wiki_project` | `folio.yaml` > `paths` | Where the wiki project is created |
+| `paths.wiki_project` | `folio.yaml` > `paths` | Where the wiki project is created (default: `./.folio/sage-wiki/`) |
 | `paths.rewrite_md` | `folio.yaml` > `paths` | Source directory for documents added to wiki |
 
 ### Deterministic or LLM?
@@ -619,7 +627,7 @@ Reports estimated cost and file count. No wiki project is created.
 Wiki compilation runs as part of the pipeline. There is no standalone `folio wiki` command. To audit an existing wiki:
 
 ```bash
-folio audit --wiki-dir ./wiki/
+folio audit --wiki-dir ./.folio/sage-wiki/
 ```
 
 ---
@@ -762,6 +770,7 @@ While the pipeline orchestrates all stages, each stage can also be run independe
 
 | Command | Description |
 |---------|-------------|
+| `folio convert` | Convert PDF/DOCX/XLSX files to Markdown (single file or directory) |
 | `folio scan` | Scan archive, detect funders/years/types, estimate costs |
 | `folio clean` | Deterministic markdown cleanup (single file or directory) |
 | `folio canonicalize` | Version detection and deduplication |
@@ -773,4 +782,4 @@ While the pipeline orchestrates all stages, each stage can also be run independe
 
 All commands support `--help` for detailed usage, `--dry-run` for preview, and `--json` for structured output.
 
-**Note:** The `convert` stage has no standalone CLI. Use `folio ingest` for single-file conversion or run it within `folio pipeline`.
+**Note:** The `convert` stage can be run standalone via `folio convert`. Use `folio ingest` for single-file end-to-end ingestion.

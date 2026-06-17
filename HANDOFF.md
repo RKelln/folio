@@ -15,7 +15,7 @@ This document is for the next AI agent taking over work on `folio`. Read it full
 
 ## Current state
 
-**Phase 1-5 complete. 427 tests passing. All 14 CLI subcommands functional. Pipeline validated against prototype with semantic equivalence confirmed ($0.04 LLM cost).**
+**Phase 1-5 complete. 434 tests passing. All 14 CLI subcommands functional. Pipeline validated against prototype with semantic equivalence confirmed ($0.04 LLM cost). Wiki layout refactored (`.folio/sage-wiki/` + symlinks). All beads closed.**
 
 All 20 core pipeline tasks ported from the prototype. All 10 P0 and 11 P1 bugs fixed. All 8 CLI review findings (folio-039–folio-046) fixed. 8 additional bugs found and fixed during Phase 5 validation. The CLI dispatcher provides `folio <command>` UX with subcommands auto-discovering `folio.yaml` from cwd.
 
@@ -54,6 +54,8 @@ Validated against InterAccess's 1,033-file grant archive. $0.04 total LLM cost.
 ### All open beads closed — 21 issues resolved
 
 All bugs consolidated from BUGS.md into beads, then all resolved:
+- Wiki layout refactored: `.folio/sage-wiki/` as wiki project dir, root `wiki/` symlink to compiled output, `wiki/raw/` symlink to `markdown/` (no file copying)
+- Docling is now the default converter (replaces datalab)
 - CLI `--dry-run`/`--json` compliance across all 14 subcommands (folio-3ps epic + 4 children)
 - Dead code removed from CLI files (folio-lqr)
 - `from __future__ import annotations` standardized across 66 files (folio-bme)
@@ -70,7 +72,7 @@ All bugs consolidated from BUGS.md into beads, then all resolved:
 
 ### ✅ COMPLETED — (no open beads)
 
-All 21 beads closed. 427 tests passing. All P0-P3 issues from BUGS.md resolved.
+All 21 beads closed. 434 tests passing. All P0-P3 issues resolved.
 
 ### Resolved bugs (all now fixed)
 
@@ -91,7 +93,7 @@ All 21 beads closed. 427 tests passing. All P0-P3 issues from BUGS.md resolved.
 1. **No Pydantic** — config validation uses plain dataclasses to keep deps minimal.
 2. **LLM provider bypass** — ✅ Resolved — `complete_with_usage()` added to `LLMProvider`.
 3. **Safe condition DSL** — the 12 condition types in `classifier.py` are the canonical way to express classification rules. Legacy eval parser exists for migration from prototype configs.
-4. **SequenceMatcher autojunk** — always use `autojunk=False` when comparing grant documents. See `BUGS.md` #007.
+4. **SequenceMatcher autojunk** — always use `autojunk=False` when comparing grant documents.
 5. **Frontmatter API is frozen** — `parse_frontmatter`, `dict_to_frontmatter`, `sanitize_frontmatter`, `update_frontmatter` have the same signatures as the prototype. Don't change them.
 6. **Manifest as checkpoint state** — the manifest at `{paths.rewrite_md}/manifest.json` is the pipeline's resume mechanism. Save after each stage.
 7. **Filename convention** — ✅ Resolved — `docs/file-naming.md` created.
@@ -115,6 +117,7 @@ folio                    # Show available commands
 folio pipeline --dry-run # Estimate costs
 folio pipeline           # Run all stages
 folio scan               # Scan the archive
+folio convert --source ./archive/ --dest ./.folio/converted/  # Convert source files
 folio classify           # Classify markdown files
 folio init --guided      # Interactive org setup
 folio skills --platform opencode  # Generate agent skills
@@ -132,8 +135,11 @@ ia-library/          # Org repo (separate git repo from folio tool)
 ├── .env             # API keys (DEEPSEEK_API_KEY, DATALAB_API_KEY)
 ├── archive/         # Raw source files (PDF, DOCX, XLSX)
 ├── markdown/        # Final LLM-rewritten output
-├── wiki/            # Sage-wiki searchable knowledge base
-└── .folio/          # Pipeline intermediates (converter output, cleaned md, manifests)
+├── wiki/            # Symlink to .folio/sage-wiki/wiki/ (compiled output)
+│   └── raw/         # Symlink to markdown/ (no file copying)
+├── .folio/          # Pipeline intermediates (converter output, cleaned md, manifests)
+│   └── sage-wiki/   # Sage-wiki project directory (wiki_project default)
+└── .opencode/       # Generated agent skills (opencode platform)
 ```
 
 ## Quick code navigation

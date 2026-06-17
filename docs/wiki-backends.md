@@ -15,7 +15,7 @@ and must implement five methods:
 Initialize a new wiki project on disk. Creates the project directory, writes a
 `config.yaml` file, and sets up the `raw/` directory for incoming documents.
 
-- **project_dir** — absolute path to the wiki project root (typically `./wiki/`)
+- **project_dir** — absolute path to the wiki project root (typically `./.folio/sage-wiki/`)
 - **config** — a dict of wiki-specific configuration (e.g. pack name)
 
 ### `add_documents(source_paths: list[Path]) -> None`
@@ -87,20 +87,15 @@ wiki:
 
 #### How it works
 
-1. **`init()`** creates the wiki project directory, writes `config.yaml` (with
-   pack and other settings), and creates the `raw/` directory.
+1. **`init()`** creates the wiki project directory under `.folio/sage-wiki/`, writes `config.yaml` (with pack, LLM settings, and embed config), and creates the `raw/` directory.
 
-2. **`add_documents()`** copies rewritten markdown files from the pipeline's
-   `rewrite_md/` directory into `wiki/raw/`. Duplicate filenames are skipped.
+2. **`add_documents()`** creates a symlink `raw/ → ../markdown/` inside the wiki project, so rewritten files are available without copying. Duplicate filenames are skipped.
 
-3. **`compile()`** invokes `sage-wiki compile` as a subprocess with a 1-hour
-   timeout. This reads documents from `raw/`, extracts concepts, and writes
-   structured output.
+3. **`compile()`** invokes `sage-wiki compile` as a subprocess with a 1-hour timeout, after ensuring the API key env var is set. This reads documents from `raw/`, extracts concepts, and writes structured output. After compile, a root `wiki/` symlink is created pointing to `.folio/sage-wiki/wiki/`.
 
 4. **`search(query)`** runs `sage-wiki search <query>` and returns stdout.
 
-5. **`query(question)`** runs `sage-wiki query <question>` and returns the
-   synthesized answer from stdout.
+5. **`query(question)`** runs `sage-wiki query <question>` and returns the synthesized answer from stdout.
 
 On search/query failure, the backend logs the error and returns an empty string.
 
@@ -113,11 +108,14 @@ and answering behavior for the domain.
 #### Output structure
 
 ```
-wiki/
-├── config.yaml          # pack profile and settings
-├── raw/                 # documents added by add_documents()
-└── concepts/            # extracted concepts, one .md per concept
+.folio/sage-wiki/
+├── config.yaml          # pack profile, LLM config, and settings
+├── raw/ -> ../markdown/  # symlink to markdown/ (no file copying)
+└── wiki/                # compiled output (concepts, indexes)
+    └── concepts/        # extracted concepts, one .md per concept
 ```
+
+A root `wiki/` symlink is created pointing to `.folio/sage-wiki/wiki/` for convenient access to compiled output.
 
 #### Best for
 

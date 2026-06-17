@@ -252,7 +252,7 @@ These placeholders are available in all core templates and are filled from `Proj
 | Placeholder | Source |
 |-------------|--------|
 | `{rewrite_md_path}` | `paths.rewrite_md` |
-| `{wiki_path}` | `paths.wiki_project` |
+| `{wiki_path}` | `paths.wiki_project` (default: `./.folio/sage-wiki/`; root `wiki/` is a symlink to compiled output) |
 | `{raw_archive_path}` | `paths.raw_archive` |
 
 ### Tool snippets
