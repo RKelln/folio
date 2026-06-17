@@ -229,5 +229,65 @@ scenarios:
         - "InterAccess"
       should_contain:
         - "Director"
-        - "Committees"
+        - "Committes"
       min_source_count: 3
+
+  - id: validate-markdown-quality
+    name: "Validate markdown output quality"
+    description: >
+      Agent must run folio validate against the InterAccess markdown directory,
+      report findings, and recommend which files need human attention.
+    task: |
+      Run a quality validation scan on the InterAccess grant archive markdown
+      output and report the findings.
+
+      Directory reference:
+      - markdown files: ./markdown/
+
+      Steps:
+      1. Run folio validate against the markdown directory with a random sample:
+         folio validate --source ./markdown/ --sample 20 --all
+      2. Review the output — note any files with missing frontmatter, corruption,
+         placeholders, or size anomalies
+      3. Run folio validate with a specific tier (full tier files tend to have
+         the most content):
+         folio validate --source ./markdown/ --tier full --sample 5 --json
+      4. Identify the 3 most problematic files that need human review
+      5. Recommend whether the overall quality is acceptable for wiki compilation
+
+      Provide your answer in this format:
+      ## Validate Report
+
+      ### Sample Scan (20 random files)
+      - Files scanned: <count>
+      - Files with issues: <count>
+      - Files passing: <count>
+
+      ### Issue Breakdown
+      | Issue Type | Count |
+      |-----------|-------|
+      | missing_field | <n> |
+      | invalid_funder | <n> |
+      | placeholder | <n> |
+      | ... | ... |
+
+      ### Top 3 Files Needing Attention
+      1. [filename] — [reason: missing X, Y]
+      2. [filename] — [reason]
+      3. [filename] — [reason]
+
+      ### Recommendation
+      [Acceptable for wiki? What should be fixed first?]
+
+      ## Feedback
+      [was folio validate easy to use? did --json output work? were the issue
+      descriptions clear? any missing checks you'd want?]
+    evaluation:
+      must_contain:
+        - "Validate"
+        - "Files scanned"
+        - "Recommendation"
+      should_contain:
+        - "Issue Breakdown"
+        - "Needing Attention"
+      min_files_found: 3
