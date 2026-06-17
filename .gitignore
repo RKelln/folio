@@ -45,7 +45,7 @@ coverage.json
 dist/
 
 # Org-specific archive deployments (separate repos)
-ia-library/
+org-library/
 
 
 # Beads / Dolt files (added by bd init)

@@ -40,7 +40,7 @@ from folio.core.skills import (
 # Helpers
 # ──────────────────────────────────────────────────────────────────────
 
-_DEFAULT_LIBRARY_DIR = Path(__file__).resolve().parents[2] / "ia-library"
+_DEFAULT_LIBRARY_DIR = Path(__file__).resolve().parents[2] / "org-library"
 LIBRARY_DIR = Path(os.environ.get("LIBRARY_PATH", _DEFAULT_LIBRARY_DIR))
 LIBRARY_CONFIG_EXISTS = LIBRARY_DIR.exists() and (LIBRARY_DIR / "folio.yaml").exists()
 

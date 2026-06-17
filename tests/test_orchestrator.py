@@ -18,7 +18,7 @@ import pytest
 
 SCENARIOS_DIR = Path(__file__).parent / "agent_scenarios"
 
-LIBRARY = Path(os.environ.get("LIBRARY_PATH", Path(__file__).resolve().parents[2] / "ia-library"))
+LIBRARY = Path(os.environ.get("LIBRARY_PATH", Path(__file__).resolve().parents[2] / "org-library"))
 LIBRARY_CONFIG = LIBRARY / "folio.yaml"
 LIBRARY_AVAILABLE = LIBRARY_CONFIG.exists()
 
@@ -29,7 +29,7 @@ def scenario_dir() -> Path:
 
 
 @pytest.fixture
-def ia_config_path() -> Path:
+def library_config_path() -> Path:
     return LIBRARY_CONFIG
 
 
@@ -141,33 +141,32 @@ def test_prompt_includes_task(scenario_dir, minimal_folio_yaml):
 # ──────────────────────────────────────────────────────────────────────
 
 @pytest.mark.skipif(not LIBRARY_AVAILABLE, reason="org library not available")
-class TestIALibraryOrchestrator:
-    """End-to-end tests using the real InterAccess library."""
+class TestOrgLibraryOrchestrator:
+    """End-to-end tests using a real org library."""
 
     def test_manual_mode_against_library(self, scenario_dir, tmp_path):
-        """Generate prompts for all scenarios against the real IA config."""
+        """Generate prompts for all scenarios against the real config."""
         from folio.core.orchestrator import load_scenarios, run_manual
 
         for yaml_file in sorted(SCENARIOS_DIR.glob("*.yaml")):
             scenarios = load_scenarios(yaml_file)
-            results = run_manual(scenarios, LIBRARY_CONFIG, tmp_path / "ia_output")
+            results = run_manual(scenarios, LIBRARY_CONFIG, tmp_path / "org_output")
             assert len(results) == len(scenarios)
             for result in results:
                 assert result.status == "manual"
                 assert len(result.prompt) > 200, (
                     f"Prompt too short for {result.scenario_id}"
                 )
-                # Prompt must reference actual IA paths
+                # Prompt must reference actual paths
                 assert "./markdown/" in result.prompt or "markdown" in result.prompt
-                assert "InterAccess" in result.prompt
 
-    def test_prompts_contain_ia_funders(self, scenario_dir, tmp_path):
-        """IA prompts must reference the configured funders."""
+    def test_prompts_contain_org_funders(self, scenario_dir, tmp_path):
+        """Org prompts must reference the configured funders."""
         from folio.core.orchestrator import load_scenarios, run_manual
 
         for yaml_file in sorted(SCENARIOS_DIR.glob("*.yaml")):
             scenarios = load_scenarios(yaml_file)
-            results = run_manual(scenarios, LIBRARY_CONFIG, tmp_path / "ia_output")
+            results = run_manual(scenarios, LIBRARY_CONFIG, tmp_path / "org_output")
 
         # Collect all prompt text and check for funder references
         all_text = " ".join(r.prompt for r in results)
@@ -181,7 +180,7 @@ class TestIALibraryOrchestrator:
 
         for yaml_file in sorted(SCENARIOS_DIR.glob("*.yaml")):
             scenarios = load_scenarios(yaml_file)
-            results = run_manual(scenarios, LIBRARY_CONFIG, tmp_path / "ia_output")
+            results = run_manual(scenarios, LIBRARY_CONFIG, tmp_path / "org_output")
 
         for result in results:
             prompt_size = len(result.prompt)
