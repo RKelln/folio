@@ -78,8 +78,8 @@ uv run pytest tests/ --ignore=tests/test_frontmatter.py -q
 # 5. Lint passes (warnings OK, no errors)
 uv run ruff check src/
 
-# 6. PyPI test publish (dry-run)
-uv build --check 2>&1
+# 6. Package builds cleanly
+uv build 2>&1
 ```
 
 Do not proceed past Step 2 if any pre-flight check fails.
@@ -239,8 +239,7 @@ Confirm both pushes succeeded.
 gh release create v{new} \
   --repo RKelln/folio \
   --title "v{new} — {description}" \
-  --notes-file dist/RELEASE_NOTES_DRAFT.md \
-  --generate-notes
+  --notes-file dist/RELEASE_NOTES_DRAFT.md
 ```
 
 If `gh` is not authenticated, show the command for the user to run manually.
