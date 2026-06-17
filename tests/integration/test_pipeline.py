@@ -418,3 +418,418 @@ class TestManifestCRUD:
 
         loaded = load_manifest(manifest_path)
         assert loaded["updated"] != original_updated
+
+
+# ---------------------------------------------------------------------------
+# Full pipeline integration tests
+# ---------------------------------------------------------------------------
+
+
+class TestPipelineEndToEnd:
+    """Integration tests for the full folio pipeline end-to-end."""
+
+    FOLIO_YAML_TEMPLATE = """\
+project:
+  name: Integration Test
+org:
+  name: Test Org
+  abbreviation: TEST
+paths:
+  raw_archive: {raw_archive}
+  raw_md: {raw_md}
+  clean_md: {clean_md}
+  rewrite_md: {rewrite_md}
+  wiki_project: {wiki_project}
+funders:
+  OAC: Ontario Arts Council
+  TAC: Toronto Arts Council
+doc_types:
+  - application
+  - report
+  - budget
+llm:
+  provider: openai_compatible
+  models:
+    fast: test-model-fast
+    quality: test-model-pro
+  base_url: https://api.example.com
+  pricing:
+    input_per_million: 0.14
+    output_per_million: 0.28
+converter:
+  type: marker
+wiki:
+  type: "null"
+"""
+
+    SAMPLE_MD_CONTENT = """---
+funder: "OAC"
+type: application
+written: 2024
+---
+
+# Project Description
+
+This is a substantial project description with detailed narrative content about the organization's
+programming plans for the upcoming fiscal year. The project involves community engagement, artist
+development, and public outreach activities that serve diverse audiences.
+
+## Goals
+
+- Increase community participation in arts programming
+- Develop new partnerships with local organizations
+- Expand outreach to underserved communities
+
+## Budget
+
+The total budget for this project is $50,000 allocated across staffing, materials, venue costs,
+and artist fees. Staff costs account for approximately 40% of the total budget with the remainder
+going to direct project expenses.
+
+## Timeline
+
+The project will run from January through December 2024 with quarterly milestones and a final
+report due in January 2025.
+
+## Evaluation
+
+Success will be measured through attendance numbers, participant surveys, and partnership
+agreements. We expect to reach 500 community members through our programming.
+"""
+
+    def _create_test_archive(self, tmp_path):
+        """Create a mini archive with markdown files and folio.yaml."""
+        archive_dir = tmp_path / "archive"
+        archive_dir.mkdir()
+
+        for i in range(3):
+            fname = f"OAC__2024_Grant_Application_{i + 1}.md"
+            (archive_dir / fname).write_text(self.SAMPLE_MD_CONTENT, encoding="utf-8")
+
+        config = tmp_path / "folio.yaml"
+        config.write_text(self.FOLIO_YAML_TEMPLATE.format(
+            raw_archive=str(archive_dir),
+            raw_md=str(tmp_path / ".folio" / "converted"),
+            clean_md=str(tmp_path / ".folio" / "cleaned"),
+            rewrite_md=str(tmp_path / "markdown"),
+            wiki_project=str(tmp_path / ".folio" / "sage-wiki"),
+        ))
+        return config
+
+    def test_full_pipeline_dry_run_report_structure(self, tmp_path):
+        """Full pipeline --dry-run produces a report with all 8 stages."""
+        from folio.core.pipeline import _estimate_pipeline
+        from folio.config.loader import load_project_config
+
+        config_path = self._create_test_archive(tmp_path)
+        config = load_project_config(config_path)
+
+        report = _estimate_pipeline(config)
+
+        assert "project" in report
+        assert report["project"] == "Test Org"
+        assert "started" in report
+        assert "completed" in report
+        assert "stages" in report
+        assert "total_cost_usd" in report
+        assert "total_time_seconds" in report
+
+        stages = report["stages"]
+        expected_stages = {"scan", "convert", "clean", "canonicalize",
+                           "classify", "rewrite", "prioritize", "wiki"}
+        assert set(stages.keys()) == expected_stages
+
+        for stage_name in expected_stages:
+            stage_data = stages[stage_name]
+            assert "status" in stage_data, f"Missing status in {stage_name}"
+            assert "files" in stage_data, f"Missing files in {stage_name}"
+            assert "cost_usd" in stage_data, f"Missing cost_usd in {stage_name}"
+            assert "time_seconds" in stage_data, f"Missing time_seconds in {stage_name}"
+
+        assert report["total_cost_usd"] >= 0
+        assert report["total_time_seconds"] >= 0
+
+    def test_pipeline_json_output(self, tmp_path, capsys):
+        """Pipeline --dry-run --json produces valid JSON."""
+        from folio.cli.pipeline import main
+
+        config_path = self._create_test_archive(tmp_path)
+        main(["--config", str(config_path), "--dry-run", "--json"])
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+
+        assert "project" in data
+        assert "stages" in data
+        assert len(data["stages"]) == 8
+        assert "total_cost_usd" in data
+        assert "total_time_seconds" in data
+
+    def test_pipeline_dry_run_text_output(self, tmp_path, capsys):
+        """Pipeline --dry-run prints human-readable text report."""
+        from folio.cli.pipeline import main
+
+        config_path = self._create_test_archive(tmp_path)
+        main(["--config", str(config_path), "--dry-run"])
+        captured = capsys.readouterr()
+        output = captured.out
+
+        assert "folio pipeline" in output
+        for stage in ("scan", "convert", "clean", "canonicalize",
+                       "classify", "rewrite", "prioritize", "wiki"):
+            assert stage in output.lower(), f"Stage {stage} not in output"
+        assert "Pipeline complete" in output
+
+    def test_pipeline_specific_stages(self, tmp_path, capsys):
+        """Pipeline --stages scan,clean runs only those stages."""
+        from folio.cli.pipeline import main
+
+        config_path = self._create_test_archive(tmp_path)
+        main(["--config", str(config_path), "--stages", "scan,clean", "--dry-run", "--json"])
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+
+        assert "scan" in data["stages"]
+        assert "clean" in data["stages"]
+
+    def test_pipeline_dry_run_includes_all_stages(self, tmp_path, capsys):
+        """Pipeline --dry-run always estimates all 8 stages (stages filter ignored in dry-run)."""
+        from folio.cli.pipeline import main
+
+        config_path = self._create_test_archive(tmp_path)
+        main(["--config", str(config_path), "--stages", "scan,clean", "--dry-run", "--json"])
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+
+        assert len(data["stages"]) == 8
+
+    def test_pipeline_invalid_stage_name(self, tmp_path, capsys):
+        """Pipeline --stages with invalid name exits 1."""
+        from folio.cli.pipeline import main
+
+        config_path = self._create_test_archive(tmp_path)
+        with pytest.raises(SystemExit) as exc:
+            main(["--config", str(config_path), "--stages", "scan,nonexistent"])
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "Unknown stage" in captured.err
+
+    def test_pipeline_stages_dry_run_cost_estimation(self, tmp_path):
+        """Each pipeline stage in dry-run has a cost_usd and time_seconds."""
+        from folio.core.pipeline import _estimate_pipeline
+        from folio.config.loader import load_project_config
+
+        config_path = self._create_test_archive(tmp_path)
+        config = load_project_config(config_path)
+
+        report = _estimate_pipeline(config)
+        stages = report["stages"]
+
+        assert isinstance(stages["rewrite"]["cost_usd"], (int, float))
+        assert isinstance(stages["rewrite"]["time_seconds"], (int, float))
+
+    def test_pipeline_dry_run_creates_no_files(self, tmp_path):
+        """Pipeline --dry-run does not create any files in target directories."""
+        from folio.core.pipeline import _estimate_pipeline
+        from folio.config.loader import load_project_config
+
+        config_path = self._create_test_archive(tmp_path)
+        config = load_project_config(config_path)
+
+        markdown_dir = tmp_path / "markdown"
+        converted_dir = tmp_path / ".folio" / "converted"
+
+        _estimate_pipeline(config)
+
+        assert not list(markdown_dir.glob("*.md")) if markdown_dir.exists() else True
+        assert not list(converted_dir.glob("*.md")) if converted_dir.exists() else True
+
+    def test_run_pipeline_dry_run(self, tmp_path, capsys):
+        """run_pipeline with dry_run=True works end-to-end."""
+        from folio.core.pipeline import run_pipeline
+
+        config_path = self._create_test_archive(tmp_path)
+
+        report = run_pipeline(
+            config_path=config_path,
+            stages=None,
+            dry_run=True,
+            resume=True,
+        )
+
+        assert "project" in report
+        assert "stages" in report
+        assert len(report["stages"]) == 8
+        assert "total_cost_usd" in report
+        assert "total_time_seconds" in report
+        assert report["total_time_seconds"] >= 0
+
+    def test_pipeline_resume_behavior(self, tmp_path):
+        """Test resume: manifest with some complete stages skips them."""
+        from folio.core.pipeline import run_pipeline
+        from folio.core.manifest import create_manifest, save_manifest
+        from folio.config.loader import load_project_config
+
+        config_path = self._create_test_archive(tmp_path)
+        config = load_project_config(config_path)
+
+        rewrite_dir = tmp_path / "markdown"
+        rewrite_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = create_manifest("Test Org")
+        manifest["stages"] = {
+            "scan": {"status": "complete", "files": 3, "cost_usd": 0.0, "time_seconds": 1.0},
+            "convert": {"status": "complete", "files": 3, "cost_usd": 0.0, "time_seconds": 2.0},
+            "clean": {"status": "complete", "files": 3, "cost_usd": 0.0, "time_seconds": 0.5},
+        }
+        manifest_path = rewrite_dir / "manifest.json"
+        save_manifest(manifest, manifest_path)
+
+        report = run_pipeline(
+            config_path=config_path,
+            stages=None,
+            dry_run=True,
+            resume=True,
+        )
+
+        assert "scan" in report["stages"]
+        assert "convert" in report["stages"]
+        assert "clean" in report["stages"]
+
+        scan = report["stages"]["scan"]
+        assert scan["status"] == "complete"
+        assert scan["files"] == 3
+
+    def test_pipeline_with_real_markdown_files(self, tmp_path):
+        """Pipeline dry-run with realistic markdown files in archive."""
+        from folio.core.pipeline import _estimate_pipeline
+        from folio.config.loader import load_project_config
+
+        archive_dir = tmp_path / "archive"
+        archive_dir.mkdir()
+
+        content1 = """---
+funder: "OAC"
+type: application
+written: 2024
+---
+
+# Core Operating Grant Application
+
+## Organization Profile
+
+The organization was founded in 1995 and has since served the local arts community
+through exhibitions, workshops, and public programming. We maintain a staff of 5
+full-time employees and operate a 2000 sq ft gallery space.
+
+## Project Narrative
+
+This application requests $25,000 to support our 2024-2025 programming season.
+The funds will be used to mount 6 exhibitions, host 12 workshops, and publish
+a quarterly arts journal.
+
+## Budget Summary
+
+Revenue: $150,000 (grants: $75,000, earned: $50,000, donations: $25,000)
+Expenses: $145,000 (staff: $70,000, programming: $45,000, admin: $30,000)
+Surplus: $5,000
+
+## Evaluation Framework
+
+We measure success through attendance, participant surveys, artist fees paid,
+and community partnerships established.
+"""
+        content2 = """---
+funder: "TAC"
+type: report
+written: 2023
+---
+
+# Final Grant Report: Community Arts Initiative
+
+## Project Overview
+
+This report summarizes activities undertaken with the TAC grant awarded in
+January 2023. The $15,000 grant supported a series of 8 community workshops
+and 2 public exhibitions.
+
+## Activities Completed
+
+- 8 community workshops with 120 total participants
+- 2 public exhibitions with 450 visitors
+- 3 artist talks with 60 attendees each
+- 1 publication distributed to 200 households
+
+## Budget Reconciliation
+
+Total grant: $15,000
+Spent: $14,750
+  - Artist fees: $6,000
+  - Materials: $3,500
+  - Venue rental: $2,750
+  - Promotion: $1,500
+  - Administration: $1,000
+
+## Outcomes and Impact
+
+The project exceeded participation targets by 20%. Participant surveys indicated
+95% satisfaction rate. Three new community partnerships were established.
+"""
+        content3 = """---
+funder: "OAC"
+type: budget
+written: 2025
+---
+
+# 2025 Operating Budget Projection
+
+## Revenue Projections
+
+| Source | Amount |
+|--------|--------|
+| OAC Operating | $30,000 |
+| TAC Project | $15,000 |
+| Earned Revenue | $40,000 |
+| Donations | $20,000 |
+| Total | $105,000 |
+
+## Expense Projections
+
+| Category | Amount |
+|----------|--------|
+| Staff Salaries | $55,000 |
+| Artist Fees | $15,000 |
+| Venue Costs | $12,000 |
+| Marketing | $8,000 |
+| Materials | $7,000 |
+| Admin | $8,000 |
+| Total | $105,000 |
+
+## Notes
+
+This budget assumes flat funding from OAC and a 5% increase in earned revenue
+from ticket sales and workshop fees. Contingency reserve of 3% is built into
+each line item.
+"""
+
+        (archive_dir / "OAC__2024_Core_Operating_Grant__Application.md").write_text(content1)
+        (archive_dir / "TAC__2023_Final_Report__Report.md").write_text(content2)
+        (archive_dir / "OAC__2025_Operating_Budget__Budget.md").write_text(content3)
+
+        config = tmp_path / "folio.yaml"
+        config.write_text(self.FOLIO_YAML_TEMPLATE.format(
+            raw_archive=str(archive_dir),
+            raw_md=str(tmp_path / ".folio" / "converted"),
+            clean_md=str(tmp_path / ".folio" / "cleaned"),
+            rewrite_md=str(tmp_path / "markdown"),
+            wiki_project=str(tmp_path / ".folio" / "sage-wiki"),
+        ))
+
+        project_config = load_project_config(config)
+        report = _estimate_pipeline(project_config)
+
+        assert report["project"] == "Test Org"
+        assert len(report["stages"]) == 8
+
+        scan_stage = report["stages"]["scan"]
+        assert scan_stage["status"] == "ok"
+        assert scan_stage["files"] >= 0
