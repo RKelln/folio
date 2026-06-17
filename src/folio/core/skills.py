@@ -231,6 +231,39 @@ def _write_file(path: Path, content: str) -> Path:
     return path
 
 
+def _check_placeholders(content: str, label: str, warnings: list[str]) -> None:
+    """Check for unfilled template placeholders and append warnings."""
+    unfilled = set(_PLACEHOLDER_RE.findall(content))
+    if unfilled:
+        warnings.append(
+            f"Unfilled placeholders in {label}: {', '.join(sorted(unfilled))}"
+        )
+
+
+def _make_skill_md(
+    config: ProjectConfig,
+    output_dir: Path,
+    frontmatter: str,
+    subpath: str,
+    warnings: list[str],
+) -> Path:
+    """Generate a SKILL.md file with the shared three-template body.
+
+    Fills archive-search, grant-drafting, and grant-writing-craft templates
+    from build_context(), prepends frontmatter, and writes to {output_dir}/{subpath}.
+    Checks for unfilled placeholders and appends warnings if found.
+    """
+    ctx = build_context(config)
+    body_parts = [
+        _fill_core("archive-search.md", ctx),
+        _fill_core("grant-drafting.md", ctx),
+        _fill_core("grant-writing-craft.md", ctx),
+    ]
+    content = frontmatter + "\n".join(body_parts)
+    _check_placeholders(content, subpath, warnings)
+    return _write_file(output_dir / subpath, content)
+
+
 # ── OpenCode ──────────────────────────────────────────────────────────
 
 
@@ -243,19 +276,12 @@ def _generate_opencode(
 
     Writes to: {output_dir}/.opencode/skills/grant-writing/SKILL.md
     """
-    ctx = build_context(config)
     description = (
         f"Search and draft grant applications using {config.org.name}'s historical "
         f"grant archive. Find precedent applications, extract boilerplate text, "
         f"retrieve budget figures and statistics, and compose new grant sections "
         f"grounded in real organizational data."
     )
-
-    body_parts = [
-        _fill_core("archive-search.md", ctx),
-        _fill_core("grant-drafting.md", ctx),
-        _fill_core("grant-writing-craft.md", ctx),
-    ]
 
     frontmatter = f"""---
 name: grant-writing
@@ -268,10 +294,10 @@ metadata:
 
 """
 
-    content = frontmatter + "\n".join(body_parts)
-    path = _write_file(
-        output_dir / ".opencode" / "skills" / "grant-writing" / "SKILL.md",
-        content,
+    path = _make_skill_md(
+        config, output_dir, frontmatter,
+        ".opencode/skills/grant-writing/SKILL.md",
+        warnings,
     )
     return [path]
 
@@ -293,6 +319,7 @@ def _generate_claude(
 
     search_body = _fill_core("archive-search.md", ctx)
     search_content = f"# /grant-search\n\n{search_body}"
+    _check_placeholders(search_content, ".claude/commands/grant-search.md", warnings)
     search_path = _write_file(
         output_dir / ".claude" / "commands" / "grant-search.md",
         search_content,
@@ -302,6 +329,7 @@ def _generate_claude(
         _fill_core("grant-drafting.md", ctx) + "\n\n" + _fill_core("grant-writing-craft.md", ctx)
     )
     draft_content = f"# /grant-draft\n\n{draft_body}"
+    _check_placeholders(draft_content, ".claude/commands/grant-draft.md", warnings)
     draft_path = _write_file(
         output_dir / ".claude" / "commands" / "grant-draft.md",
         draft_content,
@@ -338,6 +366,8 @@ def _generate_openclaw(
     system_prompt += _fill_core("grant-drafting.md", ctx)
     system_prompt += "\n\n"
     system_prompt += _fill_core("grant-writing-craft.md", ctx)
+
+    _check_placeholders(system_prompt, "openclaw/system-prompt.md", warnings)
 
     system_prompt_path = _write_file(
         output_dir / "openclaw" / "system-prompt.md",
@@ -386,19 +416,12 @@ def _generate_hermes(
     open standard. Skills placed in hermes/skills/ can be copied to
     ~/.hermes/skills/ (primary) or ~/.agents/skills/ (external).
     """
-    ctx = build_context(config)
     description = (
         f"Search and draft grant applications using {config.org.name}'s historical "
         f"grant archive. Use when writing grants, searching for precedent applications, "
         f"extracting boilerplate text, retrieving budget figures and statistics, "
         f"or composing grant sections grounded in real organizational data."
     )
-
-    body_parts = [
-        _fill_core("archive-search.md", ctx),
-        _fill_core("grant-drafting.md", ctx),
-        _fill_core("grant-writing-craft.md", ctx),
-    ]
 
     frontmatter = f"""---
 name: grant-writing
@@ -412,9 +435,9 @@ metadata:
 
 """
 
-    content = frontmatter + "\n".join(body_parts)
-    path = _write_file(
-        output_dir / "hermes" / "skills" / "grant-writing" / "SKILL.md",
-        content,
+    path = _make_skill_md(
+        config, output_dir, frontmatter,
+        "hermes/skills/grant-writing/SKILL.md",
+        warnings,
     )
     return [path]

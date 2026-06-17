@@ -29,6 +29,7 @@ from folio.config.schema import (
 from folio.core.skills import (
     _CORE_DIR,
     _PLACEHOLDER_RE,
+    _check_placeholders,
     _fill_template,
     build_context,
     generate_skills,
@@ -350,6 +351,54 @@ class TestGenerateSkills:
         braces = [b for b in re.findall(r"\{[a-z_]+\}", content)
                   if re.match(r"^\{[a-z_]+[a-z]\}$", b)]
         assert not braces, f"Unfilled placeholders: {braces}"
+
+    def test_hermes_correct_path(self, cfg, tmp_path):
+        result = generate_skills(cfg, "hermes", tmp_path)
+        path = result["files_written"][0]
+        parts = path.relative_to(tmp_path).parts
+        assert parts == ("hermes", "skills", "grant-writing", "SKILL.md")
+
+
+# ══════════════════════════════════════════════════════════════════════
+# _check_placeholders()
+# ══════════════════════════════════════════════════════════════════════
+
+class TestCheckPlaceholders:
+    """Warning collection for unfilled template placeholders."""
+
+    def test_no_warnings_when_clean(self):
+        warnings: list[str] = []
+        _check_placeholders("Hello world", "test.md", warnings)
+        assert warnings == []
+
+    def test_single_unfilled_placeholder(self):
+        warnings: list[str] = []
+        _check_placeholders("Hello {name}, welcome!", "test.md", warnings)
+        assert len(warnings) == 1
+        assert "test.md" in warnings[0]
+        assert "name" in warnings[0]
+
+    def test_multiple_unfilled_placeholders(self):
+        warnings: list[str] = []
+        _check_placeholders("Hello {name}, the {org} is at {place}.", "out/test.md", warnings)
+        assert len(warnings) == 1
+        msg = warnings[0]
+        assert "name" in msg
+        assert "org" in msg
+        assert "place" in msg
+
+    def test_deduplicates_same_placeholder(self):
+        warnings: list[str] = []
+        _check_placeholders("{x} {x} {x}", "file.md", warnings)
+        assert len(warnings) == 1
+        assert warnings[0].count("x") == 1  # deduplicated
+
+    def test_matches_underscore_keys(self):
+        warnings: list[str] = []
+        _check_placeholders("Unfilled: {some_key} {another_key}", "file.md", warnings)
+        assert len(warnings) == 1
+        assert "some_key" in warnings[0]
+        assert "another_key" in warnings[0]
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -774,3 +823,15 @@ class TestCrossPlatformConsistency:
             for fp in result["files_written"]:
                 assert fp.exists()
                 assert fp.stat().st_size > 0, f"{fp} is empty"
+
+    def test_all_platforms_warnings_empty_with_full_config(self, tmp_path):
+        cfg = _make_config(
+            wiki=WikiConfig(type="sage-wiki"),
+            agentmap=AgentmapConfig(enabled=True),
+        )
+        for platform in ("opencode", "claude", "openclaw", "hermes"):
+            out = tmp_path / platform
+            result = generate_skills(cfg, platform, out)
+            assert result["warnings"] == [], (
+                f"{platform} has unexpected warnings: {result['warnings']}"
+            )
