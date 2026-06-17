@@ -16,7 +16,7 @@ class PathsConfig:
     raw_md: str = "./raw_md/"
     clean_md: str = "./clean_md/"
     rewrite_md: str = "./rewrite_md/"
-    wiki_project: str = "./wiki/"
+    wiki_project: str = "./.folio/sage-wiki/"
 
 @dataclass
 class LLMConfig:

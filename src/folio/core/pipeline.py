@@ -777,6 +777,17 @@ def _run_wiki(config: ProjectConfig) -> dict:
     try:
         backend.compile()
         print(f"  Wiki compiled successfully")
+
+        # Create root wiki/ symlink pointing to the compiled output
+        root_wiki = Path(config.paths.wiki_project)
+        compiled_wiki = wiki_dir / "wiki"
+        if compiled_wiki.is_dir():
+            public_link = Path("wiki")
+            if public_link.is_symlink() or public_link.exists():
+                public_link.unlink()
+            public_link.symlink_to(compiled_wiki, target_is_directory=True)
+            print(f"  Wiki output → {public_link}")
+
     except Exception as exc:
         return {
             "stage": "wiki",

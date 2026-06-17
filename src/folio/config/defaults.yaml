@@ -36,7 +36,7 @@ paths:
   raw_md: "./.folio/converted/"
   clean_md: "./.folio/cleaned/"
   rewrite_md: "./markdown/"
-  wiki_project: "./wiki/"
+  wiki_project: "./.folio/sage-wiki/"
 
 # ── Converter ─────────────────────────────────────────────────────
 converter:
