@@ -780,7 +780,6 @@ def _run_wiki(config: ProjectConfig) -> dict:
         print("  Wiki compiled successfully")
 
         # Create root wiki/ symlink pointing to the compiled output
-        root_wiki = Path(config.paths.wiki_project)
         compiled_wiki = wiki_dir / "wiki"
         if compiled_wiki.is_dir():
             public_link = Path("wiki")

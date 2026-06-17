@@ -813,7 +813,6 @@ def prioritize_directory(
     # ── Real run ───────────────────────────────────────────────────────
 
     llm_provider = _get_provider(config)
-    write_back = directory.resolve() == directory.resolve()
 
     manifest = load_manifest(manifest_path) if resume else {}
     if "completed_groups" not in manifest:

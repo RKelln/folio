@@ -73,8 +73,6 @@ def main(argv: list[str] | None = None) -> None:
     warnings: list[str] = []
 
     bootstrap_files = PLATFORM_FILES.get(args.platform, [])
-    skills_dir = PLATFORM_SKILLS_DIR.get(args.platform)
-
     for filename, default_content in bootstrap_files:
         dest = output_dir / filename
         if not dest.exists() or args.dry_run:

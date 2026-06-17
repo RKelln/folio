@@ -132,7 +132,6 @@ def _rejoin_split_words(text: str) -> str:
     def _replacer(m: re.Match) -> str:
         return m.group(1) + m.group(2)
 
-    changed = True
     max_passes = 5
     for _ in range(max_passes):
         new_text = _SPLIT_WORD_GAP.sub(_replacer, text)
