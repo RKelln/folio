@@ -40,14 +40,14 @@ from folio.core.skills import (
 # Helpers
 # ──────────────────────────────────────────────────────────────────────
 
-_DEFAULT_IA_DIR = Path(__file__).resolve().parents[2] / "ia-library"
-IA_DIR = Path(os.environ.get("IA_LIBRARY_PATH", _DEFAULT_IA_DIR))
-IA_CONFIG_EXISTS = IA_DIR.exists() and (IA_DIR / "folio.yaml").exists()
+_DEFAULT_LIBRARY_DIR = Path(__file__).resolve().parents[2] / "ia-library"
+LIBRARY_DIR = Path(os.environ.get("LIBRARY_PATH", _DEFAULT_LIBRARY_DIR))
+LIBRARY_CONFIG_EXISTS = LIBRARY_DIR.exists() and (LIBRARY_DIR / "folio.yaml").exists()
 
 
-def _load_ia_config() -> ProjectConfig:
+def _load_library_config() -> ProjectConfig:
     from folio.config.loader import load_project_config
-    return load_project_config(IA_DIR / "folio.yaml")
+    return load_project_config(LIBRARY_DIR / "folio.yaml")
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -149,9 +149,9 @@ class TestBuildContext:
 
     # ── IA library integration ──
 
-    @pytest.mark.skipif(not IA_CONFIG_EXISTS, reason="IA library not available")
-    def test_ia_required_keys(self):
-        ctx = build_context(_load_ia_config())
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    def test_library_required_keys(self):
+        ctx = build_context(_load_library_config())
         required = [
             "org_name", "org_abbreviation", "org_slug", "org_description",
             "funder_table", "funder_rows", "doc_type_table", "doc_type_rows",
@@ -164,35 +164,35 @@ class TestBuildContext:
         for key in required:
             assert key in ctx, f"Missing key: {key}"
 
-    @pytest.mark.skipif(not IA_CONFIG_EXISTS, reason="IA library not available")
-    def test_ia_org_identity(self):
-        ctx = build_context(_load_ia_config())
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    def test_library_org_identity(self):
+        ctx = build_context(_load_library_config())
         assert ctx["org_name"] == "InterAccess"
         assert ctx["org_abbreviation"] == "IA"
         assert ctx["org_slug"] == "interaccess"
 
-    @pytest.mark.skipif(not IA_CONFIG_EXISTS, reason="IA library not available")
-    def test_ia_five_funders(self):
-        ctx = build_context(_load_ia_config())
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    def test_library_five_funders(self):
+        ctx = build_context(_load_library_config())
         ft = ctx["funder_table"]
         for abbr in ("CCA", "OAC", "TAC", "BCAH"):
             assert abbr in ft
 
-    @pytest.mark.skipif(not IA_CONFIG_EXISTS, reason="IA library not available")
-    def test_ia_paths_are_local(self):
-        ctx = build_context(_load_ia_config())
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    def test_library_paths_are_local(self):
+        ctx = build_context(_load_library_config())
         assert "markdown" in ctx["rewrite_md_path"]
         assert "sage-wiki" in ctx["wiki_path"]
 
-    @pytest.mark.skipif(not IA_CONFIG_EXISTS, reason="IA library not available")
-    def test_ia_wiki_and_agentmap_enabled(self):
-        ctx = build_context(_load_ia_config())
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    def test_library_wiki_and_agentmap_enabled(self):
+        ctx = build_context(_load_library_config())
         assert ctx["wiki_enabled"] is True
         assert ctx["agentmap_enabled"] == "true"
 
-    @pytest.mark.skipif(not IA_CONFIG_EXISTS, reason="IA library not available")
-    def test_ia_all_tool_sections_present(self):
-        ctx = build_context(_load_ia_config())
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    def test_library_all_tool_sections_present(self):
+        ctx = build_context(_load_library_config())
         sections = ctx["tool_sections"]
         assert "File search" in sections
         assert "sage-wiki" in sections
@@ -685,12 +685,12 @@ wiki:
 # IA library end-to-end
 # ══════════════════════════════════════════════════════════════════════
 
-@pytest.mark.skipif(not IA_CONFIG_EXISTS, reason="IA library not available")
+@pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
 class TestIALibrarySkills:
     """End-to-end skills generation from the real InterAccess library."""
 
-    def test_opencode_from_ia_config(self, tmp_path):
-        result = generate_skills(_load_ia_config(), "opencode", tmp_path)
+    def test_opencode_from_library_config(self, tmp_path):
+        result = generate_skills(_load_library_config(), "opencode", tmp_path)
         content = result["files_written"][0].read_text()
 
         assert content.startswith("---")
@@ -714,14 +714,14 @@ class TestIALibrarySkills:
         assert "sage-wiki" in content
 
     def test_no_unfilled_placeholders(self, tmp_path):
-        result = generate_skills(_load_ia_config(), "opencode", tmp_path)
+        result = generate_skills(_load_library_config(), "opencode", tmp_path)
         content = result["files_written"][0].read_text()
         braces = [b for b in re.findall(r"\{[a-z_]+\}", content)
                   if re.match(r"^\{[a-z_]+[a-z]\}$", b)]
         assert not braces, f"Unfilled placeholders: {braces}"
 
-    def test_claude_from_ia_config(self, tmp_path):
-        result = generate_skills(_load_ia_config(), "claude", tmp_path)
+    def test_claude_from_library_config(self, tmp_path):
+        result = generate_skills(_load_library_config(), "claude", tmp_path)
         assert len(result["files_written"]) == 2
 
         search = [p for p in result["files_written"] if p.name == "grant-search.md"][0]
@@ -732,13 +732,13 @@ class TestIALibrarySkills:
         assert "InterAccess" in search.read_text()
         assert "InterAccess" in draft.read_text()
 
-    def test_openclaw_from_ia_config(self, tmp_path):
-        result = generate_skills(_load_ia_config(), "openclaw", tmp_path)
+    def test_openclaw_from_library_config(self, tmp_path):
+        result = generate_skills(_load_library_config(), "openclaw", tmp_path)
         assert len(result["files_written"]) == 2
         assert {p.name for p in result["files_written"]} == {"system-prompt.md", "tools.yaml"}
 
-    def test_hermes_from_ia_config(self, tmp_path):
-        result = generate_skills(_load_ia_config(), "hermes", tmp_path)
+    def test_hermes_from_library_config(self, tmp_path):
+        result = generate_skills(_load_library_config(), "hermes", tmp_path)
         content = result["files_written"][0].read_text()
         assert content.startswith("---")
         assert "name: grant-writing" in content
@@ -751,16 +751,16 @@ class TestIALibrarySkills:
         assert "Grant Drafting" in content
         assert "Grant Writing Craft" in content
 
-    def test_generate_to_ia_library_in_place(self):
+    def test_generate_to_library_in_place(self):
         """Generate opencode skills directly into the IA library directory."""
         from folio.cli.skills import main
         import shutil
 
-        output_dir = IA_DIR / "test_output_opencode"
+        output_dir = LIBRARY_DIR / "test_output_opencode"
         output_dir.mkdir(exist_ok=True)
         try:
             main(["--platform", "opencode", "--output", str(output_dir),
-                  "--config", str(IA_DIR / "folio.yaml")])
+                  "--config", str(LIBRARY_DIR / "folio.yaml")])
             skill = (output_dir / ".opencode" / "skills"
                      / "grant-writing" / "SKILL.md")
             assert skill.exists()
@@ -793,9 +793,9 @@ class TestCrossPlatformConsistency:
                 f"Org name not found in {platform} output"
             )
 
-    @pytest.mark.skipif(not IA_CONFIG_EXISTS, reason="IA library not available")
-    def test_all_platforms_from_ia_config(self, tmp_path):
-        config = _load_ia_config()
+    @pytest.mark.skipif(not LIBRARY_CONFIG_EXISTS, reason="IA library not available")
+    def test_all_platforms_from_library_config(self, tmp_path):
+        config = _load_library_config()
         for platform in ("opencode", "claude", "openclaw", "hermes"):
             out = tmp_path / platform
             result = generate_skills(config, platform, out)

@@ -18,9 +18,9 @@ import pytest
 
 SCENARIOS_DIR = Path(__file__).parent / "agent_scenarios"
 
-IA_LIBRARY = Path(os.environ.get("IA_LIBRARY_PATH", Path(__file__).resolve().parents[2] / "ia-library"))
-IA_CONFIG = IA_LIBRARY / "folio.yaml"
-IA_AVAILABLE = IA_CONFIG.exists()
+LIBRARY = Path(os.environ.get("LIBRARY_PATH", Path(__file__).resolve().parents[2] / "ia-library"))
+LIBRARY_CONFIG = LIBRARY / "folio.yaml"
+LIBRARY_AVAILABLE = LIBRARY_CONFIG.exists()
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def scenario_dir() -> Path:
 
 @pytest.fixture
 def ia_config_path() -> Path:
-    return IA_CONFIG
+    return LIBRARY_CONFIG
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -137,20 +137,20 @@ def test_prompt_includes_task(scenario_dir, minimal_folio_yaml):
 
 
 # ──────────────────────────────────────────────────────────────────────
-# IA library integration (requires ia-library to be set up)
+# Org library integration (requires a library to be set up)
 # ──────────────────────────────────────────────────────────────────────
 
-@pytest.mark.skipif(not IA_AVAILABLE, reason="IA library not available")
+@pytest.mark.skipif(not LIBRARY_AVAILABLE, reason="IA library not available")
 class TestIALibraryOrchestrator:
     """End-to-end tests using the real InterAccess library."""
 
-    def test_manual_mode_against_ia_library(self, scenario_dir, tmp_path):
+    def test_manual_mode_against_library(self, scenario_dir, tmp_path):
         """Generate prompts for all scenarios against the real IA config."""
         from folio.core.orchestrator import load_scenarios, run_manual
 
         for yaml_file in sorted(SCENARIOS_DIR.glob("*.yaml")):
             scenarios = load_scenarios(yaml_file)
-            results = run_manual(scenarios, IA_CONFIG, tmp_path / "ia_output")
+            results = run_manual(scenarios, LIBRARY_CONFIG, tmp_path / "ia_output")
             assert len(results) == len(scenarios)
             for result in results:
                 assert result.status == "manual"
@@ -167,7 +167,7 @@ class TestIALibraryOrchestrator:
 
         for yaml_file in sorted(SCENARIOS_DIR.glob("*.yaml")):
             scenarios = load_scenarios(yaml_file)
-            results = run_manual(scenarios, IA_CONFIG, tmp_path / "ia_output")
+            results = run_manual(scenarios, LIBRARY_CONFIG, tmp_path / "ia_output")
 
         # Collect all prompt text and check for funder references
         all_text = " ".join(r.prompt for r in results)
@@ -181,7 +181,7 @@ class TestIALibraryOrchestrator:
 
         for yaml_file in sorted(SCENARIOS_DIR.glob("*.yaml")):
             scenarios = load_scenarios(yaml_file)
-            results = run_manual(scenarios, IA_CONFIG, tmp_path / "ia_output")
+            results = run_manual(scenarios, LIBRARY_CONFIG, tmp_path / "ia_output")
 
         for result in results:
             prompt_size = len(result.prompt)
