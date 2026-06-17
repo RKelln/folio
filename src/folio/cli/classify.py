@@ -22,6 +22,10 @@ from folio.core.classifier import build_classify_config, classify_directory, cla
 logger = logging.getLogger(__name__)
 
 
+def _str_value(obj: object) -> str:
+    return obj.value if hasattr(obj, "value") else str(obj)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         prog="folio classify",
@@ -98,11 +102,8 @@ def main(argv: list[str] | None = None) -> None:
 
         result = classify_file(fpath, classify_config)
 
-        tier_val = result["tier"].value if hasattr(result["tier"], "value") else str(result["tier"])
-        if hasattr(result["status"], "value"):
-            status_val = result["status"].value
-        else:
-            status_val = str(result["status"])
+        tier_val = _str_value(result["tier"])
+        status_val = _str_value(result["status"])
 
         output = {
             "filename": fpath.name,
@@ -147,10 +148,7 @@ def main(argv: list[str] | None = None) -> None:
               f"{len(classify_config.get('tier_rules', []))} tier rules")
         for fpath in md_files:
             result = classify_file(fpath, classify_config)
-            if hasattr(result["tier"], "value"):
-                tier_val = result["tier"].value
-            else:
-                tier_val = str(result["tier"])
+            tier_val = _str_value(result["tier"])
             print(f"  {fpath.name}: {tier_val}")
         return
 

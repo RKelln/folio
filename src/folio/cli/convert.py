@@ -75,16 +75,8 @@ def main(argv: list[str] | None = None) -> None:
 
     dest = args.dest.resolve()
 
-    class _ConvCfg:
-        pass
-
-    cfg = _ConvCfg()
-    converter_attr = _ConvCfg()
-    converter_attr.type = args.converter
-    cfg.converter = converter_attr
-
     try:
-        converter = get_converter(cfg)
+        converter = get_converter(args.converter)
     except NotImplementedError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

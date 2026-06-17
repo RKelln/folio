@@ -13,10 +13,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 
 from folio import __version__
-from folio.config.loader import load_project_config
+from folio.config.loader import load_config_or_exit, load_project_config
 from folio.core.pipeline import (
     AVAILABLE_STAGES,
     _estimate_pipeline,
@@ -95,12 +94,9 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(1)
 
     config_path = args.config
-    if not Path(config_path).exists():
-        print("folio.yaml not found. This command requires configuration. Run 'folio init' first.", file=sys.stderr)
-        sys.exit(1)
+    config = load_config_or_exit(config_path)
 
     if args.dry_run:
-        config = load_project_config(config_path)
         report = _estimate_pipeline(config)
     else:
         report = run_pipeline(

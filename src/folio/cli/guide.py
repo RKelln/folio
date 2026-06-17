@@ -360,12 +360,9 @@ ENVIRONMENT VARIABLES (.env)
   DATALAB_API_KEY          IBM Datalab converter API key
 """
 
-_SELECTIONS: dict[str, str | None] = {
+_SELECTIONS: dict[str, str] = {
     "config": _CONFIG_EXTENDED,
     "config-extended": _CONFIG_EXTENDED,
-    "pipeline": None,
-    "orgs": None,
-    "recipes": None,
 }
 
 
@@ -491,10 +488,7 @@ def main(argv: list[str] | None = None) -> None:
     # --search: find keyword in guide text
     if args.search_keyword:
         search_text = _SELECTIONS.get(topic, _GUIDE) if topic and topic in _SELECTIONS else _GUIDE
-        if isinstance(search_text, str):
-            matches = _search_text(search_text, args.search_keyword)
-        else:
-            matches = _search_text(_GUIDE, args.search_keyword)
+        matches = _search_text(search_text, args.search_keyword)
 
         if args.json_output:
             print(json.dumps({

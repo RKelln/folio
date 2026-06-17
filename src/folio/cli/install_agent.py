@@ -11,6 +11,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from folio import __version__
 from folio.config.loader import load_project_config
 from folio.core.skills import generate_skills
 
@@ -59,10 +60,15 @@ def main(argv: list[str] | None = None) -> None:
         "--dry-run", "-n", action="store_true", help="Preview without writing files"
     )
     parser.add_argument("--json", action="store_true", help="Output result as JSON")
-    parser.add_argument("--version", action="version", version="folio 0.1.0")
+    parser.add_argument("--version", action="version", version=f"%(prog)s v{__version__}")
     args = parser.parse_args(argv)
 
-    project_config = load_project_config(Path(args.config))
+    config_path = Path(args.config)
+    if not config_path.exists():
+        print(f"Error: config file not found: {config_path}", file=sys.stderr)
+        sys.exit(1)
+
+    project_config = load_project_config(config_path)
     output_dir = Path.cwd()
 
     files_written: list[str] = []

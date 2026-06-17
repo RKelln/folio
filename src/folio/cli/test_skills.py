@@ -12,6 +12,7 @@ import json
 import sys
 from pathlib import Path
 
+from folio import __version__
 from folio.core.orchestrator import (
     EvalResult,
     format_report,
@@ -75,7 +76,7 @@ Examples:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"folio v0.1.0",
+        version=f"%(prog)s v{__version__}",
     )
 
     args = parser.parse_args(argv)
