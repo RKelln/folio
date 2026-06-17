@@ -295,6 +295,40 @@ grep -r "accessibility" markdown/ --include="*.md"
 # Find all applications by funder
 grep -l 'funder: "OAC"' markdown/*.md
 
+# agentmap section-level search (must be run from markdown/ directory)
+cd markdown/
+agentmap search "budget"                                    # find sections by heading
+agentmap search "Exhibitions" OAC_*.md                     # filter by funder pattern
+agentmap headings .                                         # show NAV trees for all files
+
+# Read a specific section by NAV block offset
+# (use line numbers from the AGENT:NAV block in the file)
+```
+
+### Using agentmap for section-level search
+
+Agentmap generates `<!-- AGENT:NAV ... -->` blocks in each rewritten file that let agents jump directly to specific sections by line number without grep or full-file reads.
+
+**Quick workflows:**
+```bash
+cd markdown/
+agentmap search "accessibility"                             # find passages by heading
+agentmap search "budget" OAC_*                              # budget sections in OAC files
+agentmap headings .                                         # list all NAV trees
+```
+
+**After pipeline rewrite — bulk indexing:**
+```bash
+cd markdown/
+agentmap index .             # generates skeletons for all unindexed files
+agentmap next                # prompts for next unchecked file
+# Write descriptions, save, then:
+agentmap next                # advance; repeat until done
+```
+
+See the grant-writing skill for the full agentmap NAV workflow, or `agentmap --help` for all commands.
+
+```bash
 # Draft a new grant using past applications as reference
 # (the agent does this using the grant-writing skill)
 ```
