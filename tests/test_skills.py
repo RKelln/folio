@@ -328,14 +328,28 @@ class TestGenerateSkills:
     def test_hermes_writes_one_file(self, cfg, tmp_path):
         result = generate_skills(cfg, "hermes", tmp_path)
         assert len(result["files_written"]) == 1
-        assert result["files_written"][0].name == "agent.yaml"
+        assert result["files_written"][0].name == "SKILL.md"
 
     def test_hermes_content_structure(self, cfg, tmp_path):
         result = generate_skills(cfg, "hermes", tmp_path)
         content = result["files_written"][0].read_text()
-        assert "name:" in content
-        assert "tools:" in content
-        assert "skills:" in content
+        assert content.startswith("---")
+        assert "name: grant-writing" in content
+        assert "description:" in content
+        assert "Archive Search" in content
+        assert "Grant Drafting" in content
+        assert "Grant Writing Craft" in content
+
+    def test_hermes_no_unfilled_placeholders(self, tmp_path):
+        cfg = _make_config(
+            wiki=WikiConfig(type="sage-wiki"),
+            agentmap=AgentmapConfig(enabled=True),
+        )
+        result = generate_skills(cfg, "hermes", tmp_path)
+        content = result["files_written"][0].read_text()
+        braces = [b for b in re.findall(r"\{[a-z_]+\}", content)
+                  if re.match(r"^\{[a-z_]+[a-z]\}$", b)]
+        assert not braces, f"Unfilled placeholders: {braces}"
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -695,11 +709,16 @@ class TestIALibrarySkills:
     def test_hermes_from_ia_config(self, tmp_path):
         result = generate_skills(_load_ia_config(), "hermes", tmp_path)
         content = result["files_written"][0].read_text()
-        assert "name:" in content
-        assert "IA-grant-writer" in content
+        assert content.startswith("---")
+        assert "name: grant-writing" in content
+        assert "description:" in content
+        assert "license: MIT" in content
         assert "InterAccess" in content
         assert "sage-wiki" in content
         assert "agentmap" in content
+        assert "Archive Search" in content
+        assert "Grant Drafting" in content
+        assert "Grant Writing Craft" in content
 
     def test_generate_to_ia_library_in_place(self):
         """Generate opencode skills directly into the IA library directory."""

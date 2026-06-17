@@ -378,47 +378,43 @@ def _generate_hermes(
     output_dir: Path,
     warnings: list[str],
 ) -> list[Path]:
-    """Generate Hermes agent config.
+    """Generate Hermes Agent skills in agentskills.io SKILL.md format.
 
-    Writes to: {output_dir}/hermes/agent.yaml
+    Writes to: {output_dir}/hermes/skills/grant-writing/SKILL.md
+
+    Compatible with Hermes Agent's skills system and the agentskills.io
+    open standard. Skills placed in hermes/skills/ can be copied to
+    ~/.hermes/skills/ (primary) or ~/.agents/skills/ (external).
     """
-    wiki_path = config.paths.wiki_project
-    rewrite_md_path = config.paths.rewrite_md
+    ctx = build_context(config)
+    description = (
+        f"Search and draft grant applications using {config.org.name}'s historical "
+        f"grant archive. Use when writing grants, searching for precedent applications, "
+        f"extracting boilerplate text, retrieving budget figures and statistics, "
+        f"or composing grant sections grounded in real organizational data."
+    )
 
-    agent_yaml = f"""name: {config.org.abbreviation}-grant-writer
-description: >
-  Grant-writing agent for {config.org.name}. Searches the historical grant archive
-  using sage-wiki (cross-document synthesis) and agentmap (section-level search),
-  then composes grant sections grounded in real organizational data.
+    body_parts = [
+        _fill_core("archive-search.md", ctx),
+        _fill_core("grant-drafting.md", ctx),
+        _fill_core("grant-writing-craft.md", ctx),
+    ]
 
-system_prompt: |
-  You are a grant-writing assistant for {config.org.name}.
-  You search the organization's historical grant archive to find precedent
-  applications, extract boilerplate text, retrieve budget figures and statistics,
-  and compose new grant sections grounded in real organizational data.
+    frontmatter = f"""---
+name: grant-writing
+description: {description}
+license: MIT
+compatibility: Hermes Agent (agentskills.io)
+metadata:
+  author: {config.org.name}
+  version: "1.0"
+---
 
-  Use sage-wiki for cross-document synthesis and concept-level queries.
-  Use agentmap for section-level heading search within documents.
-  Always ground every claim in a specific source document.
-
-tools:
-  - sage_wiki_search:
-      command: "cd {wiki_path} && sage-wiki search"
-  - sage_wiki_query:
-      command: "cd {wiki_path} && sage-wiki query"
-  - agentmap_search:
-      command: "cd {rewrite_md_path} && agentmap search"
-  - agentmap_headings:
-      command: "cd {rewrite_md_path} && agentmap headings"
-
-skills:
-  - search
-  - draft
-  - craft
 """
 
+    content = frontmatter + "\n".join(body_parts)
     path = _write_file(
-        output_dir / "hermes" / "agent.yaml",
-        agent_yaml,
+        output_dir / "hermes" / "skills" / "grant-writing" / "SKILL.md",
+        content,
     )
     return [path]

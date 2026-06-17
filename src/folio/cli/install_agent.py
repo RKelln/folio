@@ -25,12 +25,16 @@ PLATFORM_FILES: dict[str, list[tuple[str, str]]] = {
     "openclaw": [
         ("AGENTS.md", "Read `folio guide` for full reference."),
     ],
+    "hermes": [
+        ("AGENTS.md", "Read `folio guide` for full reference."),
+    ],
 }
 
 PLATFORM_SKILLS_DIR: dict[str, str] = {
     "opencode": ".opencode/skills",
     "claude": ".claude/commands",
     "openclaw": "openclaw",
+    "hermes": "hermes/skills",
 }
 
 

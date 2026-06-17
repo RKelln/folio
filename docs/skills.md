@@ -101,9 +101,27 @@ A system prompt file containing all core template content plus an introductory a
 
 ### Hermes
 
-**Output:** `hermes/agent.yaml`
+**Output:** `hermes/skills/grant-writing/SKILL.md`
 
-A single YAML file defining an agent named `{org_abbreviation}-grant-writer` with description, system prompt, tool declarations, and skill references (`search`, `draft`, `craft`). All three core templates are embedded in the system prompt field.
+A single markdown file following the [agentskills.io](https://agentskills.io/specification) open standard for agent skills. Uses YAML frontmatter with `name`, `description`, `license`, `compatibility`, and `metadata` fields. The body concatenates all three core templates (archive-search, grant-drafting, grant-writing-craft) with filled placeholders.
+
+Compatible with Hermes Agent's skills system. Skills can be copied to `~/.hermes/skills/` (primary Hermes skills directory) or `~/.agents/skills/` (external skills directory shared across agentskills.io-compatible tools). Hermes auto-discovers all `SKILL.md` files in these directories and makes them available as `/grant-writing` slash commands.
+
+Frontmatter structure:
+
+```yaml
+---
+name: grant-writing
+description: Search and draft grant applications using {org_name}'s historical grant archive...
+license: MIT
+compatibility: Hermes Agent (agentskills.io)
+metadata:
+  author: {org_name}
+  version: "1.0"
+---
+```
+
+Hermes also loads `AGENTS.md` from the project root as workspace context. Run `folio install-agent --platform hermes` to bootstrap both the `AGENTS.md` file and the skills directory.
 
 ## Using the Skills CLI
 
