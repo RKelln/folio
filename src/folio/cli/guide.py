@@ -45,12 +45,17 @@ COMMAND REFERENCE
   folio scan           Scan raw archive, detect funders/years/types
   folio init           Set up a new project config
   folio skills         Generate agent skill files per platform
+  folio ingest         One-off document ingestion (PDF/DOCX/XLSX)
+  folio convert        Convert PDF/DOCX/XLSX → markdown
   folio clean          Deterministic markdown cleanup
   folio classify       Quality scoring and tier assignment
   folio rewrite        LLM re-authoring with tiered prompts
   folio prioritize     Archival priority scoring (1-3) by year groups
   folio canonicalize   Version detection and dedup
-  folio ingest         One-off document ingestion (PDF/DOCX/XLSX)
+  folio repack         Nested-directory → flat folio naming
+  folio validate       Validate markdown files against config
+  folio wiki           Wiki management (init, compile, status, etc.)
+  folio install-agent  Write AGENTS.md/skills files into a project
   folio audit          Wiki quality audit (dead links, thin articles, etc.)
   folio guide          This guide
 
@@ -77,7 +82,7 @@ ORG LIBRARY CONVENTION
 ──────────────────────
   org-library/               # Each org has its own repo
   ├── folio.yaml             # Org config (funders, doc types, paths)
-  ├── .env                   # API keys (DEEPSEEK_API_KEY, etc.)
+  ├── .env                   # LLM provider API keys
   ├── archive/               # Raw source files (PDF, DOCX, XLSX)
   ├── markdown/              # Final LLM-rewritten output (rewrite_md)
   ├── wiki/                  # Sage-wiki searchable knowledge base
@@ -106,7 +111,8 @@ CONFIGURATION (folio.yaml)
     raw_md: ./.folio/raw_md/       # Converter output
     clean_md: ./.folio/clean_md/   # Cleaned markdown
     rewrite_md: ./markdown/        # Final LLM-rewritten output
-    wiki_project: ./wiki/          # Wiki project directory
+    wiki_project: ./.folio/sage-wiki/  # Wiki project directory
+                                        # (symlinked as ./wiki/ for access)
 
   funders:                         # Map abbreviation → full name
     TAC: "Toronto Arts Council"
@@ -123,12 +129,13 @@ CONFIGURATION (folio.yaml)
   llm:
     provider: openai_compatible    # LLM provider (openai_compatible | openai)
     models:
-      fast: deepseek-v4-flash      # Fast/cheap model
-      quality: deepseek-v4-pro     # Quality model for complex documents
-    base_url: https://api.deepseek.com
+      fast: MODEL_ID               # Fast/cheap model for light processing
+      quality: MODEL_ID            # Quality model for complex documents
+    base_url: https://api.openai.com/v1  # Any OpenAI-compatible endpoint
+    api_key_env: OPENAI_API_KEY    # Env var for the API key
     pricing:
-      input_per_million: 0.14
-      output_per_million: 0.28
+      input_per_million: 0.14      # Cost per 1M input tokens (for estimates)
+      output_per_million: 0.28     # Cost per 1M output tokens (for estimates)
 
   converter:
     type: docling                  # Or: datalab, marker, null
@@ -327,17 +334,21 @@ LLM PRICING
 ───────────
   llm:
     models:
-      fast: deepseek-v4-flash
-      quality: deepseek-v4-pro
+      fast: MODEL_ID             # Budget-tier model for light processing
+      quality: MODEL_ID          # Quality model for complex documents
+    api_key_env: OPENAI_API_KEY  # Env var name (or DEEPSEEK_API_KEY, etc.)
+    base_url: https://api.openai.com/v1
     pricing:
       input_per_million: 0.14     # Cost per 1M input tokens
       output_per_million: 0.28    # Cost per 1M output tokens
 
-  Default models (pricing verified from defaults.yaml):
-    deepseek-v4-flash:  $0.14 in / $0.28 out
-    deepseek-v4-pro:    ~$0.27 in / ~$1.10 out (approximate)
+  folio works with any OpenAI-compatible provider:
+    DeepSeek:   base_url=https://api.deepseek.com   env: DEEPSEEK_API_KEY
+    OpenAI:     base_url=https://api.openai.com/v1  env: OPENAI_API_KEY
+    Groq:       base_url=https://api.groq.com/openai/v1  env: GROQ_API_KEY
+    Ollama:     base_url=http://localhost:11434/v1  (no key required)
 
-  Set DEEPSEEK_API_KEY or OPENAI_API_KEY in .env (loaded automatically).
+  Set the corresponding API key in .env (loaded automatically).
 
 CONVERTER OPTIONS
 ─────────────────
@@ -355,8 +366,9 @@ WIKI BACKENDS
 
 ENVIRONMENT VARIABLES (.env)
 ────────────────────────────
-  DEEPSEEK_API_KEY         Primary LLM API key (DeepSeek)
-  OPENAI_API_KEY           Alternative LLM API key (OpenAI-compatible)
+  OPENAI_API_KEY           OpenAI API key (openai_compatible provider)
+  DEEPSEEK_API_KEY         DeepSeek API key (openai_compatible provider)
+  GROQ_API_KEY             Groq API key (openai_compatible provider)
   DATALAB_API_KEY          IBM Datalab converter API key
 """
 
