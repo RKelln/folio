@@ -4,6 +4,10 @@ Turn an arts organization's document archive into a searchable knowledge base th
 
 **Three steps:** clone → init → pipeline. No code changes — just YAML config.
 
+> **IMPORTANT**: This repo is experimental and relatively untested. Use at your own risk! Bug reports and fixes welcome.
+> 
+> It's also important to note that data cleaning is a major part of creating an agent accessible "library" and that the tools folio provides were useful in cleaning a particular dataset. Indeed, the majority of the labour involved in creating the library was cleaning, reviewing and testing the cleaning, and updating the cleaning tools based on those findings. If you're interested in getting some help creating your own library for your arts org, [reach out](mailto:hello@ryankelln.com).
+
 ## Prerequisites
 
 - Python 3.10+
