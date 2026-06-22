@@ -40,10 +40,18 @@ paths:
 
 # ── Converter ─────────────────────────────────────────────────────
 converter:
-  type: "liteparse"             # liteparse | docling | datalab | marker | pandoc
+  type: "liteparse"             # liteparse | docling | datalab | marker | pandoc | cascade
   datalab:
     pipeline_id: ""
     api_key_env: "DATALAB_API_KEY"
+  # Cascade example — try cheap/fast tiers first, escalate on poor quality:
+  #   type: "cascade"
+  #   cascade:                  # ordered tiers (>= 2); first passing output wins
+  #     - liteparse             #   tier 1: fast, local, free
+  #     - datalab               #   tier 2: high quality, paid fallback
+  #   cascade_thresholds:       # soft-failure gates; below either -> escalate
+  #     min_content_lines: 15   #   require at least this many real content lines
+  #     max_corruption_score: 0.5  # reject output garbled above this ratio
 
 # ── Wiki backend ──────────────────────────────────────────────────
 wiki:

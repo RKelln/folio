@@ -27,7 +27,7 @@ from folio.config.schema import (
 
 logger = logging.getLogger(__name__)
 
-_VALID_CONVERTER_TYPES = {"liteparse", "datalab", "marker", "docling", "pandoc"}
+_VALID_CONVERTER_TYPES = {"liteparse", "datalab", "marker", "docling", "pandoc", "cascade"}
 _VALID_WIKI_TYPES = {"sage-wiki", "null"}
 
 
@@ -51,7 +51,8 @@ def _load_defaults() -> dict:
     except FileNotFoundError:
         raise FileNotFoundError(
             f"Built-in defaults not found: {_defaults_path}\n"
-            f"The folio package may be corrupted. Reinstall with: pip install --force-reinstall folio"
+            f"The folio package may be corrupted. "
+            f"Reinstall with: pip install --force-reinstall folio"
         ) from None
 
 
@@ -84,6 +85,8 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
         type=converter_data.get("type", "liteparse"),
         datalab_pipeline_id=converter_datalab.get("pipeline_id", ""),
         datalab_api_key_env=converter_datalab.get("api_key_env", "DATALAB_API_KEY"),
+        cascade=list(converter_data.get("cascade", [])),
+        cascade_thresholds=dict(converter_data.get("cascade_thresholds", {})),
     )
 
     wiki_data = data.get("wiki", {})
@@ -181,6 +184,22 @@ def _validate(config: ProjectConfig) -> None:
             f"Must be one of: {', '.join(sorted(_VALID_CONVERTER_TYPES))}"
         )
 
+    if config.converter.type == "cascade":
+        cascade = config.converter.cascade
+        if len(cascade) < 2:
+            raise ValueError(
+                "converter.cascade must list at least 2 converter tiers when "
+                f"converter.type is 'cascade', got: {cascade}"
+            )
+        single_types = _VALID_CONVERTER_TYPES - {"cascade"}
+        for name in cascade:
+            if name not in single_types:
+                raise ValueError(
+                    f"Invalid converter in converter.cascade: '{name}'. "
+                    f"Each tier must be one of: {', '.join(sorted(single_types))} "
+                    f"(nested 'cascade' is not allowed)."
+                )
+
     if config.wiki.type not in _VALID_WIKI_TYPES:
         raise ValueError(
             f"Invalid wiki type: '{config.wiki.type}'. "
@@ -201,7 +220,8 @@ def _validate(config: ProjectConfig) -> None:
         )
         if not url.startswith(allowed_prefixes):
             raise ValueError(
-                f"LLM base_url must use https://, or http:// for localhost/private IPs. Got: '{url}'"
+                f"LLM base_url must use https://, or http:// for "
+                f"localhost/private IPs. Got: '{url}'"
             )
     else:
         raise ValueError(

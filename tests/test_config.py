@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import pytest
-import yaml
 from pathlib import Path
+
+import pytest
 
 from folio.config.loader import _deep_merge, load_project_config
 from folio.config.schema import ProjectConfig
@@ -266,6 +266,86 @@ llm:
         config_file = tmp_path / "folio.yaml"
         config_file.write_text(yaml_content)
         with pytest.raises(ValueError, match="must be a number"):
+            load_project_config(config_path=str(config_file))
+
+
+class TestCascadeConverterConfig:
+    def test_cascade_config_parses(self, tmp_path):
+        yaml_content = """\
+converter:
+  type: cascade
+  cascade:
+    - liteparse
+    - datalab
+  cascade_thresholds:
+    min_content_lines: 15
+    max_corruption_score: 0.5
+"""
+        config_file = tmp_path / "folio.yaml"
+        config_file.write_text(yaml_content)
+        config = load_project_config(config_path=str(config_file))
+        assert config.converter.type == "cascade"
+        assert config.converter.cascade == ["liteparse", "datalab"]
+        assert config.converter.cascade_thresholds == {
+            "min_content_lines": 15,
+            "max_corruption_score": 0.5,
+        }
+
+    def test_cascade_defaults_to_empty_when_omitted(self, tmp_path):
+        yaml_content = "converter:\n  type: liteparse\n"
+        config_file = tmp_path / "folio.yaml"
+        config_file.write_text(yaml_content)
+        config = load_project_config(config_path=str(config_file))
+        assert config.converter.cascade == []
+        assert config.converter.cascade_thresholds == {}
+
+    def test_cascade_requires_at_least_two_entries(self, tmp_path):
+        yaml_content = """\
+converter:
+  type: cascade
+  cascade:
+    - liteparse
+"""
+        config_file = tmp_path / "folio.yaml"
+        config_file.write_text(yaml_content)
+        with pytest.raises(ValueError, match="at least 2"):
+            load_project_config(config_path=str(config_file))
+
+    def test_cascade_empty_list_rejected(self, tmp_path):
+        yaml_content = """\
+converter:
+  type: cascade
+  cascade: []
+"""
+        config_file = tmp_path / "folio.yaml"
+        config_file.write_text(yaml_content)
+        with pytest.raises(ValueError, match="at least 2"):
+            load_project_config(config_path=str(config_file))
+
+    def test_cascade_rejects_unknown_converter_name(self, tmp_path):
+        yaml_content = """\
+converter:
+  type: cascade
+  cascade:
+    - liteparse
+    - bogus_engine
+"""
+        config_file = tmp_path / "folio.yaml"
+        config_file.write_text(yaml_content)
+        with pytest.raises(ValueError, match="bogus_engine"):
+            load_project_config(config_path=str(config_file))
+
+    def test_cascade_rejects_nested_cascade(self, tmp_path):
+        yaml_content = """\
+converter:
+  type: cascade
+  cascade:
+    - liteparse
+    - cascade
+"""
+        config_file = tmp_path / "folio.yaml"
+        config_file.write_text(yaml_content)
+        with pytest.raises(ValueError, match="nested"):
             load_project_config(config_path=str(config_file))
 
 
