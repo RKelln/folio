@@ -2,8 +2,9 @@
 
 Headings (``#``/``##``/``###`` ...) become Word heading styles, paragraphs
 become body paragraphs, and GitHub pipe tables become Word tables. Document
-core properties (author, last_modified_by, comments, title, subject, keywords)
-are cleared before save so no authoring metadata leaks into the corpus.
+core properties are cleared before save (using the single canonical scrub list
+``folio.core.corpus.metadata.DOCX_CORE_PROPS``) so no authoring metadata —
+author, last-modified-by, timestamps, revision, etc. — leaks into the corpus.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from folio.adapters.renderers.base import (
     Renderer,
     parse_markdown,
 )
+from folio.core.corpus.metadata import DOCX_CORE_PROPS
 
 logger = logging.getLogger(__name__)
 
@@ -78,20 +80,16 @@ class DocxRenderer(Renderer):
 
     @staticmethod
     def _clear_core_properties(document) -> None:
-        """Blank out every authoring core property before saving."""
+        """Blank out every authoring core property before saving.
+
+        Applies the single canonical scrub list
+        :data:`folio.core.corpus.metadata.DOCX_CORE_PROPS` so this renderer and
+        the post-render ``strip_metadata`` stripper stay in lock-step. Each set
+        is guarded: an unsettable property is logged, never fatal.
+        """
         cp = document.core_properties
-        for attr in (
-            "author",
-            "last_modified_by",
-            "comments",
-            "title",
-            "subject",
-            "keywords",
-            "category",
-            "content_status",
-            "identifier",
-        ):
+        for attr, value in DOCX_CORE_PROPS:
             try:
-                setattr(cp, attr, "")
-            except (ValueError, TypeError) as exc:
+                setattr(cp, attr, value)
+            except (ValueError, TypeError, AttributeError) as exc:
                 logger.warning("Could not clear docx core property %s: %s", attr, exc)

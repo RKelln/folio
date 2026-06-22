@@ -20,6 +20,7 @@ DISPATCH
 
 from __future__ import annotations
 
+import datetime
 import json
 import logging
 import shutil
@@ -31,22 +32,42 @@ logger = logging.getLogger(__name__)
 # Formats where stripping is mandatory and only exiftool can do it.
 _EXIFTOOL_REQUIRED_SUFFIXES = {".pdf", ".png", ".jpg", ".jpeg"}
 
-# Office authoring properties to blank, by format.
-_DOCX_PROPS = (
-    "author",
-    "last_modified_by",
-    "comments",
-    "title",
-    "subject",
-    "keywords",
-    "category",
-    "content_status",
-    "identifier",
+#: Neutral, obviously-synthetic timestamp used to scrub real authoring dates
+#: from DOCX core properties. python-docx REJECTS ``None`` for its datetime
+#: properties (it raises ``ValueError``), so clearing with ``None`` would both
+#: leave the real timestamp in place AND emit a warning on every strip. Writing
+#: a fixed constant actually removes the real value and stays quiet.
+_DOCX_NEUTRAL_DATE = datetime.datetime(1980, 1, 1)
+
+#: Canonical DOCX core-property scrub list as ``(attribute, value)`` pairs. This
+#: is the SINGLE source of truth (DRY): the DOCX renderer imports and applies it
+#: too, so the two clearing paths can never diverge. String fields are blanked
+#: to ``""``, ``revision`` is reset to ``1``, and the date fields are overwritten
+#: with ``_DOCX_NEUTRAL_DATE`` to drop PII-adjacent authoring/print timestamps.
+DOCX_CORE_PROPS: tuple[tuple[str, object], ...] = (
+    ("author", ""),
+    ("last_modified_by", ""),
+    ("comments", ""),
+    ("title", ""),
+    ("subject", ""),
+    ("keywords", ""),
+    ("category", ""),
+    ("content_status", ""),
+    ("identifier", ""),
+    ("language", ""),
+    ("version", ""),
+    ("revision", 1),
+    ("created", _DOCX_NEUTRAL_DATE),
+    ("modified", _DOCX_NEUTRAL_DATE),
+    ("last_printed", _DOCX_NEUTRAL_DATE),
 )
+
+# Office authoring properties to blank for XLSX (openpyxl uses camelCase
+# ``lastModifiedBy``; the snake_case variant does not exist and raised
+# AttributeError on every call).
 _XLSX_PROPS = (
     "creator",
     "lastModifiedBy",
-    "last_modified_by",
     "title",
     "subject",
     "keywords",
@@ -113,10 +134,10 @@ def _strip_docx(path: Path) -> bool:
         ) from exc
     document = docx.Document(str(path))
     cp = document.core_properties
-    for attr in _DOCX_PROPS:
+    for attr, value in DOCX_CORE_PROPS:
         try:
-            setattr(cp, attr, "")
-        except (ValueError, TypeError) as exc:
+            setattr(cp, attr, value)
+        except (ValueError, TypeError, AttributeError) as exc:
             logger.warning("Could not clear docx property %s on %s: %s", attr, path, exc)
     document.save(str(path))
     _try_exiftool_strip(path)

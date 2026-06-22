@@ -53,7 +53,8 @@ class XlsxRenderer(Renderer):
 
         workbook = openpyxl.Workbook()
         # openpyxl always starts with one empty sheet; reuse it for the first
-        # table and remove it only if there are no tables to write.
+        # table. When there are no tables, that default empty sheet is left in
+        # place and an empty workbook is written (logged as a warning below).
         default_sheet = workbook.active
         used_names: set[str] = set()
 
@@ -98,11 +99,11 @@ class XlsxRenderer(Renderer):
         props = workbook.properties
         # NB: openpyxl re-applies its default creator ("openpyxl") when the
         # field is None, so we clear with empty strings (which persist as
-        # absent on reload) rather than None.
+        # absent on reload) rather than None. openpyxl exposes camelCase
+        # ``lastModifiedBy`` only — there is no snake_case alias.
         for attr in (
             "creator",
             "lastModifiedBy",
-            "last_modified_by",
             "title",
             "subject",
             "keywords",

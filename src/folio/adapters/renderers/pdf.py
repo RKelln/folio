@@ -182,12 +182,19 @@ class ScannedPdfRenderer(Renderer):
 
             images = [Image.open(p).convert("RGB") for p in pages]
             try:
-                images[0].save(
-                    str(out_path),
-                    "PDF",
-                    save_all=True,
-                    append_images=images[1:],
-                )
+                try:
+                    images[0].save(
+                        str(out_path),
+                        "PDF",
+                        save_all=True,
+                        append_images=images[1:],
+                    )
+                except Exception:
+                    # The ABC contract forbids leaving a partial/empty file
+                    # behind: drop any bytes Pillow may have written, then
+                    # re-raise (never swallow).
+                    out_path.unlink(missing_ok=True)
+                    raise
             finally:
                 for img in images:
                     img.close()

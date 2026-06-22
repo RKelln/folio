@@ -288,6 +288,40 @@ class TestApplication:
             assert f"## {heading}" in doc.markdown, heading
 
 
+class TestGrantAmountConsistency:
+    """folio-1lk: the single per-document grant figure must be byte-identical
+    across the frontmatter, the application ``Request Amount`` line, and the
+    budget ``Grant — <funder> Project`` Revenue row (golden-corpus internal
+    consistency — no contradictory amounts inside one document).
+    """
+
+    def test_application_request_amount_matches_frontmatter(self):
+        doc = generate_corpus(_spec([("application", 1)], funder="OAC"))[0]
+        expected = doc.frontmatter["grant_amount"]
+        request_lines = [
+            ln
+            for ln in doc.markdown.splitlines()
+            if ln.startswith("**Request Amount:**")
+        ]
+        assert len(request_lines) == 1, request_lines
+        amount = request_lines[0].split("**Request Amount:**", 1)[1].strip()
+        assert amount == expected
+
+    def test_budget_grant_row_matches_frontmatter(self):
+        funder = "OAC"
+        doc = generate_corpus(_spec([("budget", 1)], funder=funder))[0]
+        expected = doc.frontmatter["grant_amount"]
+        grant_label = f"Grant \u2014 {funder} Project"
+        grant_rows = [
+            ln
+            for ln in doc.markdown.splitlines()
+            if ln.startswith("|") and grant_label in ln
+        ]
+        assert len(grant_rows) == 1, grant_rows
+        cells = [c.strip() for c in grant_rows[0].strip("|").split("|")]
+        assert cells[1] == expected
+
+
 class TestPiiFree:
     def test_narrative_document_is_completely_clean(self):
         """A narrative has no form fields and no currency, so it must scan

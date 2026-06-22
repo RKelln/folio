@@ -261,8 +261,16 @@ def _money_to_int(amount: str) -> int:
     return int(digits)
 
 
-def _author_application(fake: Faker, funder: str, headings: list[str]) -> str:
-    """Author an application body: labelled form fields then heading sections."""
+def _author_application(
+    fake: Faker, funder: str, headings: list[str], grant_amount: str
+) -> str:
+    """Author an application body: labelled form fields then heading sections.
+
+    ``grant_amount`` is the single per-document grant figure drawn once in
+    :func:`generate_corpus` and shared with the frontmatter, so the
+    ``**Request Amount:**`` line can never contradict ``grant_amount`` in the
+    frontmatter (golden-corpus internal consistency).
+    """
     name = fake_name(fake)
     lines = [
         f"# {funder} Operating Grant Application",
@@ -272,7 +280,7 @@ def _author_application(fake: Faker, funder: str, headings: list[str]) -> str:
         f"**Phone:** {fake_phone(fake)}",
         f"**Organization:** {fake_org_name(fake)}",
         f"**Address:** {fake_address(fake)}",
-        f"**Request Amount:** {fake_money(fake, 10000, 80000)}",
+        f"**Request Amount:** {grant_amount}",
         f"**Project Title:** {lorem_matching(fake, 45)}",
         f"**Submission Date:** {fake_date(fake)}",
         "",
@@ -304,17 +312,31 @@ def _author_narrative(fake: Faker, funder: str, headings: list[str]) -> str:
 
 
 def _budget_table(
-    fake: Faker, title: str, label_column: str, labels: tuple[str, ...], funder: str
+    fake: Faker,
+    title: str,
+    label_column: str,
+    labels: tuple[str, ...],
+    funder: str,
+    *,
+    override_first: str | None = None,
 ) -> tuple[list[str], int]:
     """Build one revenue/expense pipe table; return its lines and computed total.
 
     Amounts come from :func:`fake_money`; the total row is the arithmetic sum of
     the line amounts (computed here, never faked).
+
+    ``override_first`` pins the amount of the FIRST row to a pre-drawn value
+    (used for the funder grant line so it matches the frontmatter
+    ``grant_amount``). When set, the first row does NOT draw its own
+    ``fake_money`` value, keeping the remaining draw order stable.
     """
     rows: list[tuple[str, str]] = []
     total = 0
-    for label in labels:
-        amount = fake_money(fake, 2000, 30000)
+    for idx, label in enumerate(labels):
+        if idx == 0 and override_first is not None:
+            amount = override_first
+        else:
+            amount = fake_money(fake, 2000, 30000)
         total += _money_to_int(amount)
         rows.append((label.format(funder=funder), amount))
 
@@ -328,11 +350,16 @@ def _budget_table(
     return lines, total
 
 
-def _author_budget(fake: Faker, funder: str) -> str:
-    """Author a budget body: a ``## Budget`` with Revenue + Expenses tables."""
+def _author_budget(fake: Faker, funder: str, grant_amount: str) -> str:
+    """Author a budget body: a ``## Budget`` with Revenue + Expenses tables.
+
+    ``grant_amount`` (drawn once per document in :func:`generate_corpus`) is
+    pinned to the ``Grant — <funder> Project`` Revenue row so it matches the
+    frontmatter ``grant_amount`` exactly.
+    """
     lines = ["# Project Budget", "", "## Budget", ""]
     revenue_lines, _ = _budget_table(
-        fake, "Revenue", "Source", _REVENUE_LABELS, funder
+        fake, "Revenue", "Source", _REVENUE_LABELS, funder, override_first=grant_amount
     )
     lines.extend(revenue_lines)
     lines.append("")
@@ -395,14 +422,27 @@ def _author_support_letter(fake: Faker, funder: str) -> str:
     return "\n".join(lines).rstrip()
 
 
-def _author_body(fake: Faker, kind: str, funder: str, headings: list[str]) -> str:
-    """Dispatch to the author for ``kind`` and return the document body Markdown."""
+def _author_body(
+    fake: Faker,
+    kind: str,
+    funder: str,
+    headings: list[str],
+    grant_amount: str | None,
+) -> str:
+    """Dispatch to the author for ``kind`` and return the document body Markdown.
+
+    ``grant_amount`` is the per-document grant figure (non-None for application
+    and budget, which is enforced by :func:`_grant_amount_for`) propagated so
+    the body and frontmatter agree.
+    """
     if kind == "application":
-        return _author_application(fake, funder, headings)
+        assert grant_amount is not None  # invariant: see _grant_amount_for
+        return _author_application(fake, funder, headings, grant_amount)
     if kind == "narrative":
         return _author_narrative(fake, funder, headings)
     if kind == "budget":
-        return _author_budget(fake, funder)
+        assert grant_amount is not None  # invariant: see _grant_amount_for
+        return _author_budget(fake, funder, grant_amount)
     if kind == "activity_list":
         return _author_activity_list(fake, funder)
     if kind == "staff_board":
@@ -450,7 +490,7 @@ def generate_corpus(spec: CorpusSpec) -> list[GoldenDoc]:
             kind = doc_spec.kind
             grant_amount = _grant_amount_for(kind, fake)
             frontmatter = _build_frontmatter(fake, kind, spec.funder, grant_amount)
-            body = _author_body(fake, kind, spec.funder, headings)
+            body = _author_body(fake, kind, spec.funder, headings, grant_amount)
             block = _frontmatter_block(frontmatter)
             markdown = f"{block}\n\n{body}\n"
             slug = f"{spec.funder.lower()}-{kind}-{index:02d}"
