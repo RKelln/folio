@@ -23,6 +23,7 @@ from folio.core.bench.spec import BenchSpec
 _COLUMNS = (
     "Converter",
     "Overall",
+    "Scored",
     "Text",
     "Tables",
     "Struct",
@@ -37,13 +38,22 @@ _UNAVAILABLE = "n/a"
 
 
 def _row_cells(agg: ConverterAggregate) -> list[str]:
-    """Return the formatted cell strings for one converter row."""
+    """Return the formatted cell strings for one converter row.
+
+    The ``Scored`` column shows ``n_scored/n_attempted`` so readers can see that
+    each converter's means are computed only over the documents it actually
+    scored (converters are scored only on the formats they support, so the
+    ``Overall`` columns are NOT directly comparable across converters).
+    """
     offline = "yes" if agg.offline else "no"
     cost = f"{agg.cost_per_page:.4f}"
+    attempted = agg.n_scored + agg.n_failed + agg.n_unsupported
+    scored = f"{agg.n_scored}/{attempted}"
     if not agg.available:
         return [
             agg.name,
             _UNAVAILABLE,
+            scored,
             _UNAVAILABLE,
             _UNAVAILABLE,
             _UNAVAILABLE,
@@ -56,6 +66,7 @@ def _row_cells(agg: ConverterAggregate) -> list[str]:
     return [
         agg.name,
         f"{agg.mean_weighted:.3f}",
+        scored,
         f"{agg.mean_text:.3f}",
         f"{agg.mean_tables:.3f}",
         f"{agg.mean_structure:.3f}",
@@ -164,7 +175,13 @@ def markdown_report(results: BenchResults, spec: BenchSpec) -> str:
         f"structure {weights['structure']:.2f}, "
         f"links/images {weights['links_images']:.2f} "
         "(weights are normalized internally). A converter passes when its mean "
-        f"weighted score is at least {spec.pass_threshold:.2f}."
+        f"weighted score is at least {spec.pass_threshold:.2f}.\n\n"
+        "**Comparing converters fairly:** each converter is scored only on the "
+        "document formats it supports (e.g. pandoc reads DOCX but not PDF/XLSX), "
+        "so the per-converter means span *different* document subsets. The "
+        "`Scored` column reports `scored/attempted` for each converter — compare "
+        "converters within the per-document-type breakdown below rather than by "
+        "the `Overall` column alone."
     )
 
     parts = [

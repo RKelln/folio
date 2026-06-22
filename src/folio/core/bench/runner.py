@@ -36,7 +36,7 @@ from dataclasses import dataclass
 
 from folio.adapters.converters import Converter, get_converter
 from folio.core.bench.corpus import BenchCase, read_golden
-from folio.core.bench.scorer import CategoryScores, score_document
+from folio.core.bench.scorer import CategoryScores, _clamp, score_document
 from folio.core.bench.spec import BenchSpec, CategoryWeights
 
 logger = logging.getLogger(__name__)
@@ -189,11 +189,6 @@ class BenchResults:
         }
 
 
-def _clamp01(value: float) -> float:
-    """Clamp ``value`` to the closed interval ``[0, 1]``."""
-    return max(0.0, min(1.0, value))
-
-
 def weighted_score(scores: CategoryScores, weights: CategoryWeights) -> float:
     """Combine per-category scores into one weighted score in ``[0, 1]``.
 
@@ -208,7 +203,7 @@ def weighted_score(scores: CategoryScores, weights: CategoryWeights) -> float:
         + scores.structure * norm.structure
         + scores.links_images * norm.links_images
     )
-    return _clamp01(combined)
+    return _clamp(combined)
 
 
 def estimate_pages(case: BenchCase) -> int:

@@ -23,10 +23,13 @@ Examples:
     folio convert-bench --out docs/converter-report.md   # Also write a Markdown report
 
 Exit codes:
-    0   The benchmark ran and at least one converter was available.
-    1   The spec was invalid, no benchmark cases were found, an unknown
-        converter was requested, or no requested converter was available
-        (nothing could be benchmarked).
+    0   The benchmark ran and at least one converter produced a scored document.
+    1   The spec was invalid, no benchmark cases were found, an unknown converter
+        was requested, or no converter produced any scored output (every
+        converter was unavailable or failed on all of its supported documents).
+
+Explicitly naming converters with ``--converters`` opts them in even if the
+spec ships them disabled (e.g. ``datalab``); unnamed converters are dropped.
 """
 
 from __future__ import annotations
@@ -132,17 +135,19 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.converters is not None:
         requested = [c.strip() for c in args.converters.split(",") if c.strip()]
-        enabled_names = {c.name for c in spec.enabled_converters()}
-        unknown = [name for name in requested if name not in enabled_names]
+        known_names = {c.name for c in spec.converters}
+        unknown = [name for name in requested if name not in known_names]
         if unknown:
             print(
                 f"Error: unknown converter(s): {', '.join(repr(u) for u in unknown)}. "
-                f"Enabled: {', '.join(sorted(enabled_names))}",
+                f"Known: {', '.join(sorted(known_names))}",
                 file=sys.stderr,
             )
             sys.exit(1)
         wanted = set(requested)
         spec.converters = [c for c in spec.converters if c.name in wanted]
+        for converter in spec.converters:
+            converter.enabled = True
 
     # 3 — discover cases ......................................................
     cases = discover_cases(
@@ -231,8 +236,8 @@ def main(argv: list[str] | None = None) -> None:
             print(f"\nReport written to {out_path}")
 
     # 7 — exit code ...........................................................
-    any_available = any(agg.available for agg in results.converters)
-    sys.exit(0 if any_available else 1)
+    any_scored = any(agg.n_scored > 0 for agg in results.converters)
+    sys.exit(0 if any_scored else 1)
 
 
 if __name__ == "__main__":

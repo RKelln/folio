@@ -253,3 +253,12 @@ class TestScoreDocument:
         scores = score_document(golden, "# Project Budget\n\nsome text\n")
         for value in scores.to_dict().values():
             assert 0.0 <= value <= 1.0
+
+    def test_whitespace_only_candidate_against_real_golden(self):
+        golden = GOLDEN_BUDGET.read_text(encoding="utf-8")
+        scores = score_document(golden, "\n   \n\t\n")
+        assert scores.text == 0.0
+        assert scores.tables < 1.0
+        assert scores.structure < 1.0
+        for value in scores.to_dict().values():
+            assert 0.0 <= value <= 1.0
