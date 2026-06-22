@@ -38,6 +38,7 @@ from folio.core.corpus.metadata import strip_metadata
 from folio.core.corpus.pii_scan import (
     PIIReport,
     load_denylist,
+    scan_file,
     scan_paths,
 )
 from folio.core.corpus.spec import ALLOWED_FORMATS, load_corpus_spec
@@ -418,7 +419,12 @@ def _cmd_scan(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     # 4 — scan ................................................................
-    reports = scan_paths(files, denylist=denylist)
+    reports = [
+        scan_file(fp, denylist=denylist)
+        for fp in tqdm(
+            files, desc="Scanning", unit="file", disable=args.json_output
+        )
+    ]
     passed, failed = _gate_result(reports, args.strict)
 
     # 5 — report ..............................................................
