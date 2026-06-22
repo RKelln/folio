@@ -1,0 +1,27 @@
+# pii-denylist.yaml — PII name denylist for the synthetic corpus PII scan gate.
+#
+# PURPOSE
+#   The PII scan (folio.core.corpus.pii_scan) refuses to let any corpus file be
+#   committed if it contains personally identifiable information. Structural PII
+#   (emails, phone numbers, SINs/SSNs, postal codes, currency amounts) is caught
+#   by regex. Real *names* cannot be caught by regex, so each organization lists
+#   the real person and organization names that must never leak into the
+#   committed, "synthetic" corpus here.
+#
+# HOW IT WORKS
+#   Every entry in `names:` is matched case-insensitively as a whole word against
+#   scanned text. Whole-word matching means "Robert" will NOT match "Robertson".
+#   Multi-word entries (e.g. "Jane Doe") match the exact phrase.
+#
+# CONFIG-DRIVEN (per AGENTS.md)
+#   This is configuration, not code. Per-org customization happens HERE — add the
+#   real names of your staff, board members, applicants, and partner orgs. Do not
+#   hardcode names in pii_scan.py. The seeds below are obvious placeholders only;
+#   replace/extend them for your organization.
+names:
+  - John Doe
+  - Jane Doe
+  - Jane Smith
+  - John Smith
+  - Acme Corporation
+  - Placeholder Name
