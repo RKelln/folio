@@ -13,6 +13,9 @@ from folio.adapters.converters.base import Converter
 
 logger = logging.getLogger(__name__)
 
+DATALAB_COST_PER_PAGE = 0.02
+AVG_PAGES_PER_DOC = 3
+
 
 class DatalabConverter(Converter):
     """Convert documents using the Datalab pipeline API.
@@ -32,6 +35,10 @@ class DatalabConverter(Converter):
     @property
     def supported_extensions(self) -> set[str]:
         return {'.pdf', '.docx', '.xlsx', '.doc', '.xls'}
+
+    def estimate_cost(self, source: Path) -> float:
+        """Estimate USD cost as average pages per document times per-page price."""
+        return AVG_PAGES_PER_DOC * DATALAB_COST_PER_PAGE
 
     def convert(self, source: Path) -> str | None:
         try:

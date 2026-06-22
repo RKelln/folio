@@ -1,21 +1,21 @@
 from __future__ import annotations
 
 import pytest
-from pathlib import Path
 
+from folio.adapters.converters.datalab import AVG_PAGES_PER_DOC, DATALAB_COST_PER_PAGE
+from folio.config.schema import ConverterConfig, LLMConfig, ProcessingConfig, ProjectConfig
 from folio.core.scanner import (
-    _detect_funder,
-    _detect_year,
-    _detect_type,
-    _detect_draft,
-    _get_type_patterns,
-    _cost_per_doc,
-    scan_archive,
-    format_scan_report,
     DEFAULT_TYPE_PATTERNS,
-    DRAFT_MARKERS,
+    _cost_per_doc,
+    _cost_per_doc_for,
+    _detect_draft,
+    _detect_funder,
+    _detect_type,
+    _detect_year,
+    _get_type_patterns,
+    format_scan_report,
+    scan_archive,
 )
-from folio.config.schema import ProjectConfig, LLMConfig, ConverterConfig, ProcessingConfig
 
 
 def make_scanner_config(**overrides) -> ProjectConfig:
@@ -196,6 +196,20 @@ class TestCostPerDoc:
         config = make_scanner_config()
         cost = _cost_per_doc(0, 0, config)
         assert cost == 0.0
+
+
+# ── Unit: _cost_per_doc_for ──────────────────────────────────────────────────
+
+class TestCostPerDocFor:
+    def test_datalab_per_doc_cost(self):
+        assert _cost_per_doc_for("datalab") == pytest.approx(
+            AVG_PAGES_PER_DOC * DATALAB_COST_PER_PAGE
+        )
+
+    def test_local_converters_are_free(self):
+        assert _cost_per_doc_for("liteparse") == 0.0
+        assert _cost_per_doc_for("docling") == 0.0
+        assert _cost_per_doc_for("pandoc") == 0.0
 
 
 # ── Integration: scan_archive ────────────────────────────────────────────────
@@ -388,6 +402,32 @@ class TestScanArchive:
         config = make_scanner_config(converter=ConverterConfig(type="datalab"))
         report = scan_archive(str(archive), config)
         assert report["estimated_costs"]["conversion_usd"] > 0
+
+    def test_cascade_converter_cost_upper_bound(self, tmp_path):
+        archive = tmp_path / "archive"
+        archive.mkdir()
+        for i in range(3):
+            (archive / f"doc_{i}.pdf").write_text("pdf")
+
+        config = make_scanner_config(
+            converter=ConverterConfig(type="cascade", cascade=["liteparse", "datalab"])
+        )
+        report = scan_archive(str(archive), config)
+
+        per_doc = AVG_PAGES_PER_DOC * DATALAB_COST_PER_PAGE
+        assert report["estimated_costs"]["conversion_usd"] == pytest.approx(round(3 * per_doc, 2))
+
+    def test_cascade_all_local_converters_are_free(self, tmp_path):
+        archive = tmp_path / "archive"
+        archive.mkdir()
+        for i in range(3):
+            (archive / f"doc_{i}.pdf").write_text("pdf")
+
+        config = make_scanner_config(
+            converter=ConverterConfig(type="cascade", cascade=["liteparse", "docling"])
+        )
+        report = scan_archive(str(archive), config)
+        assert report["estimated_costs"]["conversion_usd"] == 0
 
     def test_multiple_files_same_funder_aggregated(self, tmp_path):
         archive = tmp_path / "archive"

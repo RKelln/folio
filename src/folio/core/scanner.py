@@ -11,6 +11,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
+from folio.adapters.converters.datalab import AVG_PAGES_PER_DOC, DATALAB_COST_PER_PAGE
 from folio.adapters.sources import get_source
 from folio.config.schema import ProjectConfig
 from folio.core.frontmatter import extract_year
@@ -27,8 +28,6 @@ DEFAULT_TYPE_PATTERNS = {
 
 DRAFT_MARKERS = ["draft", "prep", "todo", "working"]
 
-_DATALAB_COST_PER_PAGE = 0.02
-_AVG_PAGES_PER_DOC = 3
 _FILES_PER_MIN_CONVERSION = 6
 _FILES_PER_MIN_LLM = 60
 
@@ -83,6 +82,18 @@ def _cost_per_doc(input_tokens: int, output_tokens: int, config: ProjectConfig) 
     price_in = config.llm.input_price_per_m / 1_000_000
     price_out = config.llm.output_price_per_m / 1_000_000
     return input_tokens * price_in + output_tokens * price_out
+
+
+def _cost_per_doc_for(converter_name: str) -> float:
+    """Estimated per-document conversion cost in USD for a converter by name.
+
+    Paid converters (Datalab) report a non-zero average; local converters
+    (liteparse, docling, marker, pandoc) are free. This is the single source
+    of truth shared by the single-converter and cascade scan estimates.
+    """
+    if converter_name == "datalab":
+        return AVG_PAGES_PER_DOC * DATALAB_COST_PER_PAGE
+    return 0.0
 
 
 def scan_archive(source_path: str, config: ProjectConfig) -> dict:
@@ -150,11 +161,13 @@ def scan_archive(source_path: str, config: ProjectConfig) -> dict:
     non_md = total - by_extension.get(".md", 0)
 
     converter_type = config.converter.type
-    conversion_cost_per_doc = (
-        _AVG_PAGES_PER_DOC * _DATALAB_COST_PER_PAGE
-        if converter_type == "datalab"
-        else 0
-    )
+    if converter_type == "cascade":
+        conversion_cost_per_doc = max(
+            (_cost_per_doc_for(name) for name in config.converter.cascade),
+            default=0.0,
+        )
+    else:
+        conversion_cost_per_doc = _cost_per_doc_for(converter_type)
     conversion_usd = non_md * conversion_cost_per_doc
 
     llm_rewrite_usd = total * _cost_per_doc(_REWRITE_INPUT_TOKENS, _REWRITE_OUTPUT_TOKENS, config)

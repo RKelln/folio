@@ -298,6 +298,17 @@ class TestDatalabConverterProperties:
         assert ".doc" in exts
         assert ".xls" in exts
 
+    def test_estimate_cost_per_doc(self):
+        from folio.adapters.converters.datalab import (
+            AVG_PAGES_PER_DOC,
+            DATALAB_COST_PER_PAGE,
+        )
+
+        converter = DatalabConverter("pipe-123")
+        cost = converter.estimate_cost(Path("anything.pdf"))
+        assert cost == pytest.approx(AVG_PAGES_PER_DOC * DATALAB_COST_PER_PAGE)
+        assert cost > 0
+
 
 class TestLiteParseConverterProperties:
     def test_name_property(self):

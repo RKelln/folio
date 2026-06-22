@@ -5,23 +5,58 @@ from pathlib import Path
 
 import pytest
 
-from folio.core.pipeline import AVAILABLE_STAGES
-from folio.core.cleaner import clean_markdown, clean_file
+from folio.adapters.converters.base import Converter
+from folio.core.classifier import DEFAULT_CLASSIFY_CONFIG, classify_file
+from folio.core.cleaner import clean_file
 from folio.core.frontmatter import (
     parse_frontmatter,
     sanitize_frontmatter,
-    update_frontmatter,
     strip_existing_frontmatter,
+    update_frontmatter,
 )
 from folio.core.manifest import (
     create_manifest,
-    update_file,
     get_file,
+    load_manifest,
     recalculate_summary,
     save_manifest,
-    load_manifest,
+    update_file,
 )
-from folio.core.classifier import classify_file, DEFAULT_CLASSIFY_CONFIG
+from folio.core.pipeline import AVAILABLE_STAGES
+
+_RICH_MD = "# Annual Report 2023\n" + "\n".join(
+    f"In fiscal year segment {i}, the organization delivered programming "
+    f"to artists and audiences across the region."
+    for i in range(20)
+)
+_SPARSE_MD = "# Title\nA single short paragraph of content."
+
+
+class _StubConverter(Converter):
+    """Minimal in-memory converter for pipeline tests.
+
+    Relies on the base ``convert_traced`` so a non-cascade run reports
+    ``tier == name`` and ``cost_usd == estimate_cost()``.
+    """
+
+    def __init__(self, name: str, markdown: str | None, cost: float):
+        self._name = name
+        self._markdown = markdown
+        self._cost = cost
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def supported_extensions(self) -> set[str]:
+        return {".pdf"}
+
+    def convert(self, source):
+        return self._markdown
+
+    def estimate_cost(self, source) -> float:
+        return self._cost
 
 
 class TestPipelineStageList:
@@ -177,8 +212,10 @@ class TestMultiFileBatchClassification:
         tier1 = "---\nfunder: \"OAC\"\ntype: \"report\"\nwritten: 2023\n---\n\n" + (
             "# Annual Report\n\n"
             + "Summary of activities for the fiscal year.\n"
-            + "\n".join(f"Line {i} with enough content to surpass minimum thresholds for classification."
-                        for i in range(30))
+            + "\n".join(
+                f"Line {i} with enough content to surpass minimum thresholds for classification."
+                for i in range(30)
+            )
         )
         tier2 = "---\nfunder: \"OAC\"\ntype: \"application\"\nwritten: 2024\n---\n\n" + (
             "# Grant Application\n\n"
@@ -192,8 +229,9 @@ class TestMultiFileBatchClassification:
             "# Draft\n\n"
             + "Short\n"
         )
-        tier4 = "---\nfunder: \"CAC\"\ntype: \"budget\"\nwritten: 2024\nperiod: 2024-2025\n---\n\n" + (
-            "# Budget\n\n"
+        tier4 = (
+            "---\nfunder: \"CAC\"\ntype: \"budget\"\nwritten: 2024\nperiod: 2024-2025\n---\n\n"
+            + "# Budget\n\n"
             + "\n".join(f"| Item {i} | Cost {i} | Notes |" for i in range(1, 40))
         )
         tier5 = "---\nfunder: \"CAC\"\ntype: \"support_material\"\nwritten: 2024\n---\n\n" + (
@@ -406,6 +444,40 @@ class TestManifestCRUD:
         assert manifest["files"] == {}
         assert manifest["summary"]["total_files"] == 0
 
+    def test_file_entry_conversion_fields_roundtrip(self, tmp_path):
+        manifest = create_manifest("test-project")
+        update_file(
+            manifest, "doc.md",
+            status="ok", converter_tier="datalab", conversion_cost_usd=0.06,
+        )
+
+        manifest_path = tmp_path / "manifest.json"
+        save_manifest(manifest, manifest_path)
+        loaded = load_manifest(manifest_path)
+
+        entry = get_file(loaded, "doc.md")
+        assert entry["converter_tier"] == "datalab"
+        assert entry["conversion_cost_usd"] == 0.06
+
+    def test_file_entry_conversion_fields_backcompat(self):
+        manifest = create_manifest("test-project")
+        update_file(manifest, "old.md", status="ok", tier="full")
+
+        entry = get_file(manifest, "old.md")
+        assert entry.get("converter_tier") is None
+        assert entry.get("conversion_cost_usd", 0.0) == 0.0
+
+    def test_conversion_cost_contributes_to_summary_total(self):
+        manifest = create_manifest("test-project")
+        update_file(
+            manifest, "doc.md",
+            status="ok", conversion_cost_usd=0.06, rewrite_cost_usd=0.01,
+        )
+
+        recalculate_summary(manifest)
+
+        assert abs(manifest["summary"]["total_cost_usd"] - 0.07) < 1e-6
+
     def test_save_updates_timestamp(self, tmp_path):
         import time
         manifest = create_manifest("test-project")
@@ -518,8 +590,8 @@ agreements. We expect to reach 500 community members through our programming.
 
     def test_full_pipeline_dry_run_report_structure(self, tmp_path):
         """Full pipeline --dry-run produces a report with all 8 stages."""
-        from folio.core.pipeline import _estimate_pipeline
         from folio.config.loader import load_project_config
+        from folio.core.pipeline import _estimate_pipeline
 
         config_path = self._create_test_archive(tmp_path)
         config = load_project_config(config_path)
@@ -615,8 +687,8 @@ agreements. We expect to reach 500 community members through our programming.
 
     def test_pipeline_stages_dry_run_cost_estimation(self, tmp_path):
         """Each pipeline stage in dry-run has a cost_usd and time_seconds."""
-        from folio.core.pipeline import _estimate_pipeline
         from folio.config.loader import load_project_config
+        from folio.core.pipeline import _estimate_pipeline
 
         config_path = self._create_test_archive(tmp_path)
         config = load_project_config(config_path)
@@ -629,8 +701,8 @@ agreements. We expect to reach 500 community members through our programming.
 
     def test_pipeline_dry_run_creates_no_files(self, tmp_path):
         """Pipeline --dry-run does not create any files in target directories."""
-        from folio.core.pipeline import _estimate_pipeline
         from folio.config.loader import load_project_config
+        from folio.core.pipeline import _estimate_pipeline
 
         config_path = self._create_test_archive(tmp_path)
         config = load_project_config(config_path)
@@ -665,9 +737,9 @@ agreements. We expect to reach 500 community members through our programming.
 
     def test_pipeline_resume_behavior(self, tmp_path):
         """Test resume: manifest with some complete stages skips them."""
-        from folio.core.pipeline import run_pipeline
-        from folio.core.manifest import create_manifest, save_manifest
         from folio.config.loader import load_project_config
+        from folio.core.manifest import create_manifest, save_manifest
+        from folio.core.pipeline import run_pipeline
 
         config_path = self._create_test_archive(tmp_path)
         config = load_project_config(config_path)
@@ -701,8 +773,8 @@ agreements. We expect to reach 500 community members through our programming.
 
     def test_pipeline_with_real_markdown_files(self, tmp_path):
         """Pipeline dry-run with realistic markdown files in archive."""
-        from folio.core.pipeline import _estimate_pipeline
         from folio.config.loader import load_project_config
+        from folio.core.pipeline import _estimate_pipeline
 
         archive_dir = tmp_path / "archive"
         archive_dir.mkdir()
@@ -833,3 +905,68 @@ each line item.
         scan_stage = report["stages"]["scan"]
         assert scan_stage["status"] == "ok"
         assert scan_stage["files"] >= 0
+
+
+class TestConvertStageManifest:
+    """Convert stage records the winning converter tier and per-file cost."""
+
+    def _make_archive(self, tmp_path, names):
+        archive = tmp_path / "archive"
+        archive.mkdir()
+        for n in names:
+            (archive / n).write_text("dummy", encoding="utf-8")
+
+        config = tmp_path / "folio.yaml"
+        config.write_text(TestPipelineEndToEnd.FOLIO_YAML_TEMPLATE.format(
+            raw_archive=str(archive),
+            raw_md=str(tmp_path / ".folio" / "converted"),
+            clean_md=str(tmp_path / ".folio" / "cleaned"),
+            rewrite_md=str(tmp_path / "markdown"),
+            wiki_project=str(tmp_path / ".folio" / "sage-wiki"),
+        ))
+        return config
+
+    def test_cascade_records_winning_tier_and_accumulated_cost(self, tmp_path, monkeypatch):
+        import folio.adapters.converters as conv_pkg
+        from folio.adapters.converters.cascade import CascadeConverter
+        from folio.core.pipeline import run_pipeline
+
+        tier0 = _StubConverter("tier0", _SPARSE_MD, 0.01)
+        tier1 = _StubConverter("tier1", _RICH_MD, 0.06)
+        cascade = CascadeConverter([tier0, tier1])
+        monkeypatch.setattr(conv_pkg, "get_converter", lambda cfg: cascade)
+
+        config_path = self._make_archive(tmp_path, ["doc_0.pdf", "doc_1.pdf"])
+        report = run_pipeline(
+            config_path=config_path, stages=["convert"], dry_run=False, resume=True
+        )
+
+        manifest = load_manifest(tmp_path / "markdown" / "manifest.json")
+        entry = get_file(manifest, "doc_0.md")
+        assert entry is not None
+        assert entry["converter_tier"] == "tier1"
+        assert entry["conversion_cost_usd"] == pytest.approx(0.07)
+
+        convert_stage = report["stages"]["convert"]
+        assert convert_stage["converted"] == 2
+        assert convert_stage["cost_usd"] == pytest.approx(0.14)
+
+    def test_non_cascade_records_single_converter_name(self, tmp_path, monkeypatch):
+        import folio.adapters.converters as conv_pkg
+        from folio.core.pipeline import run_pipeline
+
+        single = _StubConverter("solo", _RICH_MD, 0.03)
+        monkeypatch.setattr(conv_pkg, "get_converter", lambda cfg: single)
+
+        config_path = self._make_archive(tmp_path, ["a.pdf", "b.pdf", "c.pdf"])
+        report = run_pipeline(
+            config_path=config_path, stages=["convert"], dry_run=False, resume=True
+        )
+
+        manifest = load_manifest(tmp_path / "markdown" / "manifest.json")
+        entry = get_file(manifest, "a.md")
+        assert entry is not None
+        assert entry["converter_tier"] == "solo"
+        assert entry["conversion_cost_usd"] == pytest.approx(0.03)
+
+        assert report["stages"]["convert"]["cost_usd"] == pytest.approx(0.09)
