@@ -116,8 +116,21 @@ class CorpusSpec:
 
 
 def _default_spec_path() -> Path:
-    """Resolve the bundled default ``corpus-spec.yaml`` shipped with folio."""
-    return Path(str(resources.files("folio.templates") / "corpus" / "corpus-spec.yaml"))
+    """Resolve the bundled default ``corpus-spec.yaml`` shipped with folio.
+
+    Tries importlib.resources first (works for installed packages) and falls
+    back to a path relative to this module (works in an editable/source tree),
+    mirroring ``pii_scan._bundled_denylist_path``.
+    """
+    try:
+        traversable = resources.files("folio.templates") / "corpus" / "corpus-spec.yaml"
+        candidate = Path(str(traversable))
+        if candidate.exists():
+            return candidate
+    except (ModuleNotFoundError, FileNotFoundError):
+        pass
+    # parents[2] == folio package root (corpus -> core -> folio).
+    return Path(__file__).resolve().parents[2] / "templates" / "corpus" / "corpus-spec.yaml"
 
 
 def _build_spec(data: dict) -> CorpusSpec:
@@ -178,6 +191,8 @@ def validate_spec(spec: CorpusSpec) -> list[str]:
 
     Checks performed:
         * ``seed`` is an ``int`` (and not a ``bool``).
+        * ``profile`` is a non-empty string.
+        * ``output_dir`` is a non-empty string.
         * ``documents`` is non-empty.
         * each document ``kind`` is in :data:`ALLOWED_KINDS`.
         * each document ``format`` is in :data:`ALLOWED_FORMATS`.
@@ -191,6 +206,12 @@ def validate_spec(spec: CorpusSpec) -> list[str]:
 
     if not isinstance(spec.funder, str) or not spec.funder.strip():
         errors.append(f"funder must be a non-empty string, got: {spec.funder!r}")
+
+    if not isinstance(spec.profile, str) or not spec.profile.strip():
+        errors.append(f"profile must be a non-empty string, got: {spec.profile!r}")
+
+    if not isinstance(spec.output_dir, str) or not spec.output_dir.strip():
+        errors.append(f"output_dir must be a non-empty string, got: {spec.output_dir!r}")
 
     if not spec.documents:
         errors.append("documents must contain at least one entry")

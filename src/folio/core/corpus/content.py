@@ -21,10 +21,14 @@ that:
 * Helpers accept an explicit ``Faker`` instance **or** fall back to a
   module-level default that :func:`seed_all` configures. Passing the instance
   returned by :func:`seed_all` is the recommended, thread-safe pattern; the
-  module-level default exists for convenience in single-threaded call sites.
+  module-level default exists for convenience in single-threaded call sites and
+  its assignment is guarded by a lock.
 
 Given the same seed and the same *ordered* sequence of helper calls, the output
-is guaranteed to be identical across processes and machines.
+is identical across processes — **provided the same Faker version and the
+``en_CA`` locale are installed**. Different Faker releases or a missing locale
+can change generated values for the same seed; pin Faker for fully
+machine-independent reproducibility.
 """
 from __future__ import annotations
 
@@ -32,6 +36,7 @@ import datetime
 import logging
 import random
 import re
+import threading
 
 from faker import Faker
 
@@ -40,6 +45,9 @@ logger = logging.getLogger(__name__)
 _PREFERRED_LOCALE = "en_CA"
 
 _DEFAULT_FAKE: Faker | None = None
+#: Guards assignment/lazy-init of the module-level default Faker (AGENTS.md
+#: Rule 10 — shared mutable state touched from multiple threads needs a lock).
+_DEFAULT_LOCK = threading.Lock()
 
 
 def _make_faker() -> Faker:
@@ -60,6 +68,19 @@ def _make_faker() -> Faker:
         return Faker()
 
 
+def _seed(seed: int) -> Faker:
+    """Seed all randomness sources and return a fresh seeded Faker.
+
+    Mutates global ``random`` state and Faker's class-level seed; does **not**
+    touch the module default (so it is safe to call inside the default lock).
+    """
+    random.seed(seed)
+    Faker.seed(seed)
+    fake = _make_faker()
+    fake.seed_instance(seed)
+    return fake
+
+
 def seed_all(seed: int) -> Faker:
     """Seed every randomness source and return a configured Faker instance.
 
@@ -78,14 +99,12 @@ def seed_all(seed: int) -> Faker:
 
     Side effects:
         Mutates global ``random`` state, Faker's class-level seed and this
-        module's default Faker instance.
+        module's default Faker instance (the latter under ``_DEFAULT_LOCK``).
     """
-    random.seed(seed)
-    Faker.seed(seed)
-    fake = _make_faker()
-    fake.seed_instance(seed)
+    fake = _seed(seed)
     global _DEFAULT_FAKE
-    _DEFAULT_FAKE = fake
+    with _DEFAULT_LOCK:
+        _DEFAULT_FAKE = fake
     return fake
 
 
@@ -97,15 +116,21 @@ def _resolve(fake: Faker | None) -> Faker:
 
     Returns:
         A usable Faker instance. If no default has been configured yet, one is
-        created and seeded with ``0`` so calls never fail; callers wanting
-        reproducible output should always call :func:`seed_all` first.
+        created and seeded with ``0`` (with a warning) so calls never fail;
+        callers wanting reproducible output should always call :func:`seed_all`
+        first.
     """
     if fake is not None:
         return fake
     global _DEFAULT_FAKE
-    if _DEFAULT_FAKE is None:
-        _DEFAULT_FAKE = seed_all(0)
-    return _DEFAULT_FAKE
+    with _DEFAULT_LOCK:
+        if _DEFAULT_FAKE is None:
+            logger.warning(
+                "content default Faker used before seed_all(); seeding with 0. "
+                "Call seed_all(seed) first for intended reproducibility."
+            )
+            _DEFAULT_FAKE = _seed(0)
+        return _DEFAULT_FAKE
 
 
 def fake_name(fake: Faker | None = None) -> str:

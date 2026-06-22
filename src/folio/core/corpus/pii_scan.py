@@ -61,6 +61,10 @@ _PHONE = re.compile(
 )
 
 # Canadian SIN: 9 digits, grouped 3-3-3 with optional space/dash separators.
+# NOTE: this matches ANY 9-digit sequence (grouped or not) and will flag grant
+# IDs, large page numbers, and other numeric fields as "sin" hits. This high
+# false-positive rate is intentional — the gate prefers false positives over
+# missed PII.
 _SIN = re.compile(r"(?<!\d)\d{3}[ \-]?\d{3}[ \-]?\d{3}(?!\d)")
 
 # US SSN: strict 3-2-4 dashed grouping.
@@ -138,8 +142,8 @@ def _bundled_denylist_path() -> Path:
     back to a path relative to this module (works in an editable/source tree).
     """
     try:
-        traversable = resources.files("folio.templates").joinpath(
-            "corpus", "pii-denylist.yaml"
+        traversable = (
+            resources.files("folio.templates") / "corpus" / "pii-denylist.yaml"
         )
         candidate = Path(str(traversable))
         if candidate.exists():
@@ -224,6 +228,10 @@ def scan_text(text: str, denylist: list[str] | None = None) -> list[Finding]:
     name_patterns = _compile_denylist(denylist)
 
     findings: list[Finding] = []
+    # Scanning is line-oriented: detectors and denylist names are matched within
+    # a single line. A name or pattern split across a newline boundary will not
+    # be detected — acceptable here because generated golden text keeps fields
+    # on single lines, but a known limitation for arbitrary inputs.
     for lineno, line in enumerate(text.splitlines(), start=1):
         for kind, pattern in _PATTERNS:
             for m in pattern.finditer(line):
