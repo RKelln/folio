@@ -138,7 +138,7 @@ CONFIGURATION (folio.yaml)
       output_per_million: 0.28     # Cost per 1M output tokens (for estimates)
 
   converter:
-    type: docling                  # Or: datalab, marker, null
+    type: liteparse               # Or: docling, datalab, marker, null
 
   wiki:
     type: sage_wiki                # Or: null
@@ -353,7 +353,8 @@ LLM PRICING
 CONVERTER OPTIONS
 ─────────────────
   converter:
-    type: docling          # OSS Docling (Apache 2.0) — supports PDF/DOCX/XLSX/PPTX (default)
+    type: liteparse        # Fast local Rust parser, no LLM/API key (default)
+    type: docling          # OSS Docling (Apache 2.0) — supports PDF/DOCX/XLSX/PPTX
     type: datalab          # Proprietary IBM Datalab (requires datalab-python-sdk)
     type: marker           # Open-source marker-pdf (pip install marker-pdf)
     type: "null"           # No conversion (markdown-only pipeline)

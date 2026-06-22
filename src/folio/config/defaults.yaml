@@ -40,7 +40,7 @@ paths:
 
 # ── Converter ─────────────────────────────────────────────────────
 converter:
-  type: "docling"               # docling | datalab | marker | pandoc
+  type: "liteparse"             # liteparse | docling | datalab | marker | pandoc
   datalab:
     pipeline_id: ""
     api_key_env: "DATALAB_API_KEY"

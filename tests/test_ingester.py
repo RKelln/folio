@@ -36,7 +36,7 @@ def make_ingester_config(**overrides) -> ProjectConfig:
             wiki_project="./wiki/",
         ),
         "llm": LLMConfig(),
-        "converter": ConverterConfig(type="docling"),
+        "converter": ConverterConfig(type="liteparse"),
         "wiki": WikiConfig(type="null"),
         "processing": ProcessingConfig(),
     }

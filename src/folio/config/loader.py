@@ -27,7 +27,7 @@ from folio.config.schema import (
 
 logger = logging.getLogger(__name__)
 
-_VALID_CONVERTER_TYPES = {"datalab", "marker", "docling", "pandoc"}
+_VALID_CONVERTER_TYPES = {"liteparse", "datalab", "marker", "docling", "pandoc"}
 _VALID_WIKI_TYPES = {"sage-wiki", "null"}
 
 
@@ -81,7 +81,7 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
     converter_data = data.get("converter", {})
     converter_datalab = converter_data.get("datalab", {})
     converter = ConverterConfig(
-        type=converter_data.get("type", "docling"),
+        type=converter_data.get("type", "liteparse"),
         datalab_pipeline_id=converter_datalab.get("pipeline_id", ""),
         datalab_api_key_env=converter_datalab.get("api_key_env", "DATALAB_API_KEY"),
     )

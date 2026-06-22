@@ -32,11 +32,12 @@ Example pricing (budget tier): ~$0.14/M input tokens. A typical 1000-file archiv
 
 ## Converters
 
-At least one converter must be installed. **docling is the default and recommended.**
+At least one converter must be installed. **liteparse is the default and recommended.**
 
 | Converter | Install | Notes |
 |-----------|---------|-------|
-| **docling** (default) | `uv pip install docling` | Recommended. Best quality. |
+| **liteparse** (default) | `uv pip install liteparse` | Recommended. Fast local Rust parser, no API key. |
+| docling | `uv pip install docling` | OSS, strong table extraction. |
 | marker-pdf | `uv pip install marker-pdf` | Good quality, fast. |
 | datalab | `pip install datalab-python-sdk` | Cloud API. Needs `DATALAB_API_KEY`. |
 | pandoc | `sudo apt install pandoc` (Linux) or `brew install pandoc` (macOS) | Fallback. Free. |
@@ -79,8 +80,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # folio
 uv tool install folio
 
-# Converter (docling)
-uv pip install docling
+# Converter (liteparse)
+uv pip install liteparse
 
 # Wiki (needs Go)
 sudo snap install go --classic    # or: sudo apt install golang-go
@@ -103,8 +104,8 @@ brew install uv
 # folio
 uv tool install folio
 
-# Converter (docling)
-uv pip install docling
+# Converter (liteparse)
+uv pip install liteparse
 
 # Wiki (needs Go)
 brew install go
@@ -122,7 +123,7 @@ brew install pandoc
 ```bash
 folio --version                                                 # folio installed
 sage-wiki --version                                             # wiki backend (if installed)
-uv run python -c "import docling; print('ok')" 2>/dev/null      # converter
+uv run python -c "import liteparse; print('ok')" 2>/dev/null     # converter
 ```
 
 Then in your org library directory:

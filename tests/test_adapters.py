@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from folio.adapters.converters import DatalabConverter, DoclingConverter, get_converter
+from folio.adapters.converters import (
+    DatalabConverter,
+    DoclingConverter,
+    LiteParseConverter,
+    get_converter,
+)
 from folio.adapters.llm import OpenAICompatibleProvider, get_llm_provider
 from folio.adapters.sources import DocumentSource, get_source
 from folio.adapters.sources.local import LocalSource
@@ -21,8 +27,10 @@ def _make_config(**kwargs):
     return ProjectConfig(**kwargs)
 
 
-def _make_converter_config(converter_type="docling", pipeline_id=""):
-    return ProjectConfig(converter=ConverterConfig(type=converter_type, datalab_pipeline_id=pipeline_id))
+def _make_converter_config(converter_type="liteparse", pipeline_id=""):
+    return ProjectConfig(
+        converter=ConverterConfig(type=converter_type, datalab_pipeline_id=pipeline_id)
+    )
 
 
 def _make_wiki_config(wiki_type="sage-wiki"):
@@ -36,8 +44,13 @@ def _make_llm_config(base_url="https://api.example.com", api_key_env="MY_KEY"):
 class TestConverterFactory:
     def test_default_with_none_config(self):
         converter = get_converter(None)
-        assert isinstance(converter, DoclingConverter)
-        assert converter.name == "docling"
+        assert isinstance(converter, LiteParseConverter)
+        assert converter.name == "liteparse"
+
+    def test_liteparse(self):
+        converter = get_converter(_make_converter_config("liteparse"))
+        assert isinstance(converter, LiteParseConverter)
+        assert converter.name == "liteparse"
 
     def test_docling(self):
         converter = get_converter(_make_converter_config("docling"))
@@ -244,3 +257,51 @@ class TestDatalabConverterProperties:
         assert ".xlsx" in exts
         assert ".doc" in exts
         assert ".xls" in exts
+
+
+class TestLiteParseConverterProperties:
+    def test_name_property(self):
+        converter = LiteParseConverter()
+        assert converter.name == "liteparse"
+
+    def test_supported_extensions(self):
+        converter = LiteParseConverter()
+        exts = converter.supported_extensions
+        assert ".pdf" in exts
+        assert ".docx" in exts
+        assert ".xlsx" in exts
+        assert ".pptx" in exts
+        assert ".png" in exts
+        assert ".jpg" in exts
+        assert ".jpeg" in exts
+
+    def test_convert_returns_markdown_on_success(self, tmp_path):
+        src = tmp_path / "doc.pdf"
+        src.write_text("fake pdf")
+        converter = LiteParseConverter()
+        fake_parser = MagicMock()
+        fake_parser.parse.return_value = SimpleNamespace(text="# Heading\n\nBody")
+        with patch.object(converter, "_ensure_parser", return_value=fake_parser):
+            result = converter.convert(src)
+        assert result == "# Heading\n\nBody"
+        fake_parser.parse.assert_called_once_with(str(src))
+
+    def test_convert_returns_none_on_empty_result(self, tmp_path):
+        src = tmp_path / "doc.pdf"
+        src.write_text("fake pdf")
+        converter = LiteParseConverter()
+        fake_parser = MagicMock()
+        fake_parser.parse.return_value = SimpleNamespace(text="")
+        with patch.object(converter, "_ensure_parser", return_value=fake_parser):
+            result = converter.convert(src)
+        assert result is None
+
+    def test_convert_returns_none_on_exception(self, tmp_path):
+        src = tmp_path / "doc.pdf"
+        src.write_text("fake pdf")
+        converter = LiteParseConverter()
+        fake_parser = MagicMock()
+        fake_parser.parse.side_effect = RuntimeError("boom")
+        with patch.object(converter, "_ensure_parser", return_value=fake_parser):
+            result = converter.convert(src)
+        assert result is None

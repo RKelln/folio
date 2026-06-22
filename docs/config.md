@@ -181,7 +181,7 @@ Controls how source documents (PDF, DOCX, XLSX) are converted to Markdown.
 
 | YAML path | Python type | Default | Description |
 |---|---|---|---|
-| `converter.type` | `str` | `"docling"` | Converter backend: `docling`, `datalab`, `marker`, or `pandoc` |
+| `converter.type` | `str` | `"liteparse"` | Converter backend: `liteparse`, `docling`, `datalab`, `marker`, or `pandoc` |
 | `converter.datalab.pipeline_id` | `str` | `""` | Datalab pipeline ID (required when type is `datalab`) |
 | `converter.datalab.api_key_env` | `str` | `"DATALAB_API_KEY"` | Environment variable name for the Datalab API key |
 
@@ -189,7 +189,8 @@ Controls how source documents (PDF, DOCX, XLSX) are converted to Markdown.
 
 | Type | Supported extensions | Description |
 |---|---|---|
-| `docling` | `.pdf`, `.docx`, `.xlsx` | IBM Docling open-source library. Local, no API key needed. **Default.** Strong table extraction. |
+| `liteparse` | `.pdf`, `.docx`, `.xlsx`, `.pptx`, `.png`, `.jpg`, `.jpeg` | LlamaIndex LiteParse, a fast local Rust parser. No LLM/API key, built-in OCR. **Default.** |
+| `docling` | `.pdf`, `.docx`, `.xlsx` | IBM Docling open-source library. Local, no API key needed. Strong table extraction. |
 | `datalab` | `.pdf`, `.docx`, `.xlsx`, `.doc`, `.xls` | IBM Datalab pipeline API. Best quality for grant forms. Requires `datalab-python-sdk` and API key. |
 | `marker` | `.pdf` | Open-source `marker-pdf` library. Local, no API key needed. Not yet implemented. |
 | `pandoc` | `.pdf`, `.docx`, `.html`, `.rst`, many more | Universal converter via Pandoc. Lowest quality for grant forms. Not yet implemented. |
@@ -764,7 +765,7 @@ paths:
   wiki_project: "./.folio/sage-wiki/"
 
 converter:
-  type: "docling"
+  type: "liteparse"
 
 wiki:
   type: "sage-wiki"
@@ -890,7 +891,7 @@ folio validates your `folio.yaml` at load time and raises errors for:
 
 | Condition | Error message |
 |---|---|
-| `converter.type` not in `{datalab, marker, docling, pandoc}` | `Invalid converter type: '...'` |
+| `converter.type` not in `{liteparse, datalab, marker, docling, pandoc}` | `Invalid converter type: '...'` |
 | `wiki.type` not in `{sage-wiki, null}` | `Invalid wiki type: '...'` |
 | `llm.base_url` not starting with `https://` or allowed `http://` prefix | `LLM base_url must use https://, or http:// for localhost/private IPs` |
 | `processing.max_workers < 1` | `processing.max_workers must be >= 1` |

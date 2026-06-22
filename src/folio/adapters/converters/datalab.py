@@ -1,4 +1,4 @@
-"""Datalab converter (default, best quality).
+"""Datalab converter (proprietary, best quality).
 
 Uses the Datalab pipeline API to convert PDF/DOCX/XLSX to markdown.
 Requires DATALAB_API_KEY environment variable and datalab-python-sdk.

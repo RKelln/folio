@@ -3,7 +3,7 @@
 Usage:
     folio convert --source ./archive/ --dest ./out/
     folio convert --source ./archive/ --dest ./out/ --dry-run
-    folio convert --source ./archive/ --dest ./out/ --converter docling
+    folio convert --source ./archive/ --dest ./out/ --converter liteparse
     folio convert --source ./archive/ --dest ./out/ --json
 """
 
@@ -26,7 +26,7 @@ def main(argv: list[str] | None = None) -> None:
         epilog=(
             "Examples:\n"
             "  folio convert --source ./archive/ --dest ./.folio/converted/\n"
-            "  folio convert --source ./archive/ --dest ./out/ --converter docling --dry-run\n"
+            "  folio convert --source ./archive/ --dest ./out/ --converter liteparse --dry-run\n"
             "  folio convert --source ./archive/ --dest ./out/ --json\n"
         ),
     )
@@ -50,9 +50,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--converter",
         type=str,
-        default="docling",
-        choices=["docling", "datalab", "marker", "pandoc"],
-        help="Converter to use (default: docling)",
+        default="liteparse",
+        choices=["liteparse", "docling", "datalab", "marker", "pandoc"],
+        help="Converter to use (default: liteparse)",
     )
     parser.add_argument(
         "--dry-run", "-n",

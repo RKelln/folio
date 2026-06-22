@@ -24,7 +24,7 @@ class TestLoadMinimalValidConfig:
         config = load_project_config()
         assert isinstance(config, ProjectConfig)
         assert config.project_name == "My Grant Archive"
-        assert config.converter.type == "docling"
+        assert config.converter.type == "liteparse"
         assert config.wiki.type == "sage-wiki"
         assert config.processing.max_workers == 10
 
@@ -125,7 +125,7 @@ org:
         assert config.org.abbreviation == "ORG"
         assert Path(config.paths.raw_archive).name == "archive"
         assert config.llm.base_url == "https://api.deepseek.com"
-        assert config.converter.type == "docling"
+        assert config.converter.type == "liteparse"
         assert config.wiki.type == "sage-wiki"
         assert config.processing.max_workers == 10
         assert config.doc_types == [

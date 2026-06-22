@@ -18,6 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+liteparse = ["liteparse"]
 datalab = ["datalab-python-sdk"]
 marker = ["marker-pdf"]
 docling = ["docling"]

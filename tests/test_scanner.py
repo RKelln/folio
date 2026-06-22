@@ -33,7 +33,7 @@ def make_scanner_config(**overrides) -> ProjectConfig:
             "notification": [r"(?i)notification", r"approval", r"result"],
         },
         "llm": LLMConfig(input_price_per_m=0.14, output_price_per_m=0.28),
-        "converter": ConverterConfig(type="docling"),
+        "converter": ConverterConfig(type="liteparse"),
         "processing": ProcessingConfig(max_workers=10),
     }
     defaults.update(overrides)

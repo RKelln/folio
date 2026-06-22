@@ -31,7 +31,7 @@ class LLMConfig:
 
 @dataclass
 class ConverterConfig:
-    type: str = "docling"
+    type: str = "liteparse"
     datalab_pipeline_id: str = ""
     datalab_api_key_env: str = "DATALAB_API_KEY"
 

@@ -87,7 +87,7 @@ llm:
   api_key_env: DEEPSEEK_API_KEY
 
 converter:
-  type: docling                    # Default. Change to marker-pdf, datalab, or pandoc
+  type: liteparse                  # Default. Change to docling, datalab, marker, or pandoc
 ```
 
 Set up `.env`:

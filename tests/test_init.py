@@ -170,7 +170,7 @@ class TestInitProject:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -209,7 +209,7 @@ class TestInitProject:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -235,7 +235,7 @@ class TestInitProject:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -288,7 +288,7 @@ class TestInitProject:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -310,7 +310,7 @@ class TestInitProject:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -333,7 +333,7 @@ class TestInitProject:
         mock_defaults.read_text.return_value = yaml.dump({
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "fast-model", "quality": "pro-model"},
@@ -359,7 +359,7 @@ class TestInitProject:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -393,7 +393,7 @@ class TestEdgeCases:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -417,7 +417,7 @@ class TestEdgeCases:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -460,7 +460,7 @@ class TestEdgeCases:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -490,7 +490,7 @@ class TestEdgeCases:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -517,7 +517,7 @@ class TestEdgeCases:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},
@@ -537,7 +537,7 @@ class TestEdgeCases:
             "project": {"name": "folio"},
             "org": {"name": "Default Org", "abbreviation": "DO"},
             "paths": {"raw_archive": "./archive/"},
-            "converter": {"type": "docling"},
+            "converter": {"type": "liteparse"},
             "llm": {
                 "provider": "deepseek",
                 "models": {"fast": "test-fast", "quality": "test-pro"},

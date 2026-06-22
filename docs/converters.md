@@ -34,9 +34,43 @@ To add a new converter, subclass `Converter`, implement the three methods above,
 
 ## Available Converters
 
-### 1. Docling (default)
+### 1. LiteParse (default)
 
-Docling is an open-source document converter (Apache 2.0) originally from IBM Research. It handles PDF, DOCX, PPTX, and XLSX with high-quality output. Recommended as the default converter for most archives.
+LiteParse is an open-source, Rust-based document parser from LlamaIndex (https://developers.llamaindex.ai/liteparse/). It parses text with spatial layout and renders clean Markdown, running entirely on the local machine with no cloud calls, no LLMs, and no API keys. Built-in Tesseract OCR handles scanned documents. Its speed makes it the recommended default for bulk archive conversion.
+
+| Property | Value |
+|----------|-------|
+| Class | `LiteParseConverter` |
+| Supported extensions | `.pdf`, `.docx`, `.xlsx`, `.pptx`, `.png`, `.jpg`, `.jpeg` |
+| Pricing | Free (OSS) |
+| Requires network | No (runs entirely offline) |
+
+**Installation:**
+
+```bash
+uv add liteparse
+```
+
+Or with the optional dependency group:
+
+```bash
+uv pip install "folio[liteparse]"
+```
+
+**Configuration in folio.yaml:**
+
+```yaml
+converter:
+  type: "liteparse"
+```
+
+For OCR of scanned documents in offline/air-gapped environments, set `TESSDATA_PREFIX` to a directory containing Tesseract `.traineddata` files.
+
+---
+
+### 2. Docling
+
+Docling is an open-source document converter (Apache 2.0) originally from IBM Research. It handles PDF, DOCX, PPTX, and XLSX with high-quality output. A strong choice when you need Docling's table extraction.
 
 | Property | Value |
 |----------|-------|
@@ -66,7 +100,7 @@ converter:
 
 ---
 
-### 2. Datalab
+### 3. Datalab
 
 Proprietary IBM Datalab SDK. Highest quality conversion for grant forms, PDFs with tables, and complex layouts. Recommended for production archives that need the best possible fidelity.
 
@@ -107,7 +141,7 @@ export DATALAB_API_KEY="your-key"
 
 ---
 
-### 3. Marker
+### 4. Marker
 
 Open-source `marker-pdf` package. Runs entirely offline. Converts PDF to markdown with good table and layout handling.
 
@@ -141,7 +175,7 @@ converter:
 
 ---
 
-### 4. Null (skip conversion)
+### 5. Null (skip conversion)
 
 Use when source documents are already in markdown format. The pipeline starts at the clean stage, bypassing conversion entirely.
 
@@ -162,6 +196,7 @@ No additional dependencies required. No API key needed.
 
 | Converter | PDF | DOCX | XLSX | PPTX | Images | Pricing | Offline | Status |
 |-----------|-----|------|------|------|--------|---------|---------|--------|
+| LiteParse | Yes | Yes  | Yes  | Yes  | Yes    | Free   | Yes | Ready |
 | Docling  | Yes | Yes  | Yes  | Yes  | No     | Free   | Yes | Ready |
 | Datalab  | Yes | Yes  | Yes  | Yes  | Yes    | ~$0.02/page | No  | Ready |
 | Marker   | Yes | No   | No   | No   | No     | Free   | Yes | Planned |
@@ -169,9 +204,9 @@ No additional dependencies required. No API key needed.
 
 ### Choosing a Converter
 
-- **Most archives** -> Docling (default, OSS, multi-format)
-- **Large archive with mixed formats, maximum fidelity** -> Datalab
-- **PDF-only archive, offline or cost-sensitive** -> Marker (when implemented)
+- **Most archives** -> LiteParse (default, fast, local, no API key, multi-format)
+- **Need Docling's table extraction** -> Docling
+- **Maximum fidelity for complex grant forms** -> Datalab
 - **Documents already in markdown** -> Null
 
 ### Configuration in folio.yaml
@@ -180,10 +215,10 @@ Set the converter type under the `converter:` section:
 
 ```yaml
 converter:
-  type: "docling"   # docling | datalab | marker | null
+  type: "liteparse"   # liteparse | docling | datalab | marker | null
 ```
 
-The default is `docling`. For null converter, no other fields are needed. For datalab, provide a `pipeline_id` and set the `DATALAB_API_KEY` environment variable.
+The default is `liteparse`. For null converter, no other fields are needed. For datalab, provide a `pipeline_id` and set the `DATALAB_API_KEY` environment variable.
 
 ### Skipping Conversion Entirely
 
@@ -195,8 +230,9 @@ Set `converter.type: "null"` in `folio.yaml`. The pipeline will treat all files 
 
 ### Converter Factory
 
-`get_converter(config)` in `src/folio/adapters/converters/__init__.py` receives the application config and returns the correct `Converter` instance. The factory reads `config.converter.type` (defaulting to `"docling"`) and dispatches to the matching class:
+`get_converter(config)` in `src/folio/adapters/converters/__init__.py` receives the application config and returns the correct `Converter` instance. The factory reads `config.converter.type` (defaulting to `"liteparse"`) and dispatches to the matching class:
 
+- `"liteparse"` -> `LiteParseConverter()`
 - `"docling"` -> `DoclingConverter()`
 - `"datalab"` -> `DatalabConverter(pipeline_id)`
 - `"marker"` -> raises `NotImplementedError` (planned)
@@ -209,6 +245,7 @@ Converter packages are declared as optional dependencies in `pyproject.toml` und
 
 ```toml
 [project.optional-dependencies]
+liteparse = ["liteparse"]
 datalab = ["datalab-python-sdk"]
 marker = ["marker-pdf"]
 docling = ["docling"]

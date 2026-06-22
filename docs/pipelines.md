@@ -67,7 +67,7 @@ A scan report printed to stdout and (with `--json`) a structured dict containing
 | `funders` | `folio.yaml` > `funders` | Map of abbreviation to full name for detection |
 | `doc_types` | `folio.yaml` > `doc_types` | Document type patterns to match in filenames |
 | `llm.pricing` | `folio.yaml` > `llm` | Used for cost estimation of later stages |
-| `converter.type` | `folio.yaml` > `converter` | Affects conversion cost estimate (datalab costs money; marker/docling are free) |
+| `converter.type` | `folio.yaml` > `converter` | Affects conversion cost estimate (datalab costs money; liteparse/docling/marker are free) |
 
 ### Deterministic or LLM?
 
@@ -121,7 +121,7 @@ The pipeline report records:
 
 | Config option | Location | Effect |
 |---------------|----------|--------|
-| `converter.type` | `folio.yaml` > `converter` | Which converter to use: `datalab`, `marker`, `docling`, or `null` |
+| `converter.type` | `folio.yaml` > `converter` | Which converter to use: `liteparse`, `docling`, `datalab`, `marker`, or `null` |
 | `paths.raw_archive` | `folio.yaml` > `paths` | Where source files live |
 | `paths.raw_md` | `folio.yaml` > `paths` | Where converted markdown is written |
 
@@ -129,6 +129,7 @@ The pipeline report records:
 
 | Backend | Cost | Description |
 |---------|------|-------------|
+| `liteparse` | Free | LlamaIndex LiteParse. Fast local Rust parser, no API key, built-in OCR. **Default.** |
 | `datalab` | Paid (per-page) | IBM Datalab API. Requires `DATALAB_API_KEY` in `.env`. Strongest PDF conversion. |
 | `marker` | Free | Open-source marker-pdf library. Good quality, runs locally. |
 | `docling` | Free | IBM Docling library. Strong table extraction. |
@@ -148,14 +149,14 @@ In dry-run mode, the scanner's estimate of conversion costs is reported but no f
 |---------|-------|----------|
 | No convertible files found | Archive contains only unsupported formats or is empty | Verify source directory; check file extensions |
 | Conversion failures | Corrupted PDFs, password-protected files, oversized files | Check `failed_files` list in output; try a different converter |
-| Missing API key | Datalab converter requires `DATALAB_API_KEY` | Set the key in `.env` or switch to `marker`/`docling` |
-| Converter not installed | `marker` or `docling` require pip packages | Run `pip install marker-pdf` or `pip install docling` |
+| Missing API key | Datalab converter requires `DATALAB_API_KEY` | Set the key in `.env` or switch to `liteparse`/`docling` |
+| Converter not installed | `liteparse`, `marker`, or `docling` require pip packages | Run `pip install liteparse` (or `marker-pdf` / `docling`) |
 
 ### CLI
 
 ```bash
 folio convert --source ./archive/ --dest ./.folio/converted/
-folio convert --source ./archive/ --dest ./out/ --converter docling --dry-run
+folio convert --source ./archive/ --dest ./out/ --converter liteparse --dry-run
 folio convert --source ./archive/ --dest ./out/ --json
 
 # Also: single-file ingestion via folio ingest
