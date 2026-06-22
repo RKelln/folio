@@ -64,6 +64,7 @@ folio rewrite       # LLM re-authoring with tiered prompts
 folio canonicalize  # Version detection and dedup
 folio prioritize    # Archival priority scoring
 folio audit         # Wiki quality audit
+folio corpus        # Generate a PII-free synthetic benchmark corpus
 folio guide         # Built-in agent reference
 ```
 
@@ -80,6 +81,7 @@ All commands support `--dry-run` and `--json`. Run `folio <cmd> --help` for deta
 | [Frontmatter](docs/frontmatter.md) | YAML frontmatter fields |
 | [File Naming](docs/file-naming.md) | Filename convention |
 | [Converters](docs/converters.md) | PDF/DOCX → markdown options |
+| [Synthetic Corpus](docs/corpus.md) | `folio corpus` PII-free benchmark corpus |
 | [Wiki Backends](docs/wiki-backends.md) | Wiki compilation |
 | [Skills](docs/skills.md) | Agent skills architecture |
 

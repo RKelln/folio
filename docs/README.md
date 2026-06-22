@@ -5,6 +5,7 @@
 - [Pipeline stages](pipelines.md) — how the pipeline works end-to-end
 - [Configuration](config.md) — folio.yaml reference
 - [Converters](converters.md) — PDF/DOCX → markdown converter options
+- [Synthetic Corpus](corpus.md) — `folio corpus` PII-free benchmark corpus generation
 - [Wiki backends](wiki-backends.md) — wiki compilation backends
 - [Frontmatter](frontmatter.md) — YAML frontmatter field reference
 - [File naming](file-naming.md) — filename convention reference
@@ -22,3 +23,4 @@ Run `folio --help` for the full list. Key additions since v0.1.0:
 | `folio repack` | new | Migrate nested folder structures to flat archive/ naming convention |
 | `folio wiki` | new | Sage-wiki maintenance (status, doctor, lint, coverage, diff, verify) |
 | `folio install-agent` | new | Bootstrap AGENTS.md + skills per platform |
+| `folio corpus` | new | Generate a PII-free synthetic benchmark corpus (golden markdown → DOCX/XLSX/PDF) and PII-gate files ([docs](corpus.md)) |

@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+- `folio corpus` — generate a deterministic, PII-free synthetic grant corpus for
+  benchmarking and golden-reference testing. Authors golden Markdown from a
+  standalone `corpus-spec.yaml`, renders to DOCX/XLSX/PDF/scanned-PDF, strips
+  authoring metadata, and runs a PII safety gate.
+  - Subcommands: `generate` (default) and `scan`.
+  - Document kinds: application, narrative, budget, activity_list, staff_board,
+    support_letter. Formats: md, docx, xlsx, pdf, pdf_scanned.
+  - Gate policy fails (non-strict) only on `denylisted_name`/`unscannable`;
+    structural findings (email/phone/currency/etc.) are counted but pass.
+    `--strict` fails on any finding (for scanning anonymized real documents).
+  - Optional `[corpus]` extra (faker, python-docx, openpyxl, pillow); PDF/OCR
+    rendering and metadata stripping additionally require external tools
+    (typst, pandoc, exiftool, poppler). See [docs/corpus.md](docs/corpus.md).
+  - Committed fixtures live in `benchmark/corpus/` and feed the converter
+    benchmark.
+
 ## v0.1.1 — Cleanup & Polish — 2026-06-17
 
 Bugfix and cleanup release removing org-specific naming, stale documentation, and
