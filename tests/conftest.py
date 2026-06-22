@@ -53,6 +53,20 @@ def minimal_folio_yaml(tmp_path):
     return tmp_path
 
 
+@pytest.fixture
+def sample_markdown_with_frontmatter() -> str:
+    """A markdown document with a YAML frontmatter block, for parser tests."""
+    return (
+        "---\n"
+        "funder: OAC\n"
+        "type: application\n"
+        "written: 2024\n"
+        "---\n\n"
+        "# OAC Operating Grant Application 2024\n\n"
+        "Body content for the sample application.\n"
+    )
+
+
 def make_test_config(**overrides) -> ProjectConfig:
     """Build a minimal ProjectConfig with optional overrides."""
     defaults = {

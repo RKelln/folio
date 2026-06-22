@@ -68,6 +68,27 @@ Verify: `agentmap --version`.
 
 Set `agentmap.enabled: true` and `agentmap.binary: "agentmap"` in `folio.yaml` to enable. Setting `agentmap.enabled: false` disables it entirely.
 
+## Synthetic corpus (optional)
+
+`folio corpus` generates a PII-free synthetic benchmark corpus. Install the optional Python extra:
+
+```bash
+uv pip install "folio[corpus]"
+```
+
+This installs `faker`, `python-docx`, `openpyxl`, and `pillow`.
+
+PDF rendering, OCR rasterization, and metadata stripping additionally require external system tools (not pip-installable):
+
+| Tool | Needed for | Install (Debian/Ubuntu) |
+|------|------------|-------------------------|
+| `pandoc` | `pdf` / `pdf_scanned` rendering | `sudo apt install pandoc` |
+| `typst` | `pdf` / `pdf_scanned` PDF engine | see [typst.app](https://typst.app) install docs |
+| `poppler` (`pdftoppm`, `pdftotext`) | scanned-PDF rasterization + PDF text extraction for the PII gate | `sudo apt install poppler-utils` |
+| `exiftool` | stripping/verifying PDF and image metadata | `sudo apt install libimage-exiftool-perl` |
+
+Formats whose tools are missing are skipped with a warning (the golden markdown is always written). See [docs/corpus.md](corpus.md).
+
 ## Platform-specific quick install
 
 ### Ubuntu / Debian

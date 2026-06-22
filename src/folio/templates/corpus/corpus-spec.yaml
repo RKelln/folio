@@ -1,0 +1,78 @@
+# corpus-spec.yaml — default synthetic-corpus specification
+#
+# This file declares the PII-free synthetic grant corpus that folio generates
+# for benchmarking and golden-reference testing. It is a STANDALONE spec: it is
+# NOT part of folio.yaml / ProjectConfig and is loaded independently by
+# `folio.core.corpus.spec.load_corpus_spec()`.
+#
+# The Markdown (`md`) render of each document is the deterministic golden
+# source; all other formats (pdf/docx/xlsx/pdf_scanned) are derived from it with
+# metadata stripped. Generation is deterministic: the same `seed` always
+# reproduces byte-identical content.
+#
+# Edit this file (or pass your own with `folio corpus --spec PATH`) to change
+# what gets generated. No Python changes are needed.
+
+# Deterministic RNG seed. The same seed must always reproduce the same corpus.
+# Must be an integer.
+seed: 1234
+
+# folio profile this corpus is modeled on. Drives heading taxonomies and
+# vocabulary. See folio/templates/profiles/ for available profiles.
+profile: canadian-artist-run-centre
+
+# Funder the documents target. Abbreviation must match a key in the profile's
+# `funders:` / `headings:` taxonomy (e.g. OAC, TAC, CCA, BCAH). Non-empty.
+funder: OAC
+
+# Where generated documents are written, relative to the org library root.
+output_dir: benchmark/corpus
+
+# The documents to generate. Each entry is one document `kind` plus:
+#   count   — how many distinct synthetic documents to author (>= 1)
+#   formats — which renders to emit for each authored document
+#
+# Allowed kinds:
+#   application    — full operating/project grant application
+#   narrative      — long-form narrative section (artistic/operations report)
+#   budget         — financial budget (tabular)
+#   activity_list  — dated list of programmed activities
+#   staff_board    — staff and board roster
+#   support_letter — letter of support from a partner/community member
+#
+# Allowed formats:
+#   md          — authored Markdown (golden source; always recommended)
+#   docx        — Word document rendered from the Markdown
+#   xlsx        — spreadsheet (natural fit for budgets/activity lists)
+#   pdf         — text-based PDF (selectable text)
+#   pdf_scanned — image-only/rasterized PDF (exercises OCR paths)
+documents:
+  # Full grant application — the richest document; emit text PDF + Word too.
+  - kind: application
+    count: 1
+    formats: [md, pdf, docx]
+
+  # Standalone narrative section — Markdown plus a text PDF.
+  - kind: narrative
+    count: 1
+    formats: [md, pdf]
+
+  # Budget — primary form is a spreadsheet; also keep md + pdf for review.
+  - kind: budget
+    count: 1
+    formats: [md, xlsx, pdf]
+
+  # Activity list — Markdown plus a Word render.
+  - kind: activity_list
+    count: 1
+    formats: [md, docx]
+
+  # Staff & board roster — Markdown, Word, and a text PDF.
+  - kind: staff_board
+    count: 1
+    formats: [md, docx, pdf]
+
+  # Support letter — include a scanned (image-only) PDF to exercise OCR.
+  - kind: support_letter
+    count: 1
+    formats: [md, pdf, pdf_scanned]

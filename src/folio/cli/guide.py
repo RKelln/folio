@@ -57,6 +57,7 @@ COMMAND REFERENCE
   folio wiki           Wiki management (init, compile, status, etc.)
   folio install-agent  Write AGENTS.md/skills files into a project
   folio audit          Wiki quality audit (dead links, thin articles, etc.)
+  folio corpus         Generate a PII-free synthetic benchmark corpus
   folio guide          This guide
 
 PIPELINE STAGES (in order)
