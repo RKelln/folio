@@ -145,7 +145,7 @@ def test_generate_md_only_json(tmp_path, capsys):
         main(["generate", "--out", str(out), "--formats", "md", "--json"])
     assert exc.value.code == 0
     data = json.loads(capsys.readouterr().out)
-    assert data["success"] is True
+    assert data["passed"] is True
     assert len(data["files_written"]) > 0
     assert data["gate"]["passed"] is True
 

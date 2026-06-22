@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -99,7 +100,6 @@ def _gate_result(
 
 def _collect_files(paths: list[Path]) -> list[Path]:
     """Collect scannable files from *paths*, recursing into directories."""
-    import os
     out: list[Path] = []
     for p in paths:
         if p.is_file() and p.suffix.lower() in SCANNABLE_SUFFIXES:
@@ -113,18 +113,53 @@ def _collect_files(paths: list[Path]) -> list[Path]:
     return sorted(out)
 
 
+def _print_gate_report(
+    reports: list[PIIReport],
+    failed: list[PIIReport],
+    *,
+    strict: bool,
+) -> None:
+    """Print the human-readable PII gate report to stdout.
+
+    Shared by the ``generate`` and ``scan`` paths so the report format stays
+    consistent. Prints the scanned count, total findings, strict mode, the
+    failing kinds (non-strict only), and a per-file/per-finding
+    ``[FAIL]``/``[OK]`` breakdown for any offending files. Generation-specific
+    stats (documents generated, files written, formats skipped) are printed by
+    the caller, not here.
+    """
+    total_findings = sum(len(r.findings) for r in reports)
+    print(f"Scanned {len(reports)} file(s).")
+    print(f"Total findings: {total_findings}")
+    print(f"Strict mode: {'yes' if strict else 'no'}")
+    if not strict:
+        print(f"Failing kinds: {', '.join(sorted(GATE_FAILING_KINDS))}")
+    print()
+    if failed:
+        print("GATE FAILED — offending files:")
+        for r in failed:
+            print(f"  {r.path}")
+            for fd in r.findings:
+                failing = strict or fd.kind in GATE_FAILING_KINDS
+                marker = "FAIL" if failing else "OK  "
+                print(f"    [{marker}] {fd.kind}: {fd.match}")
+    else:
+        print("GATE PASSED")
+
+
 # ---- generate ----------------------------------------------------------------
 
 def _cmd_generate(args: argparse.Namespace) -> None:
-    # Resolve generate-specific args that may not be on the namespace when
-    # --dry-run / --json are used on the main parser without a subcommand.
-    _spec = getattr(args, "spec", None)
-    _out = getattr(args, "out", None)
-    _seed = getattr(args, "seed", None)
-    _funder = getattr(args, "funder", None)
-    _formats = getattr(args, "formats", None)
-    _strict = getattr(args, "strict", False)
-    _denylist = getattr(args, "denylist", None)
+    # Generate-specific args are normalized onto the namespace in main() (the
+    # generate subparser may not have run when ``folio corpus`` is invoked with
+    # no subcommand), so they can be read directly here.
+    _spec = args.spec
+    _out = args.out
+    _seed = args.seed
+    _funder = args.funder
+    _formats = args.formats
+    _strict = args.strict
+    _denylist = args.denylist
 
     # 1 — load spec ...........................................................
     try:
@@ -252,8 +287,6 @@ def _cmd_generate(args: argparse.Namespace) -> None:
                 continue
 
             ext = _render_extension(fmt)
-            if not ext:
-                continue
 
             if fmt not in avail:
                 msg = f"Renderer for {fmt!r} not available — skipping"
@@ -311,7 +344,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
     # 8 — report ..............................................................
     if args.json_output:
         print(json.dumps({
-            "success": passed,
+            "passed": passed,
             "output_dir": str(out_dir.resolve()),
             "files_written": files_written,
             "files_skipped": files_skipped,
@@ -337,26 +370,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
         }, indent=2))
     else:
         print()  # blank line after tqdm
-        print(f"Running PII gate on {len(files_written)} file(s)...")
-        total_findings = sum(len(r.findings) for r in reports)
-        print(f"  Files scanned: {len(reports)}")
-        print(f"  Total findings: {total_findings}")
-        print(f"  Strict mode: {'yes' if _strict else 'no'}")
-        if not _strict:
-            print(f"  Failing kinds: {', '.join(sorted(GATE_FAILING_KINDS))}")
-        print()
-        if failed:
-            print("GATE FAILED — offending files:")
-            for r in failed:
-                print(f"  {r.path}")
-                for fd in r.findings:
-                    failing = (
-                        _strict or fd.kind in GATE_FAILING_KINDS
-                    )
-                    marker = "FAIL" if failing else "OK  "
-                    print(f"    [{marker}] {fd.kind}: {fd.match}")
-        else:
-            print("GATE PASSED — no failing findings.")
+        _print_gate_report(reports, failed, strict=_strict)
 
         print()
         if files_skipped:
@@ -429,25 +443,7 @@ def _cmd_scan(args: argparse.Namespace) -> None:
             ],
         }, indent=2))
     else:
-        total_findings = sum(len(r.findings) for r in reports)
-        print(f"Scanned {len(reports)} file(s).")
-        print(f"Total findings: {total_findings}")
-        print(f"Strict mode: {'yes' if args.strict else 'no'}")
-        if not args.strict:
-            print(f"Failing kinds: {', '.join(sorted(GATE_FAILING_KINDS))}")
-        print()
-        if failed:
-            print("GATE FAILED — offending files:")
-            for r in failed:
-                print(f"  {r.path}")
-                for fd in r.findings:
-                    failing = (
-                        args.strict or fd.kind in GATE_FAILING_KINDS
-                    )
-                    marker = "FAIL" if failing else "OK  "
-                    print(f"    [{marker}] {fd.kind}: {fd.match}")
-        else:
-            print("GATE PASSED")
+        _print_gate_report(reports, failed, strict=args.strict)
 
     sys.exit(0 if passed else 1)
 
@@ -474,11 +470,6 @@ def main(argv: list[str] | None = None) -> None:
             "  COUNTS but does NOT fail on: email, phone, sin, ssn, postal_code, currency\n"
             "  Use --strict to fail on ANY finding."
         ),
-    )
-
-    parser.add_argument(
-        "--version", action="version",
-        version=f"%(prog)s v{__version__}",
     )
 
     # --dry-run and --json on the main parser so they work without a
@@ -588,11 +579,25 @@ def main(argv: list[str] | None = None) -> None:
         help="Output scan report as JSON",
     )
 
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s v{__version__}",
+    )
+
     args = parser.parse_args(argv)
 
-    # Default subcommand: "generate"
+    # Default subcommand: "generate". When no subcommand was given, the
+    # generate subparser never ran, so seed its defaults explicitly on the
+    # namespace so the handler can read them directly (no getattr fallbacks).
     if args.subcommand is None:
         args.subcommand = "generate"
+        args.spec = None
+        args.out = None
+        args.seed = None
+        args.funder = None
+        args.formats = None
+        args.strict = False
+        args.denylist = None
 
     if args.subcommand == "generate":
         _cmd_generate(args)
