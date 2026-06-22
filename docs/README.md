@@ -5,6 +5,7 @@
 - [Pipeline stages](pipelines.md) — how the pipeline works end-to-end
 - [Configuration](config.md) — folio.yaml reference
 - [Converters](converters.md) — PDF/DOCX → markdown converter options
+- [Converter Benchmark](benchmark.md) — `folio convert-bench` offline converter scoring
 - [Synthetic Corpus](corpus.md) — `folio corpus` PII-free benchmark corpus generation
 - [Wiki backends](wiki-backends.md) — wiki compilation backends
 - [Frontmatter](frontmatter.md) — YAML frontmatter field reference
@@ -24,3 +25,4 @@ Run `folio --help` for the full list. Key additions since v0.1.0:
 | `folio wiki` | new | Sage-wiki maintenance (status, doctor, lint, coverage, diff, verify) |
 | `folio install-agent` | new | Bootstrap AGENTS.md + skills per platform |
 | `folio corpus` | new | Generate a PII-free synthetic benchmark corpus (golden markdown → DOCX/XLSX/PDF) and PII-gate files ([docs](corpus.md)) |
+| `folio convert-bench` | new | Offline, deterministic converter benchmark — score converters against the synthetic corpus ([docs](benchmark.md)) |

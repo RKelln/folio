@@ -175,7 +175,38 @@ converter:
 
 ---
 
-### 5. Null (skip conversion)
+### 5. Pandoc
+
+Universal document converter that shells out to the [`pandoc`](https://pandoc.org/) binary. Runs entirely offline with no network calls, API keys, or models, which makes it a reliable, fast baseline for the converter benchmark. Pandoc reads a wide range of markup and word-processor formats but does **not** read binary PDF or spreadsheet (XLSX) formats.
+
+| Property | Value |
+|----------|-------|
+| Class | `PandocConverter` |
+| Supported extensions | `.docx`, `.html`, `.htm`, `.odt`, `.epub`, `.rtf`, `.tex`, `.md`, `.markdown` |
+| Pricing | Free |
+| Requires network | No (runs entirely offline) |
+
+**Installation:**
+
+Pandoc is a system binary, not a Python package — install it from your package manager and ensure it is on `PATH`:
+
+```bash
+apt install pandoc        # Debian/Ubuntu
+brew install pandoc       # macOS
+```
+
+**Configuration in folio.yaml:**
+
+```yaml
+converter:
+  type: "pandoc"
+```
+
+Output is GitHub-flavored Markdown (`gfm`). Best for archives of DOCX/HTML/ODT/EPUB documents that need fast, free, fully-offline conversion. For PDF or XLSX sources, use LiteParse, Docling, or Datalab instead.
+
+---
+
+### 6. Null (skip conversion)
 
 Use when source documents are already in markdown format. The pipeline starts at the clean stage, bypassing conversion entirely.
 
@@ -199,6 +230,7 @@ No additional dependencies required. No API key needed.
 | LiteParse | Yes | Yes  | Yes  | Yes  | Yes    | Free   | Yes | Ready |
 | Docling  | Yes | Yes  | Yes  | Yes  | No     | Free   | Yes | Ready |
 | Datalab  | Yes | Yes  | Yes  | Yes  | Yes    | ~$0.02/page | No  | Ready |
+| Pandoc   | No  | Yes  | No   | No   | No     | Free   | Yes | Ready |
 | Marker   | Yes | No   | No   | No   | No     | Free   | Yes | Planned |
 | Null     | N/A | N/A  | N/A  | N/A  | N/A    | Free   | N/A | Ready |
 
@@ -207,7 +239,29 @@ No additional dependencies required. No API key needed.
 - **Most archives** -> LiteParse (default, fast, local, no API key, multi-format)
 - **Need Docling's table extraction** -> Docling
 - **Maximum fidelity for complex grant forms** -> Datalab
+- **DOCX/HTML/ODT/EPUB only, want a fast free offline baseline** -> Pandoc
 - **Documents already in markdown** -> Null
+
+#### Benchmark-driven selection
+
+Don't guess — measure. [`folio convert-bench`](benchmark.md) runs every available converter over the committed synthetic corpus and scores each output against a golden reference, fully offline and deterministically. Run it and let the scorecard drive the choice:
+
+```bash
+folio convert-bench            # print the scorecard
+folio convert-bench --out docs/converter-report.md   # also write a full comparison report
+```
+
+> **Illustrative example only** — example output from one machine, **not** authoritative results. Run `folio convert-bench` yourself for current numbers.
+
+```
+Converter  Overall  Scored  Text   Tables  Struct  Links  Time/pg(s)  Cost/pg  Offline  Pass
+liteparse  0.853    10/10   0.816  0.807   0.900   1.000  1.078       0.0000   yes      PASS
+docling    0.750    10/10   0.821  0.894   0.393   1.000  6.928       0.0000   yes      PASS
+pandoc     0.974    3/10    0.936  1.000   1.000   1.000  0.123       0.0000   yes      PASS
+```
+
+**Read it carefully:** the `Scored` column is `scored/attempted`. Each converter is scored only on the formats it supports, so the `Overall` column is **not** directly comparable across converters — pandoc's `0.974` is over its 3 DOCX docs only, while liteparse scores all 10. In this sample liteparse is the strongest balanced all-format offline option, and docling has strong tables but weaker structure and is much slower (OCR). See [the benchmark doc](benchmark.md) for the scoring categories, weights, and important caveats (including that docling fetches OCR models on first run, `marker` is GPU-only, and `datalab` is online + paid).
+
 
 ### Configuration in folio.yaml
 
@@ -215,7 +269,7 @@ Set the converter type under the `converter:` section:
 
 ```yaml
 converter:
-  type: "liteparse"   # liteparse | docling | datalab | marker | null
+  type: "liteparse"   # liteparse | docling | datalab | pandoc | marker | null
 ```
 
 The default is `liteparse`. For null converter, no other fields are needed. For datalab, provide a `pipeline_id` and set the `DATALAB_API_KEY` environment variable.
@@ -235,8 +289,8 @@ Set `converter.type: "null"` in `folio.yaml`. The pipeline will treat all files 
 - `"liteparse"` -> `LiteParseConverter()`
 - `"docling"` -> `DoclingConverter()`
 - `"datalab"` -> `DatalabConverter(pipeline_id)`
+- `"pandoc"` -> `PandocConverter()`
 - `"marker"` -> raises `NotImplementedError` (planned)
-- `"pandoc"` -> raises `NotImplementedError` (planned)
 - anything else -> raises `ValueError`
 
 ### Optional Dependencies

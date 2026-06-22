@@ -58,6 +58,7 @@ folio init          # Guided setup or load a profile
 folio skills        # Generate agent skills (opencode, claude, openclaw, hermes)
 folio ingest        # Add a single new document
 folio convert       # Convert PDF/DOCX/XLSX → markdown
+folio convert-bench # Benchmark converters offline (see docs/benchmark.md)
 folio clean         # Deterministic markdown cleanup
 folio classify      # Quality scoring, tier assignment
 folio rewrite       # LLM re-authoring with tiered prompts
@@ -81,6 +82,7 @@ All commands support `--dry-run` and `--json`. Run `folio <cmd> --help` for deta
 | [Frontmatter](docs/frontmatter.md) | YAML frontmatter fields |
 | [File Naming](docs/file-naming.md) | Filename convention |
 | [Converters](docs/converters.md) | PDF/DOCX → markdown options |
+| [Converter Benchmark](docs/benchmark.md) | `folio convert-bench` offline converter scoring |
 | [Synthetic Corpus](docs/corpus.md) | `folio corpus` PII-free benchmark corpus |
 | [Wiki Backends](docs/wiki-backends.md) | Wiki compilation |
 | [Skills](docs/skills.md) | Agent skills architecture |

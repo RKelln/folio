@@ -52,7 +52,7 @@ A new agent dropped into this repo should be able to:
 - Avoid interactive prompts; everything must work non-interactively via CLI flags
 - Exit codes: 0 on success, non-zero on failure
 - Use `tqdm` for progress bars
-- Verified: all 14 CLI entry points support `--dry-run` and `--json`
+- Verified: all 15 CLI entry points support `--dry-run` and `--json` (includes `convert-bench`)
 
 ### 5. Design for composition
 
@@ -90,6 +90,11 @@ Each module does one job well:
 | `core/throttle.py` | Thread-safe `RateLimiter` for API calls |
 | `core/errors.py` | Shared error/status types |
 | `core/skills.py` | Skills generation — platform-agnostic template filling, tool snippet composition |
+| `core/bench/spec.py` | Standalone converter-benchmark spec (converters, category weights, pass threshold) — load + validate |
+| `core/bench/corpus.py` | Pair golden/rendered benchmark cases by slug from the synthetic corpus |
+| `core/bench/scorer.py` | Deterministic, offline, stdlib-only per-category fidelity scoring (text/tables/structure/links_images) |
+| `core/bench/runner.py` | Run converters over cases, time them, score + aggregate into `BenchResults` |
+| `core/bench/report.py` | Render benchmark results as a plaintext scorecard + Markdown comparison report |
 | `adapters/converters/` | PDF/DOCX → Markdown converters |
 | `adapters/wiki/` | Wiki backend integrations |
 | `adapters/llm/` | LLM provider abstraction |
@@ -97,6 +102,7 @@ Each module does one job well:
 | `config/` | Config loading and dataclass validation |
 | `cli/` | CLI entry points (thin wrappers around core) |
 | `cli/guide.py` | Built-in agent reference guide (argparse-based with --dry-run and --json) |
+| `cli/convert_bench.py` | `folio convert-bench` — thin wrapper wiring `core/bench/*` (spec → corpus → runner → report) |
 
 ### 8. Use standard libraries where possible
 
@@ -214,7 +220,7 @@ bd close <id>         # Complete work
 
 ### Rules
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
+- Use `bd` for ALL **bug/feature/issue** tracking, TodoWrite (etc) for tasks/phases inside beads
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
