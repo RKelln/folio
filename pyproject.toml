@@ -63,6 +63,7 @@ folio-test-skills = "folio.cli.test_skills:main"
 folio-wiki = "folio.cli.wiki:main"
 folio-install-agent = "folio.cli.install_agent:main"
 folio-validate = "folio.cli.validate:main"
+folio-corpus = "folio.cli.corpus:main"
 
 [build-system]
 requires = ["setuptools>=64", "wheel"]
