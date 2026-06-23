@@ -256,9 +256,9 @@ def _print_human(result: dict, dry_run: bool, config=None, stages: list[str] | N
         return
 
     print("---")
-    stages = pipeline.get("stages", {})
-    total = len(stages)
-    for i, (stage_name, stage_data) in enumerate(stages.items()):
+    pstages = pipeline.get("stages", {})
+    total = len(pstages)
+    for i, (stage_name, stage_data) in enumerate(pstages.items()):
         num = i + 1
         status = stage_data.get("status", "?")
         elapsed = stage_data.get("time_seconds", 0)
