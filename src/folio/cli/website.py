@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from folio import __version__
 from folio.config.loader import load_config_or_exit
 from folio.core.website import (
     WEBSITE_STAGES,
+    _slug_from_url,
     discover_website_files,
     ingest_website,
     parse_scraper_header,
@@ -125,7 +127,7 @@ def main(argv: list[str] | None = None) -> None:
         _print_json(result)
         return
 
-    _print_human(result, args.dry_run)
+    _print_human(result, args.dry_run, config=config, stages=stages)
 
 
 def _parse_stages(stages_str: str | None) -> list[str] | None:
@@ -176,8 +178,15 @@ def _do_list(source: Path, name_hint: str | None = None) -> None:
             else:
                 entry["source_url"] = header["url"]
                 entry["scraped_at"] = header["scraped_at"]
-                from folio.core.website import _slug_from_url
-                entry["url_slug"] = name_hint or _slug_from_url(header["url"])
+                if name_hint:
+                    slug = name_hint
+                    slug = re.sub(r'[^a-zA-Z0-9]', '_', slug)
+                    while '__' in slug:
+                        slug = slug.replace('__', '_')
+                    slug = slug.strip('_') or 'webpage'
+                    entry["url_slug"] = slug
+                else:
+                    entry["url_slug"] = _slug_from_url(header["url"])
                 entry["would_stage"] = True
         except OSError as exc:
             entry["error"] = f"Cannot read file: {exc}"
@@ -196,6 +205,15 @@ def _print_json(result: dict) -> None:
             "files_staged": result["staging"]["files_staged"],
             "files_skipped": result["staging"]["files_skipped"],
             "errors": result["staging"]["errors"],
+            "results": [
+                {
+                    "file": r["source_file"],
+                    "status": r["status"],
+                    "output_path": r.get("output_path"),
+                    "error": r.get("error"),
+                }
+                for r in result["staging"].get("staging_results", [])
+            ],
         },
         "pipeline": result.get("pipeline"),
     }
@@ -204,10 +222,10 @@ def _print_json(result: dict) -> None:
     print(json.dumps(serializable, indent=2, default=str))
 
 
-def _print_human(result: dict, dry_run: bool) -> None:
+def _print_human(result: dict, dry_run: bool, config=None, stages: list[str] | None = None) -> None:
     """Print human-readable summary."""
     staging = result["staging"]
-    org_name = "folio"  # fallback
+    org_name = config.org.name if config else "folio"
 
     print(f"folio website — {org_name}")
     print(f"Source: {result.get('source_dir', '?')}")
@@ -217,7 +235,7 @@ def _print_human(result: dict, dry_run: bool) -> None:
         print(f"Files skipped: {staging['files_skipped']} (missing scraper metadata)")
     if staging.get("errors"):
         for err in staging["errors"]:
-            print(f"  Error: {err['file']}: {err['error']}")
+            print(f"  Error: {err['file']}: {err['error']}", file=sys.stderr)
 
     if staging['files_found'] == 0:
         print("Warning: No .md files found")
@@ -226,8 +244,15 @@ def _print_human(result: dict, dry_run: bool) -> None:
     pipeline = result.get("pipeline")
     if pipeline is None:
         if dry_run:
-            print("---")
-            print("Pipeline stages would run: clean, canonicalize, classify, rewrite, prioritize, wiki")
+            if stages is None:
+                stages_to_show = WEBSITE_STAGES
+            elif len(stages) == 0:
+                stages_to_show = []
+            else:
+                stages_to_show = stages
+            if stages_to_show:
+                print("---")
+                print(f"Pipeline stages would run: {', '.join(stages_to_show)}")
         return
 
     print("---")
