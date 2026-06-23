@@ -10,6 +10,7 @@ and per-stage cost/timing tracking.
 from __future__ import annotations
 
 import logging
+import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -775,6 +776,30 @@ def _run_wiki(config: ProjectConfig) -> dict:
             }
             wiki_config["embed"] = {"provider": "auto"}
         backend.init(wiki_dir, wiki_config, source_dir=rewrite_dir)
+
+        # Install and apply the arts-org pack from folio's templates
+        pack_dir = Path(__file__).resolve().parent.parent / "templates" / "packs" / "arts-org"
+        if pack_dir.is_dir():
+            try:
+                subprocess.run(
+                    ["sage-wiki", "pack", "install", str(pack_dir)],
+                    cwd=str(wiki_dir),
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                subprocess.run(
+                    ["sage-wiki", "pack", "apply", "arts-org", "--mode", "merge"],
+                    cwd=str(wiki_dir),
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                print("  Arts-org pack v1.1 installed and applied")
+            except FileNotFoundError:
+                logger.warning("sage-wiki binary not found — pack install/apply skipped")
+            except subprocess.CalledProcessError as e:
+                logger.warning("Failed to install/apply arts-org pack: %s", e.stderr.strip() if e.stderr else str(e))
     except Exception as exc:
         return {
             "stage": "wiki",

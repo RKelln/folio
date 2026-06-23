@@ -41,7 +41,7 @@ class ConverterConfig:
 class WikiConfig:
     type: str = "sage-wiki"
     sage_wiki_binary: str = "sage-wiki"
-    sage_wiki_pack: str = "arts-org"
+    sage_wiki_pack: str = "arts-org"  # default pack, bundled in folio templates/packs (v1.1)
 
 @dataclass
 class AgentmapConfig:

@@ -59,7 +59,7 @@ wiki:
   type: "sage-wiki"             # sage-wiki | null
   sage_wiki:
     binary_path: "sage-wiki"
-    pack: "arts-org"
+    pack: "arts-org"              # resolves via pack install from bundled folio templates (v1.1)
 
 # ── Agentmap ──────────────────────────────────────────────────────
 agentmap:
