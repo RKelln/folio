@@ -64,6 +64,7 @@ folio-wiki = "folio.cli.wiki:main"
 folio-install-agent = "folio.cli.install_agent:main"
 folio-validate = "folio.cli.validate:main"
 folio-corpus = "folio.cli.corpus:main"
+folio-convert-bench = "folio.cli.convert_bench:main"
 
 [build-system]
 requires = ["setuptools>=64", "wheel"]

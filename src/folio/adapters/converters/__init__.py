@@ -14,6 +14,7 @@ from folio.adapters.converters.base import Converter
 from folio.adapters.converters.datalab import DatalabConverter
 from folio.adapters.converters.docling import DoclingConverter
 from folio.adapters.converters.liteparse import LiteParseConverter
+from folio.adapters.converters.pandoc import PandocConverter
 
 
 def get_converter(config) -> Converter:
@@ -39,5 +40,5 @@ def get_converter(config) -> Converter:
     if converter_type == 'marker':
         raise NotImplementedError("Marker converter not yet implemented")
     if converter_type == 'pandoc':
-        raise NotImplementedError("Pandoc converter not yet implemented")
+        return PandocConverter()
     raise ValueError(f"Unknown converter type: {converter_type}")

@@ -1,0 +1,86 @@
+# bench-spec.yaml — default offline converter-benchmark specification
+#
+# This file declares how `folio bench` benchmarks document converters against
+# the committed synthetic corpus (benchmark/corpus/, produced by `folio corpus`).
+# It is a STANDALONE spec: it is NOT part of folio.yaml / ProjectConfig and is
+# loaded independently by `folio.core.bench.spec.load_bench_spec()`.
+#
+# Each converter is run over every rendered input (pdf/docx/xlsx/scanned-pdf)
+# and its Markdown output is scored against the golden `.md` reference across
+# four categories (text, tables, structure, links_images). The per-category
+# scores are combined using the `weights:` below; a converter whose aggregate
+# weighted score meets `pass_threshold` is considered "passing".
+#
+# Edit this file (or pass your own with `folio bench --spec PATH`) to change
+# what gets benchmarked. No Python changes are needed.
+
+# Root of the committed corpus, relative to the org library. Must be non-empty.
+corpus_dir: benchmark/corpus
+
+# Subdirectory of corpus_dir holding the golden Markdown references
+# (one <slug>.md per document). Must be non-empty.
+golden_subdir: golden
+
+# Subdirectory of corpus_dir holding the rendered converter inputs
+# (<slug>.pdf / .docx / .xlsx / .scanned.pdf). Must be non-empty.
+rendered_subdir: rendered
+
+# Aggregate weighted score (0..1) at or above which a converter result counts
+# as "passing". Must be within [0, 1].
+pass_threshold: 0.7
+
+# Relative weights for the four scoring categories. They need not sum to 1 —
+# the scorer normalizes them (divides by their sum). Each weight must be >= 0
+# and at least one must be positive.
+weights:
+  # Textual fidelity — the bulk of most documents.
+  text: 0.40
+  # Tabular reconstruction — budgets, rosters, activity lists.
+  tables: 0.25
+  # Heading/section structure preservation.
+  structure: 0.25
+  # Link and image preservation.
+  links_images: 0.10
+
+# Converters to benchmark. Each entry:
+#   name          — converter identifier the runner uses to select the adapter
+#                    (must be non-empty)
+#   enabled       — run by default? disabled entries stay documented but are
+#                    skipped unless re-enabled on the CLI
+#   offline       — true if it runs fully locally with no network access
+#   cost_per_page — estimated USD per rendered page (0.0 for free/local; must
+#                    be >= 0)
+#
+# The default line-up keeps the benchmark fully offline and free: the local
+# converters are enabled, while the paid hosted (datalab) and heavier optional
+# (marker) converters ship disabled.
+converters:
+  # liteparse — fast local Markdown extractor.
+  - name: liteparse
+    enabled: true
+    offline: true
+    cost_per_page: 0.0
+
+  # docling — local structure-aware document converter.
+  - name: docling
+    enabled: true
+    offline: true
+    cost_per_page: 0.0
+
+  # pandoc — local universal document converter.
+  - name: pandoc
+    enabled: true
+    offline: true
+    cost_per_page: 0.0
+
+  # datalab — hosted/API converter; paid and online, so disabled by default.
+  - name: datalab
+    enabled: false
+    offline: false
+    cost_per_page: 0.003
+
+  # marker — heavier local converter; offline but disabled by default.
+  - name: marker
+    enabled: false
+    offline: true
+    cost_per_page: 0.0

@@ -10,6 +10,7 @@ from folio.adapters.converters import (
     DatalabConverter,
     DoclingConverter,
     LiteParseConverter,
+    PandocConverter,
     get_converter,
 )
 from folio.adapters.llm import OpenAICompatibleProvider, get_llm_provider
@@ -66,9 +67,10 @@ class TestConverterFactory:
         with pytest.raises(NotImplementedError, match="Marker converter not yet implemented"):
             get_converter(_make_converter_config("marker"))
 
-    def test_pandoc_raises_not_implemented(self):
-        with pytest.raises(NotImplementedError, match="Pandoc converter not yet implemented"):
-            get_converter(_make_converter_config("pandoc"))
+    def test_pandoc(self):
+        converter = get_converter(_make_converter_config("pandoc"))
+        assert isinstance(converter, PandocConverter)
+        assert converter.name == "pandoc"
 
     @pytest.mark.parametrize("bogus_type", ["fake", "nonexistent", "unknown_converter"])
     def test_invalid_converter_type_raises_valueerror(self, bogus_type):
