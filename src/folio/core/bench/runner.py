@@ -23,6 +23,7 @@ Public API (imported by :mod:`folio.core.bench.report` and ``cli/bench.py``):
 * :class:`BenchResults`
 * :func:`weighted_score`
 * :func:`estimate_pages`
+* :func:`pdf_page_count`
 * :func:`resolve_converters`
 * :func:`run_benchmark`
 """
@@ -31,8 +32,11 @@ from __future__ import annotations
 
 import logging
 import math
+import shutil
+import subprocess
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 from folio.adapters.converters import Converter, get_converter
 from folio.core.bench.corpus import BenchCase, read_golden
@@ -206,14 +210,63 @@ def weighted_score(scores: CategoryScores, weights: CategoryWeights) -> float:
     return _clamp(combined)
 
 
-def estimate_pages(case: BenchCase) -> int:
-    """Estimate the page count of a case from its golden reference length.
+#: Seconds to wait for ``pdfinfo`` before falling back to the word estimate.
+_PDFINFO_TIMEOUT = 30
 
-    Deterministic and dependency-free: counts whitespace-delimited words in the
-    golden Markdown and divides by :data:`_WORDS_PER_PAGE`, with a floor of one
-    page. The PDF itself is never parsed (no new dependencies), so the estimate
-    is identical on every run and is used for time-per-page and cost figures.
+
+def pdf_page_count(path: Path) -> int | None:
+    """Return a PDF's real page count via ``pdfinfo``, or ``None`` if unavailable.
+
+    Uses the poppler ``pdfinfo`` binary (offline, no new Python dependency) and
+    parses its ``Pages:`` line. Returns ``None`` — never raises — when the
+    binary is missing, the file is not a readable PDF, the call times out, or the
+    ``Pages:`` line cannot be parsed, so callers can fall back gracefully. The
+    result is deterministic for a given file.
     """
+    binary = shutil.which("pdfinfo")
+    if binary is None:
+        return None
+    try:
+        proc = subprocess.run(
+            [binary, str(path)],
+            capture_output=True,
+            text=True,
+            timeout=_PDFINFO_TIMEOUT,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        logger.warning("pdfinfo failed for %s: %s", path, str(exc)[:200])
+        return None
+    if proc.returncode != 0:
+        logger.warning(
+            "pdfinfo returned %d for %s: %s",
+            proc.returncode, path, proc.stderr.strip()[:200],
+        )
+        return None
+    for line in proc.stdout.splitlines():
+        if line.startswith("Pages:"):
+            try:
+                count = int(line.split(":", 1)[1].strip())
+            except ValueError:
+                return None
+            return count if count >= 1 else None
+    return None
+
+
+def estimate_pages(case: BenchCase) -> int:
+    """Return a page count for a case, preferring the real PDF page count.
+
+    For PDF inputs (including the rasterized ``pdf_scanned`` variant, whose
+    on-disk suffix is ``.pdf``) this calls :func:`pdf_page_count`; when that
+    succeeds the real count is used. Otherwise — non-PDF inputs, or when
+    ``pdfinfo`` is unavailable — it falls back to a deterministic, dependency-free
+    estimate from the golden reference length (whitespace-delimited words divided
+    by :data:`_WORDS_PER_PAGE`, floor one). The value drives the time-per-page and
+    cost figures and is deterministic for a given corpus.
+    """
+    if case.input_path.suffix.lower() == ".pdf":
+        real = pdf_page_count(case.input_path)
+        if real is not None:
+            return real
     text = read_golden(case.golden_path)
     word_count = len(text.split())
     return max(1, math.ceil(word_count / _WORDS_PER_PAGE))
@@ -367,6 +420,12 @@ def run_benchmark(
     doc_results: list[DocResult] = []
     aggregates: list[ConverterAggregate] = []
 
+    # Page counts are independent of the converter, so compute them once per
+    # case (cases are unique by slug+fmt) and reuse across every converter.
+    pages_by_case: dict[tuple[str, str], int] = {
+        (case.slug, case.fmt): estimate_pages(case) for case in cases
+    }
+
     for conv_spec in enabled:
         instance = converters.get(conv_spec.name)
         if instance is None:
@@ -390,7 +449,7 @@ def run_benchmark(
 
         converter_results: list[DocResult] = []
         for case in iterable:
-            pages = estimate_pages(case)
+            pages = pages_by_case[(case.slug, case.fmt)]
             result = _run_case(
                 conv_spec.name,
                 instance,

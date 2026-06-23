@@ -8,6 +8,8 @@ committed corpus at ``benchmark/corpus/`` via ``discover_cases``.
 from __future__ import annotations
 
 import json
+import math
+import shutil
 from pathlib import Path
 
 import pytest
@@ -15,10 +17,12 @@ import pytest
 from folio.adapters.converters import Converter
 from folio.core.bench.corpus import BenchCase, discover_cases, read_golden
 from folio.core.bench.runner import (
+    _WORDS_PER_PAGE,
     BenchResults,
     ConverterAggregate,
     DocResult,
     estimate_pages,
+    pdf_page_count,
     resolve_converters,
     run_benchmark,
     weighted_score,
@@ -319,3 +323,62 @@ def test_dataclasses_are_constructible():
     )
     res = BenchResults(1, 1, CategoryWeights().to_dict(), 0.7, [agg], [doc])
     assert res.to_dict()["converters"][0]["name"] == "c"
+
+
+def _first_pdf_case() -> BenchCase:
+    for case in discover_cases(REAL_CORPUS):
+        if case.input_path.suffix.lower() == ".pdf":
+            return case
+    raise AssertionError("no PDF case in corpus")
+
+
+def _first_nonpdf_case() -> BenchCase:
+    for case in discover_cases(REAL_CORPUS):
+        if case.input_path.suffix.lower() != ".pdf":
+            return case
+    raise AssertionError("no non-PDF case in corpus")
+
+
+def _word_count_pages(case: BenchCase) -> int:
+    words = len(read_golden(case.golden_path).split())
+    return max(1, math.ceil(words / _WORDS_PER_PAGE))
+
+
+class TestPageCount:
+    """Real (pdfinfo) page counting with a deterministic word-count fallback."""
+
+    @pytest.mark.skipif(
+        shutil.which("pdfinfo") is None, reason="pdfinfo (poppler) not installed"
+    )
+    def test_pdf_page_count_real(self):
+        count = pdf_page_count(_first_pdf_case().input_path)
+        assert isinstance(count, int)
+        assert count >= 1
+
+    def test_pdf_page_count_missing_binary(self, monkeypatch):
+        monkeypatch.setattr("folio.core.bench.runner.shutil.which", lambda _name: None)
+        assert pdf_page_count(_first_pdf_case().input_path) is None
+
+    def test_pdf_page_count_bogus_file(self):
+        assert pdf_page_count(Path("does-not-exist-xyz.pdf")) is None
+
+    def test_estimate_pages_uses_real_count_for_pdf(self, monkeypatch):
+        monkeypatch.setattr("folio.core.bench.runner.pdf_page_count", lambda _p: 7)
+        assert estimate_pages(_first_pdf_case()) == 7
+
+    def test_estimate_pages_falls_back_when_pdfinfo_absent(self, monkeypatch):
+        monkeypatch.setattr("folio.core.bench.runner.pdf_page_count", lambda _p: None)
+        case = _first_pdf_case()
+        assert estimate_pages(case) == _word_count_pages(case)
+
+    def test_estimate_pages_nonpdf_ignores_pdfinfo(self, monkeypatch):
+        def _boom(_p):
+            raise AssertionError("pdf_page_count must not run for non-PDF inputs")
+
+        monkeypatch.setattr("folio.core.bench.runner.pdf_page_count", _boom)
+        case = _first_nonpdf_case()
+        assert estimate_pages(case) == _word_count_pages(case)
+
+    def test_estimate_pages_deterministic(self):
+        case = _first_pdf_case()
+        assert estimate_pages(case) == estimate_pages(case)
