@@ -15,6 +15,7 @@ from folio.core.website import (
     discover_website_files,
     ingest_website,
     parse_scraper_header,
+    sanitize_slug,
     stage_website_file,
 )
 from tests.conftest import make_test_config
@@ -194,6 +195,44 @@ class TestSlugFromUrl:
     def test_empty_url(self):
         result = _slug_from_url("")
         assert result == "webpage"
+
+
+# ── sanitize_slug ────────────────────────────────────────────────────────────
+
+
+class TestSanitizeSlug:
+    def test_normal_input(self):
+        assert sanitize_slug("about") == "about"
+
+    def test_special_chars(self):
+        assert sanitize_slug("our mission & vision") == "our_mission_vision"
+
+    def test_consecutive_special_chars(self):
+        assert sanitize_slug("a!@#b%)c") == "a_b_c"
+
+    def test_leading_trailing_special_chars(self):
+        assert sanitize_slug("!!!hello!!!") == "hello"
+
+    def test_empty_string(self):
+        assert sanitize_slug("") == "webpage"
+
+    def test_all_special_chars(self):
+        assert sanitize_slug("!@#$%^&*()") == "webpage"
+
+    def test_already_clean(self):
+        assert sanitize_slug("my_article_2025") == "my_article_2025"
+
+    def test_unicode_input(self):
+        result = sanitize_slug("café résumé naïve")
+        assert " " not in result
+        assert result.startswith("caf") or result.startswith("caf_")
+
+    def test_very_long_input(self):
+        long_input = "a" * 200 + "!@#" + "b" * 200
+        result = sanitize_slug(long_input)
+        assert result.startswith("a" * 200)
+        assert result.endswith("b" * 200)
+        assert "__" not in result
 
 
 # ── build_website_filename ──────────────────────────────────────────────────
