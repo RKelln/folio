@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 from folio.config.loader import load_project_config
 from folio.config.schema import ProjectConfig
-from folio.core.manifest import load_manifest, save_manifest
+from folio.core.manifest import load_manifest, save_manifest, update_file
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ def run_pipeline(
         print(f"Stage {stage_num}/{total_stages}: {stage_name}")
 
         start = time.time()
-        result = _run_stage(stage_name, config, dry_run, resume=resume)
+        result = _run_stage(stage_name, config, dry_run, resume=resume, manifest=manifest)
         elapsed = time.time() - start
 
         result["time_seconds"] = round(elapsed, 1)
@@ -233,7 +233,13 @@ def _format_pipeline_report(report: dict) -> str:
 # ── Stage dispatch ──────────────────────────────────────────────────────────
 
 
-def _run_stage(stage_name: str, config: ProjectConfig, dry_run: bool, resume: bool = True) -> dict:
+def _run_stage(
+    stage_name: str,
+    config: ProjectConfig,
+    dry_run: bool,
+    resume: bool = True,
+    manifest: dict | None = None,
+) -> dict:
     if dry_run:
         return _estimate_stage(stage_name, config)
 
@@ -241,7 +247,7 @@ def _run_stage(stage_name: str, config: ProjectConfig, dry_run: bool, resume: bo
         if stage_name == "scan":
             return _run_scan(config)
         elif stage_name == "convert":
-            return _run_convert(config, resume=resume)
+            return _run_convert(config, manifest=manifest, resume=resume)
         elif stage_name == "clean":
             return _run_clean(config)
         elif stage_name == "canonicalize":
@@ -376,7 +382,7 @@ def _run_scan(config: ProjectConfig) -> dict:
     }
 
 
-def _run_convert(config: ProjectConfig, resume: bool = True) -> dict:
+def _run_convert(config: ProjectConfig, manifest: dict | None = None, resume: bool = True) -> dict:
     from folio.adapters.converters import get_converter
     from folio.adapters.sources import get_source
 
@@ -412,6 +418,7 @@ def _run_convert(config: ProjectConfig, resume: bool = True) -> dict:
     converted = 0
     skipped = 0
     failed = 0
+    total_cost = 0.0
     failed_files: list[str] = []
     failures: list[dict] = []
 
@@ -433,11 +440,20 @@ def _run_convert(config: ProjectConfig, resume: bool = True) -> dict:
             src_path = raw_root / ref.path
             if not src_path.exists():
                 src_path = raw_root / ref.name
-            md = converter.convert(src_path)
+            result = converter.convert_traced(src_path)
+            total_cost += result.cost_usd
+            md = result.markdown
             if md:
                 out_path = out_dir / (src_path.stem + ".md")
                 out_path.write_text(md, encoding="utf-8")
                 converted += 1
+                if manifest is not None:
+                    update_file(
+                        manifest,
+                        out_path.name,
+                        converter_tier=result.tier,
+                        conversion_cost_usd=result.cost_usd,
+                    )
             else:
                 failed += 1
                 failed_files.append(ref.name)
@@ -457,7 +473,7 @@ def _run_convert(config: ProjectConfig, resume: bool = True) -> dict:
         "converted": converted,
         "skipped": skipped,
         "failed": failed,
-        "cost_usd": 0.0,
+        "cost_usd": total_cost,
     }
     if failed_files:
         result["failed_files"] = failed_files[:20]

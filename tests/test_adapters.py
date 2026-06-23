@@ -13,6 +13,7 @@ from folio.adapters.converters import (
     PandocConverter,
     get_converter,
 )
+from folio.adapters.converters.cascade import CascadeConverter
 from folio.adapters.llm import OpenAICompatibleProvider, get_llm_provider
 from folio.adapters.sources import DocumentSource, get_source
 from folio.adapters.sources.local import LocalSource
@@ -28,9 +29,16 @@ def _make_config(**kwargs):
     return ProjectConfig(**kwargs)
 
 
-def _make_converter_config(converter_type="liteparse", pipeline_id=""):
+def _make_converter_config(
+    converter_type="liteparse", pipeline_id="", cascade=None, cascade_thresholds=None
+):
     return ProjectConfig(
-        converter=ConverterConfig(type=converter_type, datalab_pipeline_id=pipeline_id)
+        converter=ConverterConfig(
+            type=converter_type,
+            datalab_pipeline_id=pipeline_id,
+            cascade=cascade or [],
+            cascade_thresholds=cascade_thresholds or {},
+        )
     )
 
 
@@ -76,6 +84,36 @@ class TestConverterFactory:
     def test_invalid_converter_type_raises_valueerror(self, bogus_type):
         with pytest.raises(ValueError, match="Unknown converter type"):
             get_converter(_make_converter_config(bogus_type))
+
+    def test_cascade_returns_cascade_converter(self):
+        config = _make_converter_config("cascade", cascade=["liteparse", "datalab"])
+        converter = get_converter(config)
+        assert isinstance(converter, CascadeConverter)
+        assert converter.name == "cascade"
+        assert [tier.name for tier in converter._tiers] == ["liteparse", "datalab"]
+
+    def test_cascade_builds_concrete_tier_instances(self):
+        config = _make_converter_config("cascade", cascade=["liteparse", "datalab"])
+        converter = get_converter(config)
+        assert isinstance(converter._tiers[0], LiteParseConverter)
+        assert isinstance(converter._tiers[1], DatalabConverter)
+
+    def test_cascade_thresholds_passed_through(self):
+        config = _make_converter_config(
+            "cascade",
+            cascade=["liteparse", "datalab"],
+            cascade_thresholds={"min_content_lines": 15, "max_corruption_score": 0.5},
+        )
+        converter = get_converter(config)
+        assert converter._thresholds["min_content_lines"] == 15
+        assert converter._thresholds["max_corruption_score"] == 0.5
+
+    def test_cascade_propagates_datalab_pipeline_id(self):
+        config = _make_converter_config(
+            "cascade", pipeline_id="pipe-xyz", cascade=["liteparse", "datalab"]
+        )
+        converter = get_converter(config)
+        assert converter._tiers[1]._pipeline_id == "pipe-xyz"
 
 
 class TestWikiBackendFactory:
@@ -259,6 +297,17 @@ class TestDatalabConverterProperties:
         assert ".xlsx" in exts
         assert ".doc" in exts
         assert ".xls" in exts
+
+    def test_estimate_cost_per_doc(self):
+        from folio.adapters.converters.datalab import (
+            AVG_PAGES_PER_DOC,
+            DATALAB_COST_PER_PAGE,
+        )
+
+        converter = DatalabConverter("pipe-123")
+        cost = converter.estimate_cost(Path("anything.pdf"))
+        assert cost == pytest.approx(AVG_PAGES_PER_DOC * DATALAB_COST_PER_PAGE)
+        assert cost > 0
 
 
 class TestLiteParseConverterProperties:

@@ -51,8 +51,12 @@ def main(argv: list[str] | None = None) -> None:
         "--converter",
         type=str,
         default="liteparse",
-        choices=["liteparse", "docling", "datalab", "marker", "pandoc"],
-        help="Converter to use (default: liteparse)",
+        choices=["liteparse", "docling", "datalab", "marker", "pandoc", "cascade"],
+        help=(
+            "Converter to use: liteparse | docling | datalab | marker | pandoc | "
+            "cascade (default: liteparse). 'cascade' is config-driven and must be "
+            "set up in folio.yaml — see below."
+        ),
     )
     parser.add_argument(
         "--dry-run", "-n",
@@ -74,6 +78,18 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
 
     dest = args.dest.resolve()
+
+    if args.converter == "cascade":
+        print(
+            "Error: --converter cascade is config-driven and cannot be built "
+            "from the CLI flag alone (it needs an ordered tier list).\n"
+            "  Set 'converter.type: cascade' and 'converter.cascade: [...]' in "
+            "folio.yaml, then run 'folio pipeline' (which reads config).\n"
+            "  The standalone 'folio convert' command only supports single "
+            "converters.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     try:
         converter = get_converter(args.converter)
@@ -120,11 +136,13 @@ def main(argv: list[str] | None = None) -> None:
 
     for f in files:
         try:
-            md = converter.convert(f)
-            if md:
+            result = converter.convert_traced(f)
+            if result.markdown:
                 out_path = dest / (f.stem + ".md")
-                out_path.write_text(md, encoding="utf-8")
+                out_path.write_text(result.markdown, encoding="utf-8")
                 success += 1
+                if not args.json_output:
+                    print(f"  {f.name} \u2192 {result.tier}")
             else:
                 failed += 1
                 errors.append(f"{f.name}: converter returned empty result")

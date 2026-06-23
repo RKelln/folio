@@ -34,6 +34,8 @@ class ConverterConfig:
     type: str = "liteparse"
     datalab_pipeline_id: str = ""
     datalab_api_key_env: str = "DATALAB_API_KEY"
+    cascade: list[str] = field(default_factory=list)
+    cascade_thresholds: dict = field(default_factory=dict)
 
 @dataclass
 class WikiConfig:

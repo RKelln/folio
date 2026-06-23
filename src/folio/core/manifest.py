@@ -20,11 +20,19 @@ from typing import TypedDict
 
 
 class FileEntry(TypedDict, total=False):
-    """Per-file entry in the manifest ``files`` dict."""
+    """Per-file entry in the manifest ``files`` dict.
+
+    ``converter_tier`` records which converter (or cascade tier) produced the
+    converted markdown; ``conversion_cost_usd`` records the USD spent doing so.
+    Both are optional and absent on manifests written before the cascade
+    converter integration (``total=False`` keeps old manifests valid).
+    """
     status: str
     tier: str
     funder: str
     doc_types: list[str]
+    converter_tier: str
+    conversion_cost_usd: float
     rewrite_cost_usd: float
     prioritize_cost_usd: float
     priority: int
@@ -128,7 +136,11 @@ def recalculate_summary(manifest: dict) -> None:
         funder = entry.get("funder", "?")
         funder = _ensure_str(funder, "?")
         manifest["summary"]["by_funder"][funder] = manifest["summary"]["by_funder"].get(funder, 0) + 1
-        cost = entry.get("rewrite_cost_usd", 0) + entry.get("prioritize_cost_usd", 0)
+        cost = (
+            entry.get("conversion_cost_usd", 0)
+            + entry.get("rewrite_cost_usd", 0)
+            + entry.get("prioritize_cost_usd", 0)
+        )
         manifest["summary"]["total_cost_usd"] += cost
 
 
