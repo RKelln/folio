@@ -21,11 +21,11 @@ from folio import __version__
 from folio.config.loader import load_config_or_exit
 from folio.core.website import (
     WEBSITE_STAGES,
-    _sanitize_slug,
     _slug_from_url,
     discover_website_files,
     ingest_website,
     parse_scraper_header,
+    sanitize_slug,
 )
 
 
@@ -178,7 +178,7 @@ def _do_list(source: Path, name_hint: str | None = None) -> None:
                 entry["source_url"] = header["url"]
                 entry["scraped_at"] = header["scraped_at"]
                 if name_hint:
-                    entry["url_slug"] = _sanitize_slug(name_hint)
+                    entry["url_slug"] = sanitize_slug(name_hint)
                 else:
                     entry["url_slug"] = _slug_from_url(header["url"])
                 entry["would_stage"] = True

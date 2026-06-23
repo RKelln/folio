@@ -64,7 +64,7 @@ def _year_from_iso(iso_str: str) -> int:
     raise ValueError(f"Cannot extract year from: {iso_str!r}")
 
 
-def _sanitize_slug(raw: str) -> str:
+def sanitize_slug(raw: str) -> str:
     slug = re.sub(r'[^a-zA-Z0-9]', '_', raw)
     while '__' in slug:
         slug = slug.replace('__', '_')
@@ -84,7 +84,7 @@ def _slug_from_url(url: str) -> str:
     if '.' in slug:
         slug = slug.rsplit('.', 1)[0]
 
-    return _sanitize_slug(slug)
+    return sanitize_slug(slug)
 
 
 def build_website_filename(org_abbrev: str, scraped_at: str, name_slug: str) -> str:
@@ -141,7 +141,7 @@ def stage_website_file(
         return result
 
     if name_override:
-        slug = _sanitize_slug(name_override)
+        slug = sanitize_slug(name_override)
     else:
         slug = _slug_from_url(url)
 
