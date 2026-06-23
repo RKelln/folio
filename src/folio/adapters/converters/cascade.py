@@ -138,4 +138,12 @@ class CascadeConverter(Converter):
         return ConversionResult(markdown=None, tier=None, score=None, cost_usd=total_cost)
 
     def convert(self, source: Path) -> str | None:
+        """Return only the winning markdown (or None if every tier hard-fails).
+
+        Provided for backward compatibility with the plain ``Converter.convert``
+        contract. Callers that need the winning tier name, quality score, or
+        accumulated cost should prefer :meth:`convert_traced`, which returns a
+        full :class:`ConversionResult`; this method simply discards that trace
+        metadata.
+        """
         return self.convert_traced(source).markdown

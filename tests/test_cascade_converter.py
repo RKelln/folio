@@ -53,6 +53,19 @@ def _garbled_markdown() -> str:
                       "k", "l", "m", "n", "o", "p", "q", "r", "s", "t"])
 
 
+def _n_content_lines(n: int) -> str:
+    """Markdown with exactly *n* real content lines and zero corruption.
+
+    Each line is a multi-word sentence (non-blank, not single-char, not an
+    image marker), so ``analyze_content`` counts exactly *n* content lines
+    and a corruption_score of 0.0 (well under the default max of 0.5).
+    """
+    return "\n".join(
+        f"Content line {i} describing organizational programming and activities."
+        for i in range(n)
+    )
+
+
 def _fake_tier(name: str, result: ConversionResult | None) -> MagicMock:
     """Build a fake Converter tier whose ``convert_traced`` returns *result*.
 
@@ -192,6 +205,32 @@ def test_passes_quality_thresholds_are_config_driven():
     out = cascade.convert_traced(SRC)
     assert out.tier == "tier0"
     assert out.markdown == _sparse_markdown()
+
+
+def test_min_content_lines_boundary_just_below_soft_fails():
+    just_below = _n_content_lines(14)  # one short of the default threshold (15)
+    tier0 = _fake_tier("tier0", ConversionResult(markdown=just_below, tier="tier0"))
+    tier1 = _fake_tier("tier1", ConversionResult(markdown=_good_markdown(), tier="tier1"))
+
+    cascade = CascadeConverter([tier0, tier1])
+    out = cascade.convert_traced(SRC)
+
+    assert out.tier == "tier1"
+    assert out.markdown == _good_markdown()
+    tier1.convert_traced.assert_called_once_with(SRC)
+
+
+def test_min_content_lines_boundary_exact_passes():
+    exact = _n_content_lines(15)  # exactly the default threshold (15)
+    tier0 = _fake_tier("tier0", ConversionResult(markdown=exact, tier="tier0"))
+    tier1 = _fake_tier("tier1", ConversionResult(markdown=_good_markdown(), tier="tier1"))
+
+    cascade = CascadeConverter([tier0, tier1])
+    out = cascade.convert_traced(SRC)
+
+    assert out.tier == "tier0"
+    assert out.markdown == exact
+    tier1.convert_traced.assert_not_called()
 
 
 # ── base Converter.convert_traced default behaviour ──────────────────────────

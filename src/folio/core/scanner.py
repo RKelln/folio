@@ -11,7 +11,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-from folio.adapters.converters.datalab import AVG_PAGES_PER_DOC, DATALAB_COST_PER_PAGE
+from folio.adapters.converters.datalab import DatalabConverter
 from folio.adapters.sources import get_source
 from folio.config.schema import ProjectConfig
 from folio.core.frontmatter import extract_year
@@ -92,7 +92,7 @@ def _cost_per_doc_for(converter_name: str) -> float:
     of truth shared by the single-converter and cascade scan estimates.
     """
     if converter_name == "datalab":
-        return AVG_PAGES_PER_DOC * DATALAB_COST_PER_PAGE
+        return DatalabConverter.estimated_cost_per_doc()
     return 0.0
 
 

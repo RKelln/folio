@@ -38,6 +38,17 @@ class DatalabConverter(Converter):
 
     def estimate_cost(self, source: Path) -> float:
         """Estimate USD cost as average pages per document times per-page price."""
+        return self.estimated_cost_per_doc()
+
+    @classmethod
+    def estimated_cost_per_doc(cls) -> float:
+        """Canonical Datalab per-document cost estimate in USD.
+
+        Single source of truth for the per-doc cost formula
+        (``AVG_PAGES_PER_DOC * DATALAB_COST_PER_PAGE``), shared by the
+        per-file :meth:`estimate_cost` and by archive scan estimates in
+        :mod:`folio.core.scanner`. Do not duplicate this arithmetic.
+        """
         return AVG_PAGES_PER_DOC * DATALAB_COST_PER_PAGE
 
     def convert(self, source: Path) -> str | None:
