@@ -239,6 +239,32 @@ folio ingest --source new-grant.pdf --funder OAC --year 2026 --period "2026-2027
 
 This converts, cleans, classifies, rewrites, and updates the wiki for a single document. Use `--no-wiki` to skip wiki update, or `--dry-run` to preview.
 
+### Adding scraped website pages
+
+The `folio website` command ingests pre-scraped website markdown files (e.g., an organization's "About Us" page or funder program description):
+
+```bash
+# Ingest a directory of scraped pages and run the full pipeline
+folio website --source ./scraped_pages/
+
+# Preview without writing files
+folio website --source ./scraped_pages/ --dry-run
+
+# Stage only, skip pipeline
+folio website --source ./scraped_pages/ --stages none
+
+# Stage and run specific pipeline stages
+folio website --source ./scraped_pages/ --stages clean,classify
+
+# Preview files and metadata (no side effects)
+folio website --source ./scraped_pages/ --list
+
+# Single file with custom name
+folio website --source page.md --name about-us
+```
+
+Each source file must have a scraper header as its first non-blank line: `<!-- source: <url> | scraped: <iso_date> | hash: <sha4> -->`. The command stages files to `paths.raw_md` with the `webpage` document type, then optionally runs pipeline stages clean→wiki (skipping scan and convert). See [docs/file-naming.md](file-naming.md) for the website filename format.
+
 ### Rebuilding the wiki
 
 After adding several documents, recompile:

@@ -779,8 +779,29 @@ While the pipeline orchestrates all stages, each stage can also be run independe
 | `folio rewrite` | LLM re-authoring (single file or directory) |
 | `folio prioritize` | Archival priority scoring by year groups |
 | `folio ingest` | One-off document ingestion (PDF/DOCX/XLSX to markdown pipeline) |
+| `folio website` | Ingest pre-scraped website markdown into the pipeline |
 | `folio audit` | Wiki quality audit (dead links, thin articles) |
 
 All commands support `--help` for detailed usage, `--dry-run` for preview, and `--json` for structured output.
 
 **Note:** The `convert` stage can be run standalone via `folio convert`. Use `folio ingest` for single-file end-to-end ingestion.
+
+### Website Ingestion Pipeline
+
+The `folio website` command provides a shortcut path into the pipeline for pre-scraped website markdown files. It differs from the standard 8-stage pipeline:
+
+1. **Staging** — validates scraper headers, builds filenames, adds frontmatter, and writes files to `paths.raw_md`
+2. **Optional pipeline run** — by default, runs stages 3-8 (clean through wiki), **skipping scan and convert**
+
+The stages that apply to website files are: `clean`, `canonicalize`, `classify`, `rewrite`, `prioritize`, `wiki`.
+
+| Flag | Behavior |
+|------|----------|
+| (default, no `--stages`) | Runs clean → wiki |
+| `--stages clean,classify` | Runs only specified stages |
+| `--stages none` | Skips pipeline entirely (stage only) |
+| `--dry-run` | Preview staging, estimate pipeline costs |
+| `--list` | Preview files and metadata, no side effects |
+| `--json` | Structured output for piping |
+
+Website files use the `webpage` document type and follow the filename format `{ORG}__{YYYY-MM-DD}__{slug}__webpage.md`. See [docs/file-naming.md](file-naming.md) for details.

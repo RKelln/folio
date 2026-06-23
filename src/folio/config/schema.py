@@ -63,7 +63,7 @@ class ProjectConfig:
     funders: dict[str, str] = field(default_factory=dict)
     doc_types: list[str] = field(default_factory=lambda: [
         "application", "report", "budget", "notification", "activity_list",
-        "staff_board", "support_material", "agreement"
+        "staff_board", "support_material", "agreement", "webpage"
     ])
     paths: PathsConfig = field(default_factory=PathsConfig)
     converter: ConverterConfig = field(default_factory=ConverterConfig)

@@ -29,6 +29,7 @@ doc_types:
   - staff_board
   - support_material
   - agreement
+  - webpage
 
 # ── Paths ─────────────────────────────────────────────────────────
 paths:

@@ -37,6 +37,7 @@ _COMMANDS = {
     "install-agent": "folio.cli.install_agent",
     "validate": "folio.cli.validate",
     "corpus": "folio.cli.corpus",
+    "website": "folio.cli.website",
 }
 
 
