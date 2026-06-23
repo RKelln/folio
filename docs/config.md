@@ -181,9 +181,12 @@ Controls how source documents (PDF, DOCX, XLSX) are converted to Markdown.
 
 | YAML path | Python type | Default | Description |
 |---|---|---|---|
-| `converter.type` | `str` | `"liteparse"` | Converter backend: `liteparse`, `docling`, `datalab`, `marker`, or `pandoc` |
+| `converter.type` | `str` | `"liteparse"` | Converter backend: `liteparse`, `docling`, `datalab`, `marker`, `pandoc`, or `cascade` |
 | `converter.datalab.pipeline_id` | `str` | `""` | Datalab pipeline ID (required when type is `datalab`) |
 | `converter.datalab.api_key_env` | `str` | `"DATALAB_API_KEY"` | Environment variable name for the Datalab API key |
+| `converter.cascade` | `list[str]` | `[]` | Ordered tier list (cheapest first) used when type is `cascade`. Must contain **at least 2** known non-cascade converter names. |
+| `converter.cascade_thresholds.min_content_lines` | `int` | `15` | Cascade soft-failure gate: escalate to the next tier if output has fewer real content lines than this. Defaults to the classifier threshold. |
+| `converter.cascade_thresholds.max_corruption_score` | `float` | `0.5` | Cascade soft-failure gate: escalate if the output's corruption ratio (0-1) exceeds this. Defaults to the classifier threshold. |
 
 ### Converter Types and Supported Extensions
 
@@ -194,6 +197,7 @@ Controls how source documents (PDF, DOCX, XLSX) are converted to Markdown.
 | `datalab` | `.pdf`, `.docx`, `.xlsx`, `.doc`, `.xls` | IBM Datalab pipeline API. Best quality for grant forms. Requires `datalab-python-sdk` and API key. |
 | `marker` | `.pdf` | Open-source `marker-pdf` library. Local, no API key needed. Not yet implemented. |
 | `pandoc` | `.pdf`, `.docx`, `.html`, `.rst`, many more | Universal converter via Pandoc. Lowest quality for grant forms. Not yet implemented. |
+| `cascade` | Union of its tiers' extensions | Tiered orchestrator: runs `converter.cascade` in order, escalating to the next tier on hard or soft (quality) failure. Config-only — not selectable via the `folio convert` CLI flag. See [Document Converters](converters.md). |
 
 Example:
 
@@ -204,6 +208,32 @@ converter:
     pipeline_id: "abc123-my-pipeline"
     api_key_env: "DATALAB_API_KEY"
 ```
+
+### Cascade Converter
+
+When `converter.type` is `cascade`, folio tries each converter in `converter.cascade` in order (cheapest first) and escalates to the next tier when a tier returns no markdown (hard failure) or produces markdown that fails the quality gate (soft failure). The first tier whose output passes wins; if none pass but some produced output, the last produced markdown is kept best-effort. The winning tier and accumulated cost are recorded per file in the manifest as `converter_tier` and `conversion_cost_usd`.
+
+```yaml
+converter:
+  type: "cascade"
+  cascade:
+    - liteparse                  # tier 1: fast, local, free
+    - datalab                    # tier 2: high quality, paid fallback
+  cascade_thresholds:
+    min_content_lines: 15        # escalate below this many content lines
+    max_corruption_score: 0.5    # escalate above this corruption ratio
+  datalab:
+    pipeline_id: "abc123-my-pipeline"
+    api_key_env: "DATALAB_API_KEY"
+```
+
+**Validation rules for `cascade`:**
+
+- `converter.cascade` must list **at least 2** tiers, otherwise load fails with `converter.cascade must list at least 2 converter tiers ...`.
+- Each tier name must be a known **non-cascade** converter (`liteparse`, `docling`, `datalab`, `marker`, `pandoc`). An unknown name or a nested `cascade` fails with `Invalid converter in converter.cascade: '...' ... (nested 'cascade' is not allowed).`
+- `cascade_thresholds` is optional; omitted keys fall back to the classifier defaults (`min_content_lines: 15`, `max_corruption_score: 0.5`).
+
+See [Document Converters → Cascade](converters.md) for the full escalation, scoring, and dry-run cost details.
 
 ---
 
@@ -891,7 +921,9 @@ folio validates your `folio.yaml` at load time and raises errors for:
 
 | Condition | Error message |
 |---|---|
-| `converter.type` not in `{liteparse, datalab, marker, docling, pandoc}` | `Invalid converter type: '...'` |
+| `converter.type` not in `{liteparse, datalab, marker, docling, pandoc, cascade}` | `Invalid converter type: '...'` |
+| `converter.type: cascade` with fewer than 2 tiers in `converter.cascade` | `converter.cascade must list at least 2 converter tiers ...` |
+| `converter.cascade` contains an unknown name or a nested `cascade` | `Invalid converter in converter.cascade: '...' (nested 'cascade' is not allowed).` |
 | `wiki.type` not in `{sage-wiki, null}` | `Invalid wiki type: '...'` |
 | `llm.base_url` not starting with `https://` or allowed `http://` prefix | `LLM base_url must use https://, or http:// for localhost/private IPs` |
 | `processing.max_workers < 1` | `processing.max_workers must be >= 1` |

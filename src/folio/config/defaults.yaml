@@ -49,9 +49,9 @@ converter:
   #   cascade:                  # ordered tiers (>= 2); first passing output wins
   #     - liteparse             #   tier 1: fast, local, free
   #     - datalab               #   tier 2: high quality, paid fallback
-  #   cascade_thresholds:       # soft-failure gates; below either -> escalate
-  #     min_content_lines: 15   #   require at least this many real content lines
-  #     max_corruption_score: 0.5  # reject output garbled above this ratio
+  #   cascade_thresholds:       # soft-failure gates; fail either -> escalate to next tier
+  #     min_content_lines: 15   #   escalate if fewer than this many real content lines
+  #     max_corruption_score: 0.5  # escalate if corruption ratio exceeds this
 
 # ── Wiki backend ──────────────────────────────────────────────────
 wiki:

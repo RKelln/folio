@@ -221,6 +221,83 @@ No additional dependencies required. No API key needed.
 
 ---
 
+### 6. Cascade (cheap-first with quality fallback)
+
+Cascade is not a converter itself — it is an **orchestrator** that runs a list of real converters in order (cheapest/fastest first) and escalates to the next tier only when the current tier's output is missing or too low quality. It lets you convert the bulk of an archive with a free local converter while automatically falling back to a paid, higher-fidelity converter for the documents that need it.
+
+| Property | Value |
+|----------|-------|
+| Class | `CascadeConverter` |
+| Supported extensions | Union of every tier's supported extensions |
+| Pricing | Pay-per-use of whichever tiers actually run (free tiers cost nothing) |
+| Requires network | Only if a paid/cloud tier (e.g. Datalab) is reached |
+| Configuration | **Config-only** — cannot be selected from the `folio convert` CLI flag |
+
+**When to use it:**
+
+- Your archive is mostly clean documents that a free converter (LiteParse, Docling) handles well, but a minority are scanned, garbled, or table-heavy and need Datalab-grade fidelity.
+- You want to minimize conversion spend without manually sorting documents by difficulty.
+
+**Configuration in folio.yaml:**
+
+```yaml
+converter:
+  type: "cascade"
+  cascade:                       # ordered tiers, cheapest first (>= 2 required)
+    - liteparse                  #   tier 1: fast, local, free
+    - datalab                    #   tier 2: high quality, paid fallback
+  cascade_thresholds:            # soft-failure gates (optional; classifier defaults shown)
+    min_content_lines: 15        #   escalate if fewer than this many real content lines
+    max_corruption_score: 0.5    #   escalate if corruption ratio exceeds this (0-1)
+  datalab:                       # settings for any paid tier in the list
+    pipeline_id: "your-pipeline-id"
+    api_key_env: "DATALAB_API_KEY"
+```
+
+Each name in `cascade` must be a known **non-cascade** converter (`liteparse`, `docling`, `datalab`, `marker`, `pandoc`); nesting a `cascade` inside a `cascade` is rejected at config load. The list must contain at least two tiers. (`marker` passes validation but is not yet implemented, so it fails when actually built as a tier — see the Marker note above.)
+
+**How escalation works (per document):**
+
+1. The cascade runs each tier in order, accumulating the cost of every tier it attempts.
+2. **Hard failure** — a tier returns no markdown at all. The cascade logs a warning and escalates to the next tier.
+3. **Soft failure** — a tier produces markdown, but it fails the quality gate. The cascade logs a warning, remembers that output as a best-effort fallback, and escalates.
+4. **Pass** — the first tier whose output clears the quality gate wins immediately; its markdown, tier name, and the accumulated cost are returned.
+5. **Best-effort fallback** — if no tier passes but at least one produced markdown, the cascade returns the markdown from the **last tier that produced output** (expensive output is never discarded).
+6. **Hard failure overall** — only when *every* tier hard-fails does the cascade return no markdown for that document.
+
+**Soft-failure quality scoring:**
+
+Quality is scored by the shared classifier scorer (`folio.core.classifier.analyze_content`) — the same metrics used by the `classify` stage, so there is one scoring implementation, not a duplicate. A tier's output **passes** when both conditions hold:
+
+- `content_lines >= min_content_lines`, **and**
+- `corruption_score <= max_corruption_score`
+
+If either condition fails, the output is a soft failure and the cascade escalates. `cascade_thresholds` overrides these two gates per key; any key you omit falls back to the classifier defaults (`min_content_lines: 15`, `max_corruption_score: 0.5`).
+
+**Per-file tier and cost recording:**
+
+After conversion, the pipeline records the winning tier and what it cost in the manifest (`markdown/manifest.json`) for each file:
+
+- `converter_tier` — the name of the tier that produced the final markdown (e.g. `liteparse` or `datalab`).
+- `conversion_cost_usd` — the total USD spent on that document, summed across every tier the cascade attempted.
+
+Both fields are optional and absent on manifests written before the cascade feature, so older manifests remain valid.
+
+**Dry-run cost is an upper bound:**
+
+`folio pipeline --dry-run` (and `folio scan`) estimate cascade conversion cost as the **most expensive tier applied to every non-markdown file** — a worst-case upper bound that assumes every document escalates to the priciest tier. Real runs are usually cheaper because cheap tiers handle most documents. Two caveats compound this:
+
+- The Datalab per-document estimate is a flat `AVG_PAGES_PER_DOC (3) × DATALAB_COST_PER_PAGE ($0.02) = $0.06/doc`; actual source page counts are **not** read (follow-up bead `folio-idf`).
+- The cascade estimate is deliberately worst-case rather than expected-cost (follow-up bead `folio-dmw`).
+
+A cascade made entirely of free local tiers estimates as `$0.00`.
+
+**CLI vs. config:**
+
+Cascade is **config-driven only**. `cascade` appears in the `folio convert --converter` choices, but running `folio convert --converter cascade` prints an error and exits non-zero, because the CLI flag carries no ordered tier list. Configure `converter.type: cascade` and `converter.cascade: [...]` in `folio.yaml` and run `folio pipeline` (which reads the config) instead. The standalone `folio convert` command only supports single converters.
+
+---
+
 ## Selecting a Converter
 
 ### Comparison
@@ -233,6 +310,7 @@ No additional dependencies required. No API key needed.
 | Pandoc   | No  | Yes  | No   | No   | No     | Free   | Yes | Ready |
 | Marker   | Yes | No   | No   | No   | No     | Free   | Yes | Planned |
 | Null     | N/A | N/A  | N/A  | N/A  | N/A    | Free   | N/A | Ready |
+| Cascade  | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Ready |
 
 ### Choosing a Converter
 
@@ -240,6 +318,7 @@ No additional dependencies required. No API key needed.
 - **Need Docling's table extraction** -> Docling
 - **Maximum fidelity for complex grant forms** -> Datalab
 - **DOCX/HTML/ODT/EPUB only, want a fast free offline baseline** -> Pandoc
+- **Mostly-clean archive with a few hard documents** -> Cascade (free tier first, paid fallback only when quality fails)
 - **Documents already in markdown** -> Null
 
 #### Benchmark-driven selection
@@ -269,10 +348,10 @@ Set the converter type under the `converter:` section:
 
 ```yaml
 converter:
-  type: "liteparse"   # liteparse | docling | datalab | pandoc | marker | null
+  type: "liteparse"   # liteparse | docling | datalab | pandoc | marker | null | cascade
 ```
 
-The default is `liteparse`. For null converter, no other fields are needed. For datalab, provide a `pipeline_id` and set the `DATALAB_API_KEY` environment variable.
+The default is `liteparse`. For null converter, no other fields are needed. For datalab, provide a `pipeline_id` and set the `DATALAB_API_KEY` environment variable. For cascade, provide an ordered `cascade` tier list (see the Cascade section above).
 
 ### Skipping Conversion Entirely
 
@@ -291,6 +370,7 @@ Set `converter.type: "null"` in `folio.yaml`. The pipeline will treat all files 
 - `"datalab"` -> `DatalabConverter(pipeline_id)`
 - `"pandoc"` -> `PandocConverter()`
 - `"marker"` -> raises `NotImplementedError` (planned)
+- `"cascade"` -> builds each name in `config.converter.cascade` via the same factory and wraps them in a `CascadeConverter` (cheapest tier first)
 - anything else -> raises `ValueError`
 
 ### Optional Dependencies
