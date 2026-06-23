@@ -109,7 +109,15 @@ class ConverterAggregate:
         n_scored: Number of documents scored successfully.
         n_failed: Number of documents where ``convert()`` returned ``None``/raised.
         n_unsupported: Number of documents whose format the converter rejected.
-        mean_weighted: Mean weighted score over scored documents.
+        mean_weighted: Mean weighted *quality* score over scored documents only
+            ("how good is this converter when it can read the document?").
+        coverage: Fraction of attempted documents that were scored
+            (``n_scored / (n_scored + n_failed + n_unsupported)``), ``0.0`` when
+            nothing was attempted. Unsupported formats and failures lower it.
+        overall: Coverage-weighted headline score (``mean_weighted * coverage``),
+            i.e. unsupported/failed documents count as ``0``. This is the
+            whole-corpus capability score used for the pass flag and the
+            recommendation.
         mean_text: Mean text-category score over scored documents.
         mean_tables: Mean tables-category score over scored documents.
         mean_structure: Mean structure-category score over scored documents.
@@ -117,8 +125,8 @@ class ConverterAggregate:
         total_elapsed_s: Total wall-clock convert time over scored documents.
         mean_elapsed_per_page_s: Mean ``elapsed_s / pages`` over scored documents.
         total_cost: Total estimated cost over scored documents.
-        passed: ``True`` iff ``n_scored > 0`` and ``mean_weighted`` meets the
-            spec's ``pass_threshold``.
+        passed: ``True`` iff ``n_scored > 0`` and ``overall`` (the
+            coverage-weighted score) meets the spec's ``pass_threshold``.
     """
 
     name: str
@@ -129,6 +137,8 @@ class ConverterAggregate:
     n_failed: int
     n_unsupported: int
     mean_weighted: float
+    coverage: float
+    overall: float
     mean_text: float
     mean_tables: float
     mean_structure: float
@@ -149,6 +159,8 @@ class ConverterAggregate:
             "n_failed": self.n_failed,
             "n_unsupported": self.n_unsupported,
             "mean_weighted": self.mean_weighted,
+            "coverage": self.coverage,
+            "overall": self.overall,
             "mean_text": self.mean_text,
             "mean_tables": self.mean_tables,
             "mean_structure": self.mean_structure,
@@ -364,16 +376,23 @@ def _aggregate(
     """Roll a converter's per-document results into a :class:`ConverterAggregate`."""
     scored = [r for r in results if r.status == "scored"]
     n_scored = len(scored)
+    n_failed = sum(1 for r in results if r.status == "failed")
+    n_unsupported = sum(1 for r in results if r.status == "unsupported")
+    n_attempted = n_scored + n_failed + n_unsupported
     mean_weighted = _mean([r.weighted for r in scored])
+    coverage = n_scored / n_attempted if n_attempted else 0.0
+    overall = mean_weighted * coverage
     return ConverterAggregate(
         name=conv_spec_name,
         available=available,
         offline=offline,
         cost_per_page=cost_per_page,
         n_scored=n_scored,
-        n_failed=sum(1 for r in results if r.status == "failed"),
-        n_unsupported=sum(1 for r in results if r.status == "unsupported"),
+        n_failed=n_failed,
+        n_unsupported=n_unsupported,
         mean_weighted=mean_weighted,
+        coverage=coverage,
+        overall=overall,
         mean_text=_mean([r.scores.text for r in scored if r.scores is not None]),
         mean_tables=_mean([r.scores.tables for r in scored if r.scores is not None]),
         mean_structure=_mean(
@@ -385,7 +404,7 @@ def _aggregate(
         total_elapsed_s=sum(r.elapsed_s for r in scored),
         mean_elapsed_per_page_s=_mean([r.elapsed_s / r.pages for r in scored]),
         total_cost=sum(r.cost for r in scored),
-        passed=n_scored > 0 and mean_weighted >= pass_threshold,
+        passed=n_scored > 0 and overall >= pass_threshold,
     )
 
 

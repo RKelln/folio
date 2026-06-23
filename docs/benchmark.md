@@ -110,21 +110,23 @@ converters:
 > **Illustrative only.** The numbers below are example output from one machine, not authoritative benchmark results. Run `folio convert-bench` yourself for current figures.
 
 ```
-Converter  Overall  Scored  Text   Tables  Struct  Links  Time/pg(s)  Cost/pg  Offline  Pass
-liteparse  0.853    10/10   0.816  0.807   0.900   1.000  1.078       0.0000   yes      PASS
-docling    0.750    10/10   0.821  0.894   0.393   1.000  6.928       0.0000   yes      PASS
-pandoc     0.974    3/10    0.936  1.000   1.000   1.000  0.123       0.0000   yes      PASS
+Converter  Overall  Quality  Scored  Text   Tables  Struct  Links  Time/pg(s)  Cost/pg  Offline  Pass
+liteparse  0.853    0.853    10/10   0.816  0.807   0.900   1.000  0.973       0.0000   yes      PASS
+docling    0.750    0.750    10/10   0.821  0.894   0.393   1.000  5.128       0.0000   yes      PASS
+pandoc     0.292    0.974    3/10    0.936  1.000   1.000   1.000  0.100       0.0000   yes      FAIL
 ```
 
 How to read this sample:
 
-- **pandoc's high Overall is over its 3 DOCX docs only** (it cannot read PDF or XLSX). Do not compare its `0.974` against liteparse's `0.853` directly — they were scored on different document subsets.
-- **liteparse** is the strongest *balanced* all-format offline option here: it scores every one of the 10 corpus docs (`10/10`) and stays high across categories.
+- **`Overall` is coverage-weighted** — documents a converter can't read (or fails on) count as zero, so `Overall = Quality × (Scored ÷ attempted)`. This makes `Overall` directly comparable across converters as a *whole-corpus capability* score, and it drives the `Pass` flag and the recommendation.
+- **`Quality`** is the mean over only the documents the converter actually scored — "how good is it *when* it can read the file?" Read it together with `Scored`.
+- **liteparse** is the strongest *balanced* all-format offline option (`Overall` 0.853, `10/10`) and is the recommended default here.
+- **pandoc** has the highest `Quality` (0.974 — excellent on DOCX) but it **cannot read PDF or XLSX**, so it only covers 3/10 docs and its coverage-weighted `Overall` drops to 0.292 (**FAIL** as a general-purpose default). It is still an excellent choice *specifically for DOCX-heavy* archives — exactly the kind of signal a per-format router (the cascade converter) should use.
 - **docling** has the best `Tables` score but weaker `Structure`, and is much slower because of its OCR/structure models.
 
 ## Important caveats
 
-1. **Cross-converter comparison is subset-relative.** Each converter is scored only on the formats it supports — pandoc reads DOCX (and other markup/word-processor formats) but **not PDF or XLSX**, so it scores 3 of the 10 corpus documents. The `Scored` column shows `scored/attempted`. **Compare converters within the per-document-type breakdown** (in the `--out` Markdown report), not by the `Overall` column alone.
+1. **`Overall` vs `Quality` — know which you need.** `Overall` is coverage-weighted (unsupported/failed formats count as zero), so it answers *"how good is this converter across the whole corpus?"* and is comparable across converters. `Quality` answers *"how good is it on the formats it can read?"* and must be read alongside `Scored` (`scored/attempted`). A converter like pandoc reads DOCX (and other markup/word-processor formats) but **not PDF or XLSX**, so it scores 3 of 10 documents: high `Quality`, low `Overall`. For per-format decisions, use the `Quality` column together with the **per-document-type breakdown** in the `--out` Markdown report.
 2. **docling fetches OCR/structure models from the network on first run**, then runs offline thereafter. It is "offline after a one-time warmup," **not air-gapped on first use** — plan a warmup run before benchmarking in an air-gapped environment.
 3. **`marker` is unavailable** (it is a GPU-dependent stub and will report as `unavailable`). **`datalab` is online and needs an API key** (`DATALAB_API_KEY`) and is disabled by default; opt in with `--converters datalab` (and expect per-page cost).
 

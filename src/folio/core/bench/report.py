@@ -23,6 +23,7 @@ from folio.core.bench.spec import BenchSpec
 _COLUMNS = (
     "Converter",
     "Overall",
+    "Quality",
     "Scored",
     "Text",
     "Tables",
@@ -40,10 +41,12 @@ _UNAVAILABLE = "n/a"
 def _row_cells(agg: ConverterAggregate) -> list[str]:
     """Return the formatted cell strings for one converter row.
 
-    The ``Scored`` column shows ``n_scored/n_attempted`` so readers can see that
-    each converter's means are computed only over the documents it actually
-    scored (converters are scored only on the formats they support, so the
-    ``Overall`` columns are NOT directly comparable across converters).
+    ``Overall`` is the coverage-weighted headline score (unsupported/failed
+    documents count as zero), so it IS comparable across converters as a
+    whole-corpus capability measure. ``Quality`` is the mean over only the
+    documents the converter actually scored ("how good when it can read the
+    file"), and ``Scored`` shows ``n_scored/n_attempted`` — read ``Quality``
+    together with ``Scored`` to interpret it fairly.
     """
     offline = "yes" if agg.offline else "no"
     cost = f"{agg.cost_per_page:.4f}"
@@ -52,6 +55,7 @@ def _row_cells(agg: ConverterAggregate) -> list[str]:
     if not agg.available:
         return [
             agg.name,
+            _UNAVAILABLE,
             _UNAVAILABLE,
             scored,
             _UNAVAILABLE,
@@ -65,6 +69,7 @@ def _row_cells(agg: ConverterAggregate) -> list[str]:
         ]
     return [
         agg.name,
+        f"{agg.overall:.3f}",
         f"{agg.mean_weighted:.3f}",
         scored,
         f"{agg.mean_text:.3f}",
@@ -137,14 +142,21 @@ def _doc_type_breakdown(results: BenchResults) -> str:
 
 
 def _recommendation(results: BenchResults) -> str:
-    """Return a one-line recommendation for the best available converter."""
+    """Return a one-line recommendation for the best available converter.
+
+    Ranks by the coverage-weighted ``overall`` score so a converter that only
+    handles a fraction of the corpus (e.g. pandoc, DOCX-only) is not recommended
+    over a converter that handles every format well.
+    """
     candidates = [c for c in results.converters if c.available and c.n_scored > 0]
     if not candidates:
         return "**Recommendation:** No converter produced any scored documents."
-    best = max(candidates, key=lambda c: c.mean_weighted)
+    best = max(candidates, key=lambda c: c.overall)
     return (
-        f"**Recommendation:** Use `{best.name}` — highest mean weighted score "
-        f"({best.mean_weighted:.3f}) among available converters."
+        f"**Recommendation:** Use `{best.name}` — highest coverage-weighted "
+        f"overall score ({best.overall:.3f}) among available converters "
+        f"(quality {best.mean_weighted:.3f} on the {best.n_scored} document(s) "
+        "it could read)."
     )
 
 

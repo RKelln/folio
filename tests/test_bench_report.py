@@ -133,7 +133,7 @@ class TestMarkdownReport:
 def test_report_with_no_scored_converters():
     spec = BenchSpec(converters=[ConverterSpec(name="gone")], pass_threshold=0.7)
     agg = ConverterAggregate(
-        "gone", False, True, 0.0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, False
+        "gone", False, True, 0.0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, False
     )
     results = BenchResults(0, 1, CategoryWeights().to_dict(), 0.7, [agg], [])
     md = markdown_report(results, spec)
@@ -146,10 +146,10 @@ def test_doc_type_breakdown_na_for_unscored_kind():
     scores = CategoryScores(1.0, 1.0, 1.0, 1.0)
     doc = DocResult("echo", "oac-budget-01", "budget", "xlsx", "scored", scores, 1.0, 0.1, 1, 0.0)
     agg_echo = ConverterAggregate(
-        "echo", True, True, 0.0, 1, 0, 0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.1, 0.1, 0.0, True
+        "echo", True, True, 0.0, 1, 0, 0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.1, 0.1, 0.0, True
     )
     agg_other = ConverterAggregate(
-        "other", True, True, 0.0, 0, 1, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, False
+        "other", True, True, 0.0, 0, 1, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, False
     )
     results = BenchResults(
         1, 2, CategoryWeights().to_dict(), 0.7, [agg_echo, agg_other], [doc]
@@ -160,3 +160,51 @@ def test_doc_type_breakdown_na_for_unscored_kind():
     md = markdown_report(results, spec)
     assert "budget" in md
     assert "n/a" in md
+
+
+def _agg(name: str, mean_weighted: float, coverage: float, *, available: bool = True):
+    overall = mean_weighted * coverage
+    return ConverterAggregate(
+        name=name,
+        available=available,
+        offline=True,
+        cost_per_page=0.0,
+        n_scored=3 if coverage else 0,
+        n_failed=0,
+        n_unsupported=0,
+        mean_weighted=mean_weighted,
+        coverage=coverage,
+        overall=overall,
+        mean_text=mean_weighted,
+        mean_tables=mean_weighted,
+        mean_structure=mean_weighted,
+        mean_links_images=mean_weighted,
+        total_elapsed_s=0.1,
+        mean_elapsed_per_page_s=0.1,
+        total_cost=0.0,
+        passed=overall >= 0.7,
+    )
+
+
+def test_recommendation_prefers_coverage_weighted_overall():
+    # High quality but low coverage (pandoc-like) must NOT beat a moderate-quality
+    # full-coverage converter (liteparse-like) on the headline recommendation.
+    high_quality_low_coverage = _agg("pan", 0.97, 0.3)   # overall ~0.29
+    moderate_full_coverage = _agg("lite", 0.85, 1.0)     # overall 0.85
+    results = BenchResults(
+        10, 2, CategoryWeights().to_dict(), 0.7,
+        [high_quality_low_coverage, moderate_full_coverage], [],
+    )
+    spec = BenchSpec(converters=[ConverterSpec(name="pan"), ConverterSpec(name="lite")])
+    md = markdown_report(results, spec)
+    assert "Use `lite`" in md
+    assert "Use `pan`" not in md
+
+
+def test_summary_has_overall_and_quality_columns():
+    results = BenchResults(
+        10, 1, CategoryWeights().to_dict(), 0.7, [_agg("lite", 0.85, 1.0)], [],
+    )
+    table = scorecard_table(results)
+    assert "Overall" in table
+    assert "Quality" in table

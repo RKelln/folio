@@ -254,13 +254,13 @@ folio convert-bench --out docs/converter-report.md   # also write a full compari
 > **Illustrative example only** — example output from one machine, **not** authoritative results. Run `folio convert-bench` yourself for current numbers.
 
 ```
-Converter  Overall  Scored  Text   Tables  Struct  Links  Time/pg(s)  Cost/pg  Offline  Pass
-liteparse  0.853    10/10   0.816  0.807   0.900   1.000  1.078       0.0000   yes      PASS
-docling    0.750    10/10   0.821  0.894   0.393   1.000  6.928       0.0000   yes      PASS
-pandoc     0.974    3/10    0.936  1.000   1.000   1.000  0.123       0.0000   yes      PASS
+Converter  Overall  Quality  Scored  Text   Tables  Struct  Links  Time/pg(s)  Cost/pg  Offline  Pass
+liteparse  0.853    0.853    10/10   0.816  0.807   0.900   1.000  0.973       0.0000   yes      PASS
+docling    0.750    0.750    10/10   0.821  0.894   0.393   1.000  5.128       0.0000   yes      PASS
+pandoc     0.292    0.974    3/10    0.936  1.000   1.000   1.000  0.100       0.0000   yes      FAIL
 ```
 
-**Read it carefully:** the `Scored` column is `scored/attempted`. Each converter is scored only on the formats it supports, so the `Overall` column is **not** directly comparable across converters — pandoc's `0.974` is over its 3 DOCX docs only, while liteparse scores all 10. In this sample liteparse is the strongest balanced all-format offline option, and docling has strong tables but weaker structure and is much slower (OCR). See [the benchmark doc](benchmark.md) for the scoring categories, weights, and important caveats (including that docling fetches OCR models on first run, `marker` is GPU-only, and `datalab` is online + paid).
+**Read it carefully:** `Overall` is **coverage-weighted** (formats a converter can't read count as zero, so `Overall = Quality × Scored/attempted`) and is comparable across converters as a whole-corpus score; `Quality` is the mean over only the docs it could read (`Scored` = `scored/attempted`). In this sample **liteparse** is the strongest balanced all-format offline option and the recommended default. **pandoc** has the best `Quality` (0.974 on DOCX) but cannot read PDF/XLSX, so it covers only 3/10 and its `Overall` is 0.292 (**FAIL** as a general-purpose default) — it remains an excellent pick *specifically for DOCX*. **docling** has strong tables but weaker structure and is much slower (OCR). See [the benchmark doc](benchmark.md) for scoring categories, weights, and caveats (docling fetches OCR models on first run, `marker` is GPU-only, `datalab` is online + paid).
 
 
 ### Configuration in folio.yaml

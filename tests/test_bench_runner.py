@@ -319,7 +319,7 @@ def test_dataclasses_are_constructible():
     scores = CategoryScores(1.0, 1.0, 1.0, 1.0)
     doc = DocResult("c", "s", "k", "pdf", "scored", scores, 1.0, 0.1, 1, 0.0)
     agg = ConverterAggregate(
-        "c", True, True, 0.0, 1, 0, 0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.1, 0.1, 0.0, True
+        "c", True, True, 0.0, 1, 0, 0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.1, 0.1, 0.0, True
     )
     res = BenchResults(1, 1, CategoryWeights().to_dict(), 0.7, [agg], [doc])
     assert res.to_dict()["converters"][0]["name"] == "c"
@@ -382,3 +382,38 @@ class TestPageCount:
     def test_estimate_pages_deterministic(self):
         case = _first_pdf_case()
         assert estimate_pages(case) == estimate_pages(case)
+
+
+class TestCoverageWeighting:
+    """Overall = mean_weighted * coverage; pass keys on the coverage-weighted score."""
+
+    def test_full_coverage_overall_equals_quality(self, cases, golden_by_input):
+        spec = _spec("echo")
+        converters = {"echo": FakeConverter("echo", _ALL_EXTS, golden_by_input, "echo")}
+        agg = run_benchmark(spec, cases, converters=converters).converters[0]
+        assert agg.coverage == pytest.approx(1.0)
+        assert agg.overall == pytest.approx(agg.mean_weighted)
+
+    def test_partial_coverage_penalizes_overall(self, cases, golden_by_input):
+        # DOCX-only converter (the pandoc situation): high quality, low coverage.
+        spec = _spec("docxonly", pass_threshold=0.7)
+        converters = {
+            "docxonly": FakeConverter("docxonly", {".docx"}, golden_by_input, "echo")
+        }
+        agg = run_benchmark(spec, cases, converters=converters).converters[0]
+        attempted = agg.n_scored + agg.n_failed + agg.n_unsupported
+        assert agg.coverage == pytest.approx(agg.n_scored / attempted)
+        assert agg.coverage < 1.0
+        assert agg.overall == pytest.approx(agg.mean_weighted * agg.coverage)
+        assert agg.overall < agg.mean_weighted
+        # Quality is high but coverage drags Overall below the pass threshold.
+        assert agg.mean_weighted >= 0.9
+        assert agg.passed is False
+
+    def test_pass_keys_on_overall_not_quality(self, cases, golden_by_input):
+        spec = _spec("docxonly", pass_threshold=0.5)
+        converters = {
+            "docxonly": FakeConverter("docxonly", {".docx"}, golden_by_input, "echo")
+        }
+        agg = run_benchmark(spec, cases, converters=converters).converters[0]
+        assert agg.passed == (agg.overall >= 0.5)
