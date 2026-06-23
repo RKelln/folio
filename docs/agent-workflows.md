@@ -248,7 +248,60 @@ They can drill into specific sections across all applications without reading en
 
 ---
 
-## Example 6: Preparing for a funder meeting
+## Example 6: Ingesting a scraped website
+
+**Task:** The org's website has been scraped to markdown. Add the "About Us", "Board of Directors", and "Program History" pages to the archive.
+
+### Step 1: Verify files have scraper headers
+
+Each `.md` file must have a scraper header as its first non-blank line:
+
+```
+<!-- source: https://example.com/about | scraped: 2025-06-01T12:00:00+00:00 | hash: abc123def4567890 -->
+```
+
+### Step 2: Preview what would be staged
+
+```bash
+folio website --source ./scraped_pages/ --list
+```
+
+Shows each file's source URL, scraped date, derived slug, and whether it would stage successfully.
+
+### Step 3: Dry-run the full ingestion
+
+```bash
+folio website --source ./scraped_pages/ --dry-run
+```
+
+Shows staging summary and estimated pipeline costs without writing files.
+
+### Step 4: Stage only, skip pipeline
+
+```bash
+folio website --source ./scraped_pages/ --stages none
+```
+
+Files are written to `paths.raw_md` with proper frontmatter (`type: webpage`, `source_url`, `scraped_at`, `content_hash`). No pipeline stages run.
+
+### Step 5: Run pipeline stages selectively
+
+```bash
+folio website --source ./scraped_pages/ --stages clean,classify,rewrite
+```
+
+### Step 6: Verify output
+
+```bash
+ls .folio/raw_md/*__webpage.md
+head -15 .folio/raw_md/IA__2025-06-01__about__webpage.md
+```
+
+Check frontmatter includes `funder`, `type: "webpage"`, `written`, `source_url`, `scraped_at`, and `content_hash`.
+
+---
+
+## Example 7: Preparing for a funder meeting
 
 **Task:** The ED has a meeting with CCA and needs to know: what have we applied for, what was funded, what's in progress?
 
@@ -290,6 +343,7 @@ sage-wiki query "What were the strongest elements of our successful CCA applicat
 | Read a specific section | `Read markdown/file.md offset=N limit=M` (from NAV block) |
 | Check wiki health | `folio audit` or `cd .folio/sage-wiki/ && sage-wiki status` |
 | Add one document | `folio ingest --source FILE --funder X --year Y --rewrite` |
+| Ingest scraped website pages | `folio website --source DIR/ --stages clean,classify,rewrite` |
 | Rebuild wiki | `folio pipeline --stages wiki` |
 | Check what changed | `cd .folio/sage-wiki/ && sage-wiki diff` |
 | List all NAV headings | `cd markdown/ && agentmap headings .` |

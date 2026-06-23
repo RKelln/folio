@@ -33,6 +33,9 @@ These fields appear inside the `---` block of markdown files.
 | Period end year | `period_end` | `int` | Rewrite (LLM) | Yes | `2025` |
 | Grant dollar amount | `grant_amount` | `str` | Rewrite (LLM) | Yes | `"$51,000"` |
 | Document language | `language` | `str` — `"en"`, `"fr"`, `"mixed"` | Rewrite | Yes | `"en"` |
+| Source URL | `source_url` | `str` | Website | Yes | `"https://example.com/about"` |
+| Scraped timestamp | `scraped_at` | `str` (ISO 8601) | Website | Yes | `"2025-06-01T12:00:00+00:00"` |
+| Content hash | `content_hash` | `str` | Website | Yes | `"abc123def4567890"` |
 | Archival priority | `priority` | `int` (1, 2, or 3) | Ingest (default=1), Prioritize (LLM) | No | `2` |
 | Error/corruption count | `errors` | `int` | Rewrite | No | `0` |
 
@@ -164,6 +167,14 @@ Extract a year from a frontmatter dict.
 ## Frontmatter lifecycle
 
 Fields are added at specific pipeline stages in a defined order.
+
+### Website Ingestion (pre-pipeline)
+
+The `folio website` command stages pre-scraped website markdown files into `paths.raw_md` before optionally running pipeline stages 3-8 (clean through wiki, skipping scan and convert).
+
+**Frontmatter written**: `funder`, `type` (set to `"webpage"`), `written` (year extracted from scraped timestamp), `source_url`, `scraped_at`, `content_hash`.
+
+These files use the `webpage` document type and their filenames follow the format `{ORG}__{YYYY-MM-DD}__{slug}__webpage.md`. A scraper header comment (`<!-- source: ... | scraped: ... | hash: ... -->`) must be present as the first non-blank line of the source file.
 
 ### Stage 1: Scan
 

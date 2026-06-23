@@ -55,6 +55,7 @@ COMMAND REFERENCE
   folio repack         Nested-directory → flat folio naming
   folio validate       Validate markdown files against config
   folio wiki           Wiki management (init, compile, status, etc.)
+  folio website        Ingest pre-scraped website markdown into pipeline
   folio install-agent  Write AGENTS.md/skills files into a project
   folio audit          Wiki quality audit (dead links, thin articles, etc.)
   folio corpus         Generate a PII-free synthetic benchmark corpus
@@ -257,6 +258,42 @@ ERROR RECOVERY
   - If a stage fails, fix the issue and re-run. Completed stages skip.
   - Force re-run a stage: folio pipeline --stages rewrite --no-resume
   - Check manifest: cat markdown/manifest.json | jq .stages
+
+WEBSITE INGESTION
+─────────────────
+  Ingest pre-scraped website markdown into folio alongside grant documents.
+
+  # Ingest a directory of scraped pages (full pipeline)
+  folio website --source ./ia_pages/
+
+  # Ingest a single page with a custom slug
+  folio website --source page.md --name about-us
+
+  # Preview files without side effects
+  folio website --source ./pages/ --list
+
+  # Stage only, skip pipeline
+  folio website --source ./pages/ --stages none
+
+  # Run specific pipeline stages
+  folio website --source ./pages/ --stages clean,classify
+
+  # Dry-run to estimate costs
+  folio website --source ./pages/ --dry-run
+
+  Input contract:
+    Files must be .md with a scraper header as the first non-blank line:
+      <!-- source: <url> | scraped: <iso> | hash: <sha4> -->
+
+    Output filename: {ORG}__{YYYY-MM-DD}__{slug}__webpage.md
+
+    Added frontmatter fields:
+      funder, type: "webpage", written (year), source_url,
+      scraped_at (ISO 8601), content_hash
+
+  Pipeline stages run (after staging to raw_md):
+    clean → canonicalize → classify → rewrite → prioritize → wiki
+    (scan and convert are skipped — files arrive as clean markdown)
 """
 
 _CONFIG_EXTENDED = """

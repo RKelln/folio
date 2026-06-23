@@ -71,6 +71,7 @@ application_and_budget                 # multi-type file
 | `staff_board` | Staff list, board of directors, bios |
 | `support_material` | Promotional material, press, supplementary docs |
 | `agreement` | Letter of agreement, contract, declaration |
+| `webpage` | Pre-scraped website page (ingested via `folio website`) |
 
 ---
 
@@ -219,6 +220,48 @@ Higher-numbered submissions are considered more authoritative. Content similarit
 | **rewrite** | Uses filename-derived metadata (funder, type, year) as hints in LLM prompts. Does not rename files. |
 | **prioritize** | Groups files by `written` year from frontmatter. Does not parse filenames. |
 | **wiki** | Uses frontmatter fields for metadata. Does not parse filenames. |
+
+---
+
+## Website Files
+
+Website markdown files ingested via `folio website` follow a different convention from the standard `FUNDER__Year_Description__Type.md` format. These files represent scraped web page content (e.g., an organization's "About Us" page or funder program description).
+
+```
+{ORG_ABBREV}__{YYYY-MM-DD}__{name_slug}__webpage.md
+```
+
+The format consists of three segments separated by `__`:
+
+| Position | Segment | Required | Example |
+|----------|---------|----------|---------|
+| 1 | Organization abbreviation | Yes | `IA`, `ARC` |
+| 2 | Scraped date in `YYYY-MM-DD` format | Yes | `2025-06-01` |
+| 3 | Name slug derived from URL or `--name` override | Yes | `about`, `our_mission` |
+
+The final segment `webpage` is the document type tag (always `webpage` for website files).
+
+Examples:
+
+```
+IA__2025-06-01__about__webpage.md
+ARC__2025-01-15__board_of_directors__webpage.md
+```
+
+### How the slug is derived
+
+The name slug is derived from the source URL's final path component, with extensions and special characters removed:
+
+- `https://example.com/about` → slug: `about`
+- `https://example.com/pages/our-mission.html` → slug: `our_mission`
+- `https://example.com` (no path) → slug: `example_com`
+- Empty/missing path → slug: `webpage`
+
+Use `--name` to override the slug when ingesting a single file:
+
+```bash
+folio website --source page.md --name custom-slug
+```
 
 ---
 

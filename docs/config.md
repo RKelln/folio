@@ -146,6 +146,7 @@ doc_types:
   - staff_board
   - support_material
   - agreement
+  - webpage
 ```
 
 ---
@@ -786,6 +787,7 @@ doc_types:
   - staff_board
   - support_material
   - agreement
+  - webpage
 
 paths:
   raw_archive: "./archive/"
