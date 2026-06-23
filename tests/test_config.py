@@ -131,6 +131,7 @@ org:
         assert config.doc_types == [
             "application", "report", "budget", "notification",
             "activity_list", "staff_board", "support_material", "agreement",
+            "webpage",
         ]
 
     def test_defaults_not_overwritten_when_section_omitted(self, tmp_path):

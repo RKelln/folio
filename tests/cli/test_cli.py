@@ -33,6 +33,7 @@ CLI_MODULES = {
     "wiki": "folio.cli.wiki",
     "install-agent": "folio.cli.install_agent",
     "validate": "folio.cli.validate",
+    "website": "folio.cli.website",
 }
 
 
@@ -87,6 +88,7 @@ REQUIRED_ARG_CLIS = [
     ("skills", 2, None),
     ("convert", 2, None),
     ("test-skills", 2, None),
+    ("website", 2, None),
 ]
 
 
