@@ -392,7 +392,8 @@ def _validate_priorities(
             continue
         prio = info.get("priority")
         try:
-            prio = int(prio)
+            if prio is not None:
+                prio = int(prio)
         except (TypeError, ValueError):
             pass
         if prio in [1, 2, 3]:
@@ -642,7 +643,8 @@ def prioritize_file(
         if isinstance(pdata, dict):
             prio = pdata.get("priority")
             try:
-                prio = int(prio)
+                if prio is not None:
+                    prio = int(prio)
             except (TypeError, ValueError):
                 pass
             if prio in [1, 2, 3]:

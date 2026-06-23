@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import pytest
+
 from folio.core.frontmatter import (
-    extract_year,
-    parse_frontmatter,
-    get_file_year,
+    apply_frontmatter,
     dict_to_frontmatter,
-    update_frontmatter,
-    strip_existing_frontmatter,
-    sanitize_frontmatter,
+    extract_year,
+    get_file_year,
     normalize_field_aliases,
     normalize_field_values,
-    apply_frontmatter,
+    parse_frontmatter,
+    sanitize_frontmatter,
+    strip_existing_frontmatter,
+    update_frontmatter,
 )
 
 

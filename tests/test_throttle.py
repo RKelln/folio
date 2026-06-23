@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+
 import pytest
 
 from folio.core.throttle import RateLimiter

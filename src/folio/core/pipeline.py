@@ -440,9 +440,9 @@ def _run_convert(config: ProjectConfig, manifest: dict | None = None, resume: bo
             src_path = raw_root / ref.path
             if not src_path.exists():
                 src_path = raw_root / ref.name
-            result = converter.convert_traced(src_path)
-            total_cost += result.cost_usd
-            md = result.markdown
+            conv = converter.convert_traced(src_path)
+            total_cost += conv.cost_usd
+            md = conv.markdown
             if md:
                 out_path = out_dir / (src_path.stem + ".md")
                 out_path.write_text(md, encoding="utf-8")
@@ -451,8 +451,8 @@ def _run_convert(config: ProjectConfig, manifest: dict | None = None, resume: bo
                     update_file(
                         manifest,
                         out_path.name,
-                        converter_tier=result.tier,
-                        conversion_cost_usd=result.cost_usd,
+                        converter_tier=conv.tier,
+                        conversion_cost_usd=conv.cost_usd,
                     )
             else:
                 failed += 1

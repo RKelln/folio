@@ -16,36 +16,30 @@ Covers:
 
 from __future__ import annotations
 
-import json
 import textwrap
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
-
-from folio.core.errors import FileStatus, ProcessingTier
+from folio.core.errors import ProcessingTier
 from folio.core.rewriter import (
-    _normalize_tier,
-    _to_processing_tier,
-    _tier_value,
-    _deep_merge_rewrite,
-    _get_tier_config,
-    _build_heading_taxonomy,
-    _build_frontmatter_instructions,
-    _build_metadata_block,
-    _entry_to_fm_fields,
-    _build_prompts,
-    _add_metadata_only,
-    _process_single,
-    rewrite_file,
-    rewrite_directory,
-    _dry_run_summary,
-    print_summary,
     DEFAULT_REWRITE_CONFIG,
+    _add_metadata_only,
+    _build_frontmatter_instructions,
+    _build_heading_taxonomy,
+    _build_metadata_block,
+    _build_prompts,
+    _deep_merge_rewrite,
+    _dry_run_summary,
+    _entry_to_fm_fields,
+    _get_tier_config,
+    _normalize_tier,
+    _process_single,
+    _tier_value,
+    _to_processing_tier,
+    print_summary,
+    rewrite_directory,
+    rewrite_file,
 )
-
 from tests.conftest import make_test_config
-
 
 # ── Sample content fixtures ─────────────────────────────────────────────────
 

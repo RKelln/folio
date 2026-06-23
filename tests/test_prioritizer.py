@@ -31,25 +31,23 @@ import pytest
 
 from folio.core.prioritizer import (
     DEFAULT_PRIORITIZE_CONFIG,
-    _resolve_config,
+    _build_digest,
     _build_rubric_text,
     _build_system_prompt,
     _build_user_prompt,
-    _build_digest,
     _format_file_digest,
     _group_files_by_year,
-    _split_large_groups,
-    _parse_llm_response,
-    _validate_priorities,
-    _process_group,
     _group_sort_key,
+    _parse_llm_response,
+    _process_group,
+    _resolve_config,
     _scan_files,
-    prioritize_file,
+    _split_large_groups,
+    _validate_priorities,
     prioritize_directory,
+    prioritize_file,
 )
-
 from tests.conftest import make_test_config
-
 
 # ── Sample fixtures ──────────────────────────────────────────────────────
 

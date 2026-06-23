@@ -136,13 +136,13 @@ def main(argv: list[str] | None = None) -> None:
 
     for f in files:
         try:
-            result = converter.convert_traced(f)
-            if result.markdown:
+            conv = converter.convert_traced(f)
+            if conv.markdown:
                 out_path = dest / (f.stem + ".md")
-                out_path.write_text(result.markdown, encoding="utf-8")
+                out_path.write_text(conv.markdown, encoding="utf-8")
                 success += 1
                 if not args.json_output:
-                    print(f"  {f.name} \u2192 {result.tier}")
+                    print(f"  {f.name} \u2192 {conv.tier}")
             else:
                 failed += 1
                 errors.append(f"{f.name}: converter returned empty result")

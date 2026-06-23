@@ -185,7 +185,7 @@ def _remove_useless_headings(
 
 def _remove_form_field_labels(text: str) -> str:
     lines = text.split('\n')
-    result = []
+    result: list[str] = []
     i = 0
     while i < len(lines):
         line_stripped = lines[i].strip()

@@ -1,20 +1,18 @@
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
 from folio.core.repacker import (
-    _detect_funder_from_segments,
-    _detect_year_from_segments,
-    _detect_type_from_segments,
-    _detect_description_from_segments,
     _build_filename,
     _confidence_score,
-    scan_nested,
+    _detect_description_from_segments,
+    _detect_funder_from_segments,
+    _detect_type_from_segments,
+    _detect_year_from_segments,
     _resolve_collision,
     repack_files,
-    TYPE_KEYWORDS,
+    scan_nested,
 )
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 

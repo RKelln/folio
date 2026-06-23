@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 from folio.core.cleaner import clean_markdown
 
 

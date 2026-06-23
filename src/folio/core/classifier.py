@@ -219,18 +219,21 @@ def _tokenize(expr: str) -> list[tuple[str, str | int | float]]:
     tokens: list[tuple[str, str | int | float]] = []
     for m in _TOKEN_RE.finditer(expr):
         kind = m.lastgroup
-        value: str | int | float = m.group(kind)
+        if kind is None:
+            continue
+        raw = m.group(kind)
+        value: str | int | float
         if kind == "STRING":
-            value = value[1:-1]
+            value = raw[1:-1]
         elif kind == "NUMBER":
-            value = float(value) if "." in str(value) else int(value)
+            value = float(raw) if "." in raw else int(raw)
         elif kind == "NAME":
-            kind = "KEYWORD" if value.lower() in _KEYWORDS else "NAME"
-            value = value if value.lower() in ("true", "false") else value
-            if isinstance(value, str) and value.lower() in ("true", "false"):
-                value = value.lower()
+            kind = "KEYWORD" if raw.lower() in _KEYWORDS else "NAME"
+            value = raw.lower() if raw.lower() in ("true", "false") else raw
         elif kind == "UNKNOWN":
             continue
+        else:
+            value = raw
         tokens.append((kind, value))
     return tokens
 
@@ -304,7 +307,7 @@ class _LegacyParser:
         """or_expr := and_expr ("or" and_expr)*"""
         left = self._parse_and()
         parts: list[dict] = []
-        while self._peek() and self._peek()[0] == "KEYWORD" and self._peek()[1] == "or":
+        while (peeked := self._peek()) is not None and peeked[0] == "KEYWORD" and peeked[1] == "or":
             if not parts:
                 parts.append(left)
             self._consume("KEYWORD")
@@ -317,7 +320,7 @@ class _LegacyParser:
         """and_expr := not_expr ("and" not_expr)*"""
         left = self._parse_not()
         parts: list[dict] = []
-        while self._peek() and self._peek()[0] == "KEYWORD" and self._peek()[1] == "and":
+        while (peeked := self._peek()) is not None and peeked[0] == "KEYWORD" and peeked[1] == "and":
             if not parts:
                 parts.append(left)
             self._consume("KEYWORD")
@@ -328,7 +331,7 @@ class _LegacyParser:
 
     def _parse_not(self) -> dict:
         """not_expr := "not" not_expr | atom"""
-        if self._peek() and self._peek()[0] == "KEYWORD" and self._peek()[1] == "not":
+        if (peeked := self._peek()) is not None and peeked[0] == "KEYWORD" and peeked[1] == "not":
             self._consume("KEYWORD")
             inner = self._parse_not()
             return {"type": "not_", "condition": inner}
@@ -351,7 +354,7 @@ class _LegacyParser:
     def _parse_name_or_keyword(self) -> dict:
         """Parse a name token — may be func call, method call, comparison, or bare."""
         first = self._consume()
-        name = first[1]
+        name = str(first[1])
 
         # Handle bare true/false
         if first[0] == "KEYWORD" and name in ("true", "false"):
@@ -366,7 +369,7 @@ class _LegacyParser:
             # Method call: name.method(args)
             self._consume("DOT")
             method_tok = self._consume("NAME")
-            method = method_tok[1]
+            method = str(method_tok[1])
             args = self._parse_arg_list()
             return self._build_method_call(name, method, args)
 
@@ -377,8 +380,9 @@ class _LegacyParser:
 
         if nxt and nxt[0] == "OP":
             # Comparison: name OP value
-            op = self._consume("OP")[1]
-            val = self._consume("NUMBER")[1]
+            op = str(self._consume("OP")[1])
+            raw_val = self._consume("NUMBER")[1]
+            val: int | float = raw_val if isinstance(raw_val, (int, float)) else float(raw_val)
             return self._build_comparison(name, op, val)
 
         # Bare name (boolean)
@@ -397,10 +401,11 @@ class _LegacyParser:
             # Caller already consumed LPAREN or there's no arg list
             return []
         args: list[str] = []
-        while self._peek() and self._peek()[0] != "RPAREN":
+        while (peeked := self._peek()) is not None and peeked[0] != "RPAREN":
             tok = self._consume("STRING")
             args.append(str(tok[1]))
-            if self._peek() and self._peek()[0] == "COMMA":
+            nxt = self._peek()
+            if nxt is not None and nxt[0] == "COMMA":
                 self._consume("COMMA")
         self._consume("RPAREN")
         return args

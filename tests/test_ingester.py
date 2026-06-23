@@ -1,23 +1,22 @@
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from folio.core.ingester import (
-    _sanitize_filename,
-    _build_output_filename,
-    _validate_funder,
-    _validate_doc_types,
-    ingest_document,
-)
 from folio.config.schema import (
-    ProjectConfig,
-    PathsConfig,
-    LLMConfig,
     ConverterConfig,
-    WikiConfig,
+    LLMConfig,
+    PathsConfig,
     ProcessingConfig,
+    ProjectConfig,
+    WikiConfig,
+)
+from folio.core.ingester import (
+    _build_output_filename,
+    _sanitize_filename,
+    _validate_doc_types,
+    _validate_funder,
+    ingest_document,
 )
 
 

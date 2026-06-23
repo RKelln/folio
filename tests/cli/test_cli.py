@@ -8,10 +8,10 @@ from __future__ import annotations
 import importlib
 import json
 import os
+
 import pytest
 
 from folio import __version__
-
 
 CLI_MODULES = {
     "clean": "folio.cli.clean",

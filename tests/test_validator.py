@@ -3,21 +3,19 @@
 from __future__ import annotations
 
 import json
+
 import pytest
-from pathlib import Path
 
 from folio.core.validator import (
-    validate_frontmatter,
     validate_content,
+    validate_directory,
+    validate_file,
     validate_file_size,
+    validate_frontmatter,
     validate_headings,
     validate_placeholders,
-    validate_file,
-    validate_directory,
 )
-from folio.config.schema import ProjectConfig
 from tests.conftest import make_test_config
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────────────
 
@@ -548,7 +546,7 @@ class TestValidateContent:
 
     def test_analyze_content_exception_handled(self, monkeypatch):
         """When analyze_content raises, issues remain empty (caught by handler)."""
-        from folio.core import validator, classifier
+        from folio.core import classifier
 
         def _raise(*args, **kwargs):
             raise RuntimeError("simulated analysis failure")

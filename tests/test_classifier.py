@@ -1,25 +1,24 @@
 from __future__ import annotations
 
 import pytest
-from pathlib import Path
+
 from folio.core.classifier import (
+    _TIER_MAP,
+    DEFAULT_CLASSIFY_CONFIG,
+    _detect_doc_types,
+    _detect_funder,
+    _evaluate_skip_rules,
+    _evaluate_tier_rules,
+    _make_context,
+    _normalize_rules,
+    analyze_content,
+    classify_file,
+    compile_patterns,
     evaluate_condition,
     evaluate_rule,
     parse_legacy_eval_condition,
-    _detect_funder,
-    _detect_doc_types,
-    compile_patterns,
-    analyze_content,
-    _make_context,
-    _evaluate_skip_rules,
-    _evaluate_tier_rules,
-    _normalize_rules,
-    _TIER_MAP,
-    classify_file,
-    DEFAULT_CLASSIFY_CONFIG,
 )
 from folio.core.errors import FileStatus, ProcessingTier
-
 
 CONTEXT = {
     "doc_types": ["application", "draft"],

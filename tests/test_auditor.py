@@ -1,22 +1,19 @@
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from folio.core.auditor import (
-    _scan_articles,
+    DEFAULT_AUDIT_CONFIG,
     _check_dead_links,
-    _check_thin_articles,
-    _check_near_duplicates,
     _check_missing_sections,
-    _check_suspicious_concepts,
+    _check_near_duplicates,
     _check_stale_content,
+    _check_suspicious_concepts,
+    _check_thin_articles,
+    _scan_articles,
     audit_summary_text,
     audit_wiki,
-    DEFAULT_AUDIT_CONFIG,
 )
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

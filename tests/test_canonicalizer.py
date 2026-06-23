@@ -1,30 +1,29 @@
 from __future__ import annotations
 
 import copy
-import pytest
 from pathlib import Path
+
 from folio.core.canonicalizer import (
     DEFAULT_CANONICALIZE_CONFIG,
-    _parse_filename_segments,
-    _score_filename,
+    _app_key,
+    _build_doc_identity,
+    _detect_category_in_segments,
     _detect_drafts,
     _detect_duplicates,
-    _group_files,
-    _normalize_for_comparison,
-    _name_similarity_jaccard,
-    _extract_date,
-    _build_doc_identity,
     _detect_submission_in_segments,
-    _detect_category_in_segments,
-    _strip_version_suffixes,
-    _app_key,
+    _extract_date,
+    _group_files,
+    _load_snippets,
+    _name_similarity_jaccard,
+    _normalize_for_comparison,
     _pairwise_similarity,
     _parse_all_files,
+    _parse_filename_segments,
     _process_group,
-    _load_snippets,
+    _score_filename,
+    _strip_version_suffixes,
     canonicalize_directory,
 )
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 

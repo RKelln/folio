@@ -10,7 +10,6 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
@@ -195,7 +194,7 @@ class TestOrgLibraryOrchestrator:
 
 class TestEvaluation:
     def test_pass_on_all_criteria_met(self):
-        from folio.core.orchestrator import evaluate, EvalCriteria
+        from folio.core.orchestrator import EvalCriteria, evaluate
 
         output = "The OAC grant application covers years 2015-2024.\n"
         output += "Source: OAC__2024_grant.md, OAC__2023_grant.md"
@@ -207,7 +206,7 @@ class TestEvaluation:
         assert result.status == "pass"
 
     def test_fail_on_missing_must_contain(self):
-        from folio.core.orchestrator import evaluate, EvalCriteria
+        from folio.core.orchestrator import EvalCriteria, evaluate
 
         criteria = EvalCriteria(must_contain=["MISSING_PHRASE"])
         result = evaluate("Some output without the phrase.", criteria)
@@ -215,42 +214,42 @@ class TestEvaluation:
         assert any("MISSING_PHRASE" in e for e in result.errors)
 
     def test_fail_on_insufficient_sources(self):
-        from folio.core.orchestrator import evaluate, EvalCriteria
+        from folio.core.orchestrator import EvalCriteria, evaluate
 
         criteria = EvalCriteria(min_source_count=5)
         result = evaluate("Only one ref: - doc.md", criteria)
         assert result.status == "fail"
 
     def test_fail_on_word_count_out_of_range(self):
-        from folio.core.orchestrator import evaluate, EvalCriteria
+        from folio.core.orchestrator import EvalCriteria, evaluate
 
         criteria = EvalCriteria(word_count_range=(10, 20))
         result = evaluate("one two three", criteria)
         assert result.status == "fail"
 
     def test_pass_on_word_count_in_range(self):
-        from folio.core.orchestrator import evaluate, EvalCriteria
+        from folio.core.orchestrator import EvalCriteria, evaluate
 
         criteria = EvalCriteria(word_count_range=(1, 10))
         result = evaluate("one two three", criteria)
         assert result.status == "pass"
 
     def test_case_insensitive_must_contain(self):
-        from folio.core.orchestrator import evaluate, EvalCriteria
+        from folio.core.orchestrator import EvalCriteria, evaluate
 
         criteria = EvalCriteria(must_contain=["interaccess"])
         result = evaluate("InterAccess is an arts organization.", criteria)
         assert result.status == "pass"
 
     def test_year_counting(self):
-        from folio.core.orchestrator import evaluate, EvalCriteria
+        from folio.core.orchestrator import EvalCriteria, evaluate
 
         criteria = EvalCriteria(min_years_found=3)
         result = evaluate("Years: 2020, 2021, 2022, 2023, 2024", criteria)
         assert result.status == "pass"
 
     def test_json_output(self, tmp_path):
-        from folio.core.orchestrator import format_report, EvalResult
+        from folio.core.orchestrator import EvalResult, format_report
 
         results = [
             EvalResult("test-1", "pass", {"must_contain:OK": True}),

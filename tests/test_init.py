@@ -1,20 +1,17 @@
 from __future__ import annotations
 
-import pytest
-from pathlib import Path
 from unittest.mock import patch
 
 import yaml
 
 from folio.core.init import (
-    init_project,
-    _minimal_config,
-    _abbreviate,
-    _write_yaml,
-    _write_env_key,
     AVAILABLE_PROFILES,
+    _abbreviate,
+    _minimal_config,
+    _write_env_key,
+    _write_yaml,
+    init_project,
 )
-
 
 # ── Unit: _abbreviate ────────────────────────────────────────────────────────
 

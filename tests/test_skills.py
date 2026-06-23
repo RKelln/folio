@@ -21,12 +21,9 @@ import pytest
 
 from folio.config.schema import (
     AgentmapConfig,
-    LLMConfig,
     ProjectConfig,
     WikiConfig,
 )
-from tests.conftest import make_test_config
-
 from folio.core.skills import (
     _CORE_DIR,
     _PLACEHOLDER_RE,
@@ -35,6 +32,7 @@ from folio.core.skills import (
     build_context,
     generate_skills,
 )
+from tests.conftest import make_test_config
 
 # ──────────────────────────────────────────────────────────────────────
 # Helpers
@@ -753,8 +751,9 @@ class TestIALibrarySkills:
 
     def test_generate_to_library_in_place(self):
         """Generate opencode skills directly into the org library directory."""
-        from folio.cli.skills import main
         import shutil
+
+        from folio.cli.skills import main
 
         output_dir = LIBRARY_DIR / "test_output_opencode"
         output_dir.mkdir(exist_ok=True)
