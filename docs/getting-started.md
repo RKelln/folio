@@ -205,9 +205,11 @@ folio pipeline --stages wiki
 
 This compiles all `markdown/` files into a sage-wiki knowledge base at `.folio/sage-wiki/`. A symlink at `wiki/` points to the compiled output.
 
+The pipeline automatically installs the **arts-org pack** (v1.1) — a bundled ontology with 23 entity types, 19 relation types, and 6 prompt templates. The pack is installed from `src/folio/templates/packs/arts-org/` via `sage-wiki pack install` and applied with `--mode merge`.
+
 The wiki creates:
-- **Concept articles** — cross-document entities (artists, exhibitions, grants, programs)
-- **Ontology** — relationships between entities (funded_by, exhibited_at, governed_by)
+- **Concept articles** — cross-document entities (artists, exhibitions, grants, programs, events, workshops, festivals, news)
+- **Ontology** — relationships between entities (funded_by, exhibited_at, governed_by, speaks_at, teaches, part_of, etc.)
 - **Search index** — hybrid BM25 + vector search
 
 ## 10. Generate agent skills

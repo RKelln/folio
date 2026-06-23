@@ -122,25 +122,27 @@ wiki:
 
 1. **`init()`** creates the wiki project directory under `.folio/sage-wiki/`, writes `config.yaml` (with pack, LLM settings, and embed config), and creates the `raw/` directory.
 
-2. **`add_documents()`** creates a symlink `raw/ → ../markdown/` inside the wiki project, so rewritten files are available without copying. Duplicate filenames are skipped.
+2. **Pack installation** — The pipeline automatically runs `sage-wiki pack install <templates/packs/arts-org>` followed by `sage-wiki pack apply arts-org --mode merge`. The pack is bundled at `src/folio/templates/packs/arts-org/`. It ships with 23 entity types, 19 relation types, and 6 prompt templates (v1.1). The install step copies the pack into sage-wiki's local store; the apply step merges it into the project configuration. Both steps are skipped if `sage-wiki` is not on `PATH`.
 
-3. **`compile()`** invokes `sage-wiki compile` as a subprocess with a 1-hour timeout, after ensuring the API key env var is set. This reads documents from `raw/`, extracts concepts, and writes structured output. After compile, a root `wiki/` symlink is created pointing to `.folio/sage-wiki/wiki/`.
+3. **`add_documents()`** creates a symlink `raw/ → ../markdown/` inside the wiki project, so rewritten files are available without copying. Duplicate filenames are skipped.
 
-4. **`search(query)`** runs `sage-wiki search <query>` and returns stdout.
+4. **`compile()`** invokes `sage-wiki compile` as a subprocess with a 1-hour timeout, after ensuring the API key env var is set. This reads documents from `raw/`, extracts concepts, and writes structured output. After compile, a root `wiki/` symlink is created pointing to `.folio/sage-wiki/wiki/`.
 
-5. **`query(question)`** runs `sage-wiki query <question>` and returns the synthesized answer from stdout.
+5. **`search(query)`** runs `sage-wiki search <query>` and returns stdout.
 
-6. **`status()`** runs `sage-wiki status` and returns project health information.
+6. **`query(question)`** runs `sage-wiki query <question>` and returns the synthesized answer from stdout.
 
-7. **`doctor()`** runs `sage-wiki doctor` for diagnostic checks.
+7. **`status()`** runs `sage-wiki status` and returns project health information.
 
-8. **`lint(pass_name)`** runs `sage-wiki lint` with optional pass filter for content quality rules.
+8. **`doctor()`** runs `sage-wiki doctor` for diagnostic checks.
 
-9. **`coverage()`** runs `sage-wiki coverage` to report concept extraction coverage.
+9. **`lint(pass_name)`** runs `sage-wiki lint` with optional pass filter for content quality rules.
 
-10. **`diff(since)`** runs `sage-wiki diff` to show what changed since last compile.
+10. **`coverage()`** runs `sage-wiki coverage` to report concept extraction coverage.
 
-11. **`verify(all_files, since, limit)`** runs `sage-wiki verify` for integrity checks on articles.
+11. **`diff(since)`** runs `sage-wiki diff` to show what changed since last compile.
+
+12. **`verify(all_files, since, limit)`** runs `sage-wiki verify` for integrity checks on articles.
 
 On subprocess failure, the backend logs the error and returns an empty string.
 

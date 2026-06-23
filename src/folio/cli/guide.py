@@ -144,7 +144,8 @@ CONFIGURATION (folio.yaml)
 
   wiki:
     type: sage_wiki                # Or: null
-    sage_wiki_pack: arts-org       # Pack name for sage-wiki
+    sage_wiki:
+      pack: arts-org               # Pack name for sage-wiki (v1.1)
 
   classification:                  # Optional custom classification rules
     skip_rules: [...]
@@ -401,6 +402,8 @@ WIKI BACKENDS
 ─────────────
   wiki:
     type: sage_wiki        # Requires sage-wiki binary on PATH
+    sage_wiki:
+      pack: arts-org       # v1.1 arts-org pack (23 entities, 19 relations)
     type: "null"           # No wiki (markdown-only output)
 
 ENVIRONMENT VARIABLES (.env)
