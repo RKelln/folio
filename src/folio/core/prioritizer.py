@@ -177,6 +177,8 @@ def _resolve_config(config) -> dict:
         if isinstance(p.get("processing"), dict):
             result["processing"].update(p["processing"])
 
+    result["rubric"] = {int(k): v for k, v in result["rubric"].items()}
+
     return result
 
 
