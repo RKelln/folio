@@ -736,14 +736,17 @@ def _run_rewrite(config: ProjectConfig, files: list[str] | None = None) -> dict:
                 src = clean_dir / filename
                 try:
                     result = rewrite_file(src, config)
-                    if isinstance(result, dict) and result.get("status") in ("success", "local_metadata"):
+                    if isinstance(result, dict):
                         if result.get("rewritten"):
                             dest = rewrite_dir / filename
                             dest.write_text(result["rewritten"], encoding="utf-8")
                         total_cost += result.get("cost_usd", 0.0)
-                        ok_count += 1
+                        if result.get("status") in ("success", "local_metadata", "corrupted", "empty"):
+                            ok_count += 1
+                        else:
+                            logger.warning("Rewrite returned unexpected status for %s: %s", filename, result.get("status"))
                     else:
-                        logger.warning("Rewrite returned non-ok for %s: %s", filename, result.get("status"))
+                        logger.warning("Rewrite returned non-dict for %s: %s", filename, type(result).__name__)
                 except Exception as exc:
                     logger.warning("Rewrite failed for %s: %s", filename, exc)
             print(f"  Rewrote {ok_count}/{len(existing)} files" if existing else "  No files to rewrite")
