@@ -749,9 +749,9 @@ agreements. We expect to reach 500 community members through our programming.
 
         manifest = create_manifest("Test Org")
         manifest["stages"] = {
-            "scan": {"status": "complete", "files": 3, "cost_usd": 0.0, "time_seconds": 1.0},
-            "convert": {"status": "complete", "files": 3, "cost_usd": 0.0, "time_seconds": 2.0},
-            "clean": {"status": "complete", "files": 3, "cost_usd": 0.0, "time_seconds": 0.5},
+            "scan": {"status": "ok", "files": 3, "cost_usd": 0.0, "time_seconds": 1.0},
+            "convert": {"status": "ok", "files": 3, "cost_usd": 0.0, "time_seconds": 2.0},
+            "clean": {"status": "ok", "files": 3, "cost_usd": 0.0, "time_seconds": 0.5},
         }
         manifest_path = rewrite_dir / "manifest.json"
         save_manifest(manifest, manifest_path)
@@ -768,7 +768,7 @@ agreements. We expect to reach 500 community members through our programming.
         assert "clean" in report["stages"]
 
         scan = report["stages"]["scan"]
-        assert scan["status"] == "complete"
+        assert scan["status"] == "ok"
         assert scan["files"] == 3
 
     def test_pipeline_with_real_markdown_files(self, tmp_path):

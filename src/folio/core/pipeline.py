@@ -87,7 +87,7 @@ def run_pipeline(
     for stage_name in enabled:
         stage_num = stage_index.get(stage_name, len(AVAILABLE_STAGES)) + 1
 
-        if resume and manifest["stages"].get(stage_name, {}).get("status") == "complete":
+        if resume and manifest["stages"].get(stage_name, {}).get("status") in ("ok", "warning"):
             stage_data = manifest["stages"][stage_name]
             print(
                 f"Stage {stage_num}/{total_stages}: {stage_name} \u2014 skipped"
