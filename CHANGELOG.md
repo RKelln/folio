@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.1] — Bug fixes — 2026-06-23
+
+### Fixed
+- Content duplication in rewritten markdown when body was longer than frontmatter
+- Pipeline resume now correctly skips completed stages
+
+### Infrastructure
+- Release workflow bumps `__version__` in `__init__.py` alongside `pyproject.toml`
+
 ## [v0.2.0] — Website Ingestion & Cascade Converter — 2026-06-24
 
 This release adds website markdown ingestion, a cascade converter system with
