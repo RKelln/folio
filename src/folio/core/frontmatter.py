@@ -202,8 +202,16 @@ def sanitize_frontmatter(text: str) -> str:
     # Try standard --- delimited frontmatter first
     fm, body = parse_frontmatter(text)
     if fm is not None:
-        end_idx = text.find('---', 3)
-        original_fm = '\n'.join(text.split('\n')[1:end_idx]).strip()
+        lines = text.split('\n')
+        closing_idx = None
+        for i, line in enumerate(lines[1:], start=1):
+            if line.strip() == '---':
+                closing_idx = i
+                break
+        if closing_idx is not None:
+            original_fm = '\n'.join(lines[1:closing_idx]).strip()
+        else:
+            original_fm = '\n'.join(lines[1:]).strip()
         # Normalize field values within frontmatter block only
         original_fm = normalize_field_values(original_fm)
         out = ['---', original_fm, '---', '']
