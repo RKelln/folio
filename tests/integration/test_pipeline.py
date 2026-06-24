@@ -990,6 +990,58 @@ each line item.
         assert scan_stage["status"] == "ok"
         assert scan_stage["files"] >= 0
 
+    def test_per_file_rewrite_writes_output(self, tmp_path, monkeypatch):
+        """Per-file rewrite path must write rewritten content to rewrite_md."""
+        from folio.config.loader import load_project_config
+        from folio.core.pipeline import run_pipeline
+
+        config_path = self._create_test_archive(tmp_path)
+        config = load_project_config(config_path)
+
+        clean_md = tmp_path / ".folio" / "cleaned"
+        rewrite_md = tmp_path / "markdown"
+        clean_md.mkdir(parents=True, exist_ok=True)
+        rewrite_md.mkdir(parents=True, exist_ok=True)
+
+        test_file = clean_md / "test_page.md"
+        test_file.write_text("# Test\n\nBody content.", encoding="utf-8")
+
+        mock_rewrite_result = {
+            "filepath": str(test_file),
+            "filename": "test_page.md",
+            "tier": "full",
+            "status": "success",
+            "rewritten": "# Test (rewritten)\n\nClean body.",
+            "cost_usd": 0.01,
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "elapsed_seconds": 0.5,
+            "error": None,
+        }
+
+        def _mock_rewrite_file(*args, **kwargs):
+            return mock_rewrite_result
+
+        monkeypatch.setattr(
+            "folio.core.rewriter.rewrite_file", _mock_rewrite_file
+        )
+
+        report = run_pipeline(
+            config_path=config_path,
+            stages=["rewrite"],
+            dry_run=False,
+            files=["test_page.md"],
+        )
+
+        assert report["stages"]["rewrite"]["status"] == "ok"
+        assert report["stages"]["rewrite"]["files"] == 1
+
+        output = rewrite_md / "test_page.md"
+        assert output.exists(), f"Expected {output} to exist"
+        content = output.read_text(encoding="utf-8")
+        assert "rewritten" in content
+        assert "Clean body" in content
+
 
 class TestConvertStageManifest:
     """Convert stage records the winning converter tier and per-file cost."""

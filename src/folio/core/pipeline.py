@@ -731,15 +731,19 @@ def _run_rewrite(config: ProjectConfig, files: list[str] | None = None) -> dict:
             existing = [f for f in files if (clean_dir / f).exists()]
             total_cost = 0.0
             ok_count = 0
+            rewrite_dir.mkdir(parents=True, exist_ok=True)
             for filename in existing:
                 src = clean_dir / filename
                 try:
                     result = rewrite_file(src, config)
-                    if isinstance(result, dict) and result.get("status") == "ok":
+                    if isinstance(result, dict) and result.get("status") in ("success", "local_metadata"):
+                        if result.get("rewritten"):
+                            dest = rewrite_dir / filename
+                            dest.write_text(result["rewritten"], encoding="utf-8")
                         total_cost += result.get("cost_usd", 0.0)
                         ok_count += 1
                     else:
-                        logger.warning("Rewrite returned non-ok for %s: %s", filename, result)
+                        logger.warning("Rewrite returned non-ok for %s: %s", filename, result.get("status"))
                 except Exception as exc:
                     logger.warning("Rewrite failed for %s: %s", filename, exc)
             print(f"  Rewrote {ok_count}/{len(existing)} files" if existing else "  No files to rewrite")
