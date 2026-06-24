@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.1] — Bug fixes — 2026-06-24
+
+### Fixed
+- Per-file rewrite path now correctly writes rewritten output to `rewrite_md` and tracks LLM costs for all statuses, not just success
+- Prioritizer no longer crashes on rubric key type mismatch when config merges integer keys with JSON-serialized string keys
+
 ## [v0.3.0] — Per-file pipeline processing — 2026-06-24
 
 `folio website ingest` now processes only the newly staged pages instead of
