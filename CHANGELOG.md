@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.0] — Per-file pipeline processing — 2026-06-24
+
+`folio website ingest` now processes only the newly staged pages instead of
+re-running the full archive through every pipeline stage.
+
+### Added
+- `run_pipeline(files=...)` parameter — limits pipeline stages to specific filenames. When set, the resume check is bypassed and each stage processes only the given files.
+
+### Fixed
+- `folio website ingest` no longer re-runs pipeline stages across the entire archive when staging new pages. Staged filenames are passed through automatically.
+- Pipeline resume check correctly identifies completed stages instead of always re-running them.
+
+### Infrastructure
+- CI now uses `uv sync --extra dev` to match the project's PEP 508 optional dependencies format.
+
 ## [v0.2.1] — Bug fixes — 2026-06-23
 
 ### Fixed
