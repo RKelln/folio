@@ -551,8 +551,8 @@ def _run_clean(config: ProjectConfig, files: list[str] | None = None) -> dict:
             if not src.exists():
                 continue
             content = src.read_text(encoding="utf-8", errors="replace")
-            cleaned = clean_markdown(content, classification)
-            dest.write_text(cleaned, encoding="utf-8")
+            cleaned_text = clean_markdown(content, classification)
+            dest.write_text(cleaned_text, encoding="utf-8")
             processed += 1
         print(f"  Cleaned {processed}/{len(files)} files")
         return {

@@ -245,8 +245,8 @@ def ingest_website(
         pipeline_stages = stages
 
     if pipeline_stages and files_staged > 0:
-        staged_filenames = [
-            r.get('filename')
+        staged_filenames: list[str] = [
+            r['filename']
             for r in staging_results
             if r.get('status') in ('staged', 'would_stage') and r.get('filename')
         ]
