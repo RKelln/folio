@@ -4,24 +4,78 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [v0.2.0] — Website Ingestion & Cascade Converter — 2026-06-24
+
+This release adds website markdown ingestion, a cascade converter system with
+benchmarking, a synthetic document corpus generator, and the arts-org sage-wiki
+knowledge pack v1.1 with webpage-aware concepts.
 
 ### Added
-- `folio corpus` — generate a deterministic, PII-free synthetic grant corpus for
-  benchmarking and golden-reference testing. Authors golden Markdown from a
-  standalone `corpus-spec.yaml`, renders to DOCX/XLSX/PDF/scanned-PDF, strips
-  authoring metadata, and runs a PII safety gate.
-  - Subcommands: `generate` (default) and `scan`.
-  - Document kinds: application, narrative, budget, activity_list, staff_board,
-    support_letter. Formats: md, docx, xlsx, pdf, pdf_scanned.
-  - Gate policy fails (non-strict) only on `denylisted_name`/`unscannable`;
-    structural findings (email/phone/currency/etc.) are counted but pass.
-    `--strict` fails on any finding (for scanning anonymized real documents).
-  - Optional `[corpus]` extra (faker, python-docx, openpyxl, pillow); PDF/OCR
-    rendering and metadata stripping additionally require external tools
-    (typst, pandoc, exiftool, poppler). See [docs/corpus.md](docs/corpus.md).
-  - Committed fixtures live in `benchmark/corpus/` and feed the converter
-    benchmark.
+
+- **`folio website` command** — ingest pre-scraped website markdown into the
+  document pipeline. Discovers `.md` files in a directory, parses scraper
+  headers (source URL, timestamp), stages into the archive with org-prefixed
+  filenames, and runs the full pipeline. Supports `--list` (preview metadata),
+  `--name` (override slug), `--stages` (select pipeline stages), `--dry-run`,
+  and `--json` output.
+- **Arts-org sage-wiki pack v1.1** — reusable knowledge pack shipped in
+  `templates/packs/arts-org/`. 23 entity types (6 new: event, workshop,
+  call_for_submissions, residency, festival, news_announcement) and 19 relation
+  types (5 new: speaks_at, teaches, part_of, submitted_to, announces). 6 LLM
+  prompt templates including 2 new webpage-tuned prompts
+  (`extract-webpage-concepts.md`, `summarize-webpage.md`). Auto-installed and
+  applied during `folio pipeline` wiki stage.
+- **Cascade converter** — automatically selects the best available PDF/DOCX
+  converter (Pandoc, Docling, Marker, LiteParse, Datalab fallback). Records
+  winning tier and per-file conversion cost in the manifest. Configurable via
+  `converters.cascade_order` and `converters.cascade_tiers` in `folio.yaml`.
+- **`folio convert-bench` CLI** — reproducible converter benchmarking.
+  Compares offline (Pandoc) and cascade converters against golden markdown
+  using deterministic, offline fidelity scoring across text, tables, structure,
+  and links/images categories. Emits a plaintext scorecard and Markdown
+  comparison report. Includes real PDF page counts via `pdfinfo`.
+- **`folio corpus` CLI** — generate and scan synthetic PII-free benchmark
+  corpora. Renders goldens (DOCX, PDF, XLSX) from markdown using deterministic
+  formatters. Scans outputs for accidental PII leakage. Shipped with a default
+  corpus spec and PII denylist.
+- **LiteParse converter** — new offline-first converter for plaintext, DOCX
+  (via python-docx), and basic PDF text extraction. No external binaries
+  required. Configured as the default converter.
+- **`sanitize_slug()`** public utility in `core.website` for canonicalizing
+  strings into filename-safe slugs.
+
+### Changed
+
+- **`ingest_website()` API** — removed redundant `config` parameter. Function
+  now loads its own config from `config_path`, consistent with `run_pipeline()`
+  and `ingest_document()`. Callers no longer need to pre-load config.
+- **PandocConverter** upgraded from stub to full implementation with offline
+  fidelity scoring support and page-count tracking.
+- **Manifest** now records converter tier and per-file conversion cost in USD.
+- **Config** supports cascade converter wiring: `converters.type: cascade`,
+  `cascade_order`, `cascade_tiers`, and `sage_wiki.pack` for the knowledge pack.
+- **`folio guide`** updated with website command, cascade converter config, and
+  correct sage-wiki config structure.
+
+### Fixed
+
+- **Pack prompt files excluded from pip-installed packages** — `**/*.md` added
+  to `setuptools.package-data` for `folio.templates`.
+- **Duplicate slug sanitization** — 3 identical inline regex blocks extracted
+  into shared `sanitize_slug()` function.
+- **Deferred import** of `run_pipeline` moved to module level in `core.website`.
+- **Hardcoded pack name** replaced with config-driven `config.wiki.sage_wiki_pack`.
+- **Missing subprocess timeout** on sage-wiki pack install/apply calls.
+- **Benchmark Overall score** now coverage-weights result by category weights.
+- **Ruff configuration** fixed to unblock CI; mypy errors resolved.
+
+### Infrastructure
+
+- Added `**/*.md` to setuptools package-data for template pack prompts.
+- Added `pdfinfo` as optional dependency for page-count tracking in benchmarks.
+- Added 1694 tests (up from previous release), including 9 new `sanitize_slug`
+  tests and comprehensive test suites for cascade converter, benchmark CLI,
+  corpus generator, and website ingestion.
 
 ## v0.1.1 — Cleanup & Polish — 2026-06-17
 
