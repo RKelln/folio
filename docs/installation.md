@@ -15,6 +15,27 @@ Local dev install: `cd folio && uv tool install --editable .`
 
 Verify: `folio --version`
 
+## Upgrading
+
+**If installed via `uv tool install git+...`:**
+
+```bash
+uv tool install --reinstall git+https://github.com/RKelln/folio@v0.2.0
+```
+
+Replace `v0.2.0` with the desired version tag. Run `folio --version` to confirm.
+
+**If installed from a clone + editable (`uv tool install --editable .`):**
+
+```bash
+cd folio
+git pull
+# or for a specific version:
+git fetch --tags && git checkout v0.2.0
+```
+
+No reinstall needed — `--editable` picks up changes immediately. Run `folio --version` to confirm.
+
 ## API keys
 
 Set in `.env` in your org library directory (folio auto-loads it):
