@@ -15,6 +15,7 @@ from folio.core.website import (
     discover_website_files,
     ingest_website,
     parse_scraper_header,
+    sanitize_slug,
     stage_website_file,
 )
 from tests.conftest import make_test_config
@@ -196,6 +197,44 @@ class TestSlugFromUrl:
         assert result == "webpage"
 
 
+# ── sanitize_slug ────────────────────────────────────────────────────────────
+
+
+class TestSanitizeSlug:
+    def test_normal_input(self):
+        assert sanitize_slug("about") == "about"
+
+    def test_special_chars(self):
+        assert sanitize_slug("our mission & vision") == "our_mission_vision"
+
+    def test_consecutive_special_chars(self):
+        assert sanitize_slug("a!@#b%)c") == "a_b_c"
+
+    def test_leading_trailing_special_chars(self):
+        assert sanitize_slug("!!!hello!!!") == "hello"
+
+    def test_empty_string(self):
+        assert sanitize_slug("") == "webpage"
+
+    def test_all_special_chars(self):
+        assert sanitize_slug("!@#$%^&*()") == "webpage"
+
+    def test_already_clean(self):
+        assert sanitize_slug("my_article_2025") == "my_article_2025"
+
+    def test_unicode_input(self):
+        result = sanitize_slug("café résumé naïve")
+        assert " " not in result
+        assert result.startswith("caf") or result.startswith("caf_")
+
+    def test_very_long_input(self):
+        long_input = "a" * 200 + "!@#" + "b" * 200
+        result = sanitize_slug(long_input)
+        assert result.startswith("a" * 200)
+        assert result.endswith("b" * 200)
+        assert "__" not in result
+
+
 # ── build_website_filename ──────────────────────────────────────────────────
 
 
@@ -323,10 +362,10 @@ class TestIngestWebsite:
     def test_no_md_files(self, tmp_path):
         empty = tmp_path / "empty"
         empty.mkdir()
-        raw_md = tmp_path / "raw_md"
-        config = _make_config(raw_md)
+        config_file = tmp_path / "folio.yaml"
+        _write_minimal_folio_yaml(config_file, tmp_path)
 
-        result = ingest_website(empty, config)
+        result = ingest_website(empty, config_path=str(config_file))
         assert result["status"] == "ok"
         assert result["staging"]["files_found"] == 0
         assert result["staging"]["files_staged"] == 0
@@ -339,9 +378,10 @@ class TestIngestWebsite:
         (src / "page2.md").write_text(_make_test_content(url="https://example.com/b"))
 
         raw_md = tmp_path / "raw_md"
-        config = _make_config(raw_md)
+        config_file = tmp_path / "folio.yaml"
+        _write_minimal_folio_yaml(config_file, tmp_path)
 
-        result = ingest_website(src, config, stages=[], dry_run=True)
+        result = ingest_website(src, config_path=str(config_file), stages=[], dry_run=True)
         assert result["status"] == "ok"
         assert result["staging"]["files_found"] == 2
         assert result["staging"]["files_staged"] == 2
@@ -355,9 +395,10 @@ class TestIngestWebsite:
         (src / "page1.md").write_text(_make_test_content(url="https://example.com/a"))
 
         raw_md = tmp_path / "raw_md"
-        config = _make_config(raw_md)
+        config_file = tmp_path / "folio.yaml"
+        _write_minimal_folio_yaml(config_file, tmp_path)
 
-        result = ingest_website(src, config, stages=[])
+        result = ingest_website(src, config_path=str(config_file), stages=[])
         assert result["pipeline"] is None
         assert list(raw_md.glob("*.md"))
 
@@ -366,13 +407,10 @@ class TestIngestWebsite:
         src.mkdir()
         (src / "page1.md").write_text(_make_test_content(url="https://example.com/a"))
 
-        raw_md = tmp_path / "raw_md"
-        config = _make_config(raw_md)
-
         config_file = tmp_path / "folio.yaml"
         _write_minimal_folio_yaml(config_file, tmp_path)
 
-        result = ingest_website(src, config, config_path=str(config_file), stages=["clean"])
+        result = ingest_website(src, config_path=str(config_file), stages=["clean"])
         assert result["pipeline"] is not None
         pipeline = result["pipeline"]
         assert "stages" in pipeline
@@ -385,9 +423,10 @@ class TestIngestWebsite:
         (src / "invalid.md").write_text("# No scraper header\n")
 
         raw_md = tmp_path / "raw_md"
-        config = _make_config(raw_md)
+        config_file = tmp_path / "folio.yaml"
+        _write_minimal_folio_yaml(config_file, tmp_path)
 
-        result = ingest_website(src, config, stages=[])
+        result = ingest_website(src, config_path=str(config_file), stages=[])
         assert result["staging"]["files_found"] == 2
         assert result["staging"]["files_staged"] == 1
         assert result["staging"]["files_skipped"] == 1
@@ -400,9 +439,10 @@ class TestIngestWebsite:
             _make_test_content(url="https://example.com/long/path/to/article.html")
         )
         raw_md = tmp_path / "raw_md"
-        config = _make_config(raw_md)
+        config_file = tmp_path / "folio.yaml"
+        _write_minimal_folio_yaml(config_file, tmp_path)
 
-        result = ingest_website(md_file, config, name="my-article", stages=[])
+        result = ingest_website(md_file, config_path=str(config_file), name="my-article", stages=[])
         assert result["staging"]["files_found"] == 1
         assert result["staging"]["files_staged"] == 1
         staged_file = list(raw_md.glob("*.md"))[0]
@@ -415,14 +455,15 @@ class TestIngestWebsite:
             _make_test_content(url="https://example.com/about")
         )
         raw_md = tmp_path / "raw_md"
-        config = _make_config(raw_md)
+        config_file = tmp_path / "folio.yaml"
+        _write_minimal_folio_yaml(config_file, tmp_path)
 
-        result = ingest_website(src, config, name="should-be-ignored", stages=[])
+        result = ingest_website(src, config_path=str(config_file), name="should-be-ignored", stages=[])
         staged_file = list(raw_md.glob("*.md"))[0]
         assert "about" in staged_file.name
         assert "should_be_ignored" not in staged_file.name
 
-    @patch("folio.core.pipeline.run_pipeline")
+    @patch("folio.core.website.run_pipeline")
     def test_pipeline_exception_caught(self, mock_run, tmp_path):
         mock_run.side_effect = RuntimeError("Boom")
         src = tmp_path / "source"
@@ -430,9 +471,10 @@ class TestIngestWebsite:
         (src / "page.md").write_text(_make_test_content())
 
         raw_md = tmp_path / "raw_md"
-        config = _make_config(raw_md)
+        config_file = tmp_path / "folio.yaml"
+        _write_minimal_folio_yaml(config_file, tmp_path)
 
-        result = ingest_website(src, config, stages=["clean"])
+        result = ingest_website(src, config_path=str(config_file), stages=["clean"])
         assert result["pipeline"] is not None
         assert result["pipeline"]["status"] == "error"
         assert "Boom" in result["pipeline"]["error"]

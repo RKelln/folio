@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -26,6 +25,7 @@ from folio.core.website import (
     discover_website_files,
     ingest_website,
     parse_scraper_header,
+    sanitize_slug,
 )
 
 
@@ -116,7 +116,6 @@ def main(argv: list[str] | None = None) -> None:
 
     result = ingest_website(
         source=source_path,
-        config=config,
         config_path=config_path,
         name=args.name if source_path.is_file() else None,
         stages=stages,
@@ -179,12 +178,7 @@ def _do_list(source: Path, name_hint: str | None = None) -> None:
                 entry["source_url"] = header["url"]
                 entry["scraped_at"] = header["scraped_at"]
                 if name_hint:
-                    slug = name_hint
-                    slug = re.sub(r'[^a-zA-Z0-9]', '_', slug)
-                    while '__' in slug:
-                        slug = slug.replace('__', '_')
-                    slug = slug.strip('_') or 'webpage'
-                    entry["url_slug"] = slug
+                    entry["url_slug"] = sanitize_slug(name_hint)
                 else:
                     entry["url_slug"] = _slug_from_url(header["url"])
                 entry["would_stage"] = True

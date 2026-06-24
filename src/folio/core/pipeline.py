@@ -10,6 +10,7 @@ and per-stage cost/timing tracking.
 from __future__ import annotations
 
 import logging
+import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -743,12 +744,14 @@ def _run_wiki(config: ProjectConfig) -> dict:
     wiki_dir = Path(config.paths.wiki_project)
     rewrite_dir = Path(config.paths.rewrite_md)
 
+    pack_name = config.wiki.sage_wiki_pack if hasattr(config.wiki, "sage_wiki_pack") else "arts-org"
+
     print(f"  Initializing wiki project at {wiki_dir}...")
     try:
         wiki_config = {
             "version": 1,
             "project": config.org.name,
-            "pack": config.wiki.sage_wiki_pack if hasattr(config.wiki, "sage_wiki_pack") else "arts-org",
+            "pack": pack_name,
             "sources": [{"path": "raw", "type": "auto", "watch": False}],
             "output": "wiki",
         }
@@ -775,6 +778,34 @@ def _run_wiki(config: ProjectConfig) -> dict:
             }
             wiki_config["embed"] = {"provider": "auto"}
         backend.init(wiki_dir, wiki_config, source_dir=rewrite_dir)
+
+        # Install and apply the pack from folio's templates
+        pack_dir = Path(__file__).resolve().parent.parent / "templates" / "packs" / pack_name
+        if pack_dir.is_dir():
+            try:
+                result = subprocess.run(
+                    ["sage-wiki", "pack", "install", str(pack_dir)],
+                    cwd=str(wiki_dir),
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=300,
+                )
+                logger.debug("sage-wiki pack install stdout:\n%s", result.stdout.strip())
+                result = subprocess.run(
+                    ["sage-wiki", "pack", "apply", pack_name, "--mode", "merge"],
+                    cwd=str(wiki_dir),
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=300,
+                )
+                logger.debug("sage-wiki pack apply stdout:\n%s", result.stdout.strip())
+                logger.info("Pack %s v1.1 installed and applied", pack_name)
+            except FileNotFoundError:
+                logger.warning("sage-wiki binary not found — pack install/apply skipped")
+            except subprocess.CalledProcessError as e:
+                logger.warning("Failed to install/apply pack %s: %s", pack_name, e.stderr.strip() if e.stderr else str(e))
     except Exception as exc:
         return {
             "stage": "wiki",

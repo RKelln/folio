@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from folio.core.frontmatter import apply_frontmatter, dict_to_frontmatter, parse_frontmatter
+from folio.core.pipeline import run_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,14 @@ def _year_from_iso(iso_str: str) -> int:
     raise ValueError(f"Cannot extract year from: {iso_str!r}")
 
 
+def sanitize_slug(raw: str) -> str:
+    slug = re.sub(r'[^a-zA-Z0-9]', '_', raw)
+    while '__' in slug:
+        slug = slug.replace('__', '_')
+    slug = slug.strip('_')
+    return slug or 'webpage'
+
+
 def _slug_from_url(url: str) -> str:
     """Extract a filename-safe slug from a URL path."""
     parsed = urlparse(url)
@@ -75,12 +84,7 @@ def _slug_from_url(url: str) -> str:
     if '.' in slug:
         slug = slug.rsplit('.', 1)[0]
 
-    slug = re.sub(r'[^a-zA-Z0-9]', '_', slug)
-    while '__' in slug:
-        slug = slug.replace('__', '_')
-    slug = slug.strip('_')
-
-    return slug or 'webpage'
+    return sanitize_slug(slug)
 
 
 def build_website_filename(org_abbrev: str, scraped_at: str, name_slug: str) -> str:
@@ -137,10 +141,7 @@ def stage_website_file(
         return result
 
     if name_override:
-        slug = re.sub(r'[^a-zA-Z0-9]', '_', name_override)
-        while '__' in slug:
-            slug = slug.replace('__', '_')
-        slug = slug.strip('_') or 'webpage'
+        slug = sanitize_slug(name_override)
     else:
         slug = _slug_from_url(url)
 
@@ -176,13 +177,15 @@ def stage_website_file(
 
 def ingest_website(
     source: Path,
-    config,
     config_path: str | Path = "folio.yaml",
     name: str | None = None,
     stages: list[str] | None = None,
     dry_run: bool = False,
 ) -> dict:
     """Main entry point. Discover, stage, optionally run pipeline. Returns full report dict."""
+    from folio.config.loader import load_project_config
+    config = load_project_config(config_path)
+
     source = source.resolve()
 
     files = discover_website_files(source)
@@ -242,8 +245,6 @@ def ingest_website(
         pipeline_stages = stages
 
     if pipeline_stages and files_staged > 0:
-        from folio.core.pipeline import run_pipeline
-
         try:
             pipeline_result = run_pipeline(
                 config_path=config_path,

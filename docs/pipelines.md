@@ -593,16 +593,17 @@ Compiles the rewritten, prioritized markdown files into a searchable wiki knowle
 ### How It Works
 
 1. Initializes the wiki project under `.folio/sage-wiki/`
-2. Creates a `raw/` symlink to the `markdown/` directory (no file copying)
-3. Compiles the wiki via `sage-wiki compile` subprocess (generates search indexes, cross-references, etc.)
-4. Creates root `wiki/` symlink pointing to compiled output for convenient access
+2. Installs and applies the `arts-org` pack from bundled folio templates (`sage-wiki pack install` + `sage-wiki pack apply arts-org --mode merge`)
+3. Creates a `raw/` symlink to the `markdown/` directory (no file copying)
+4. Compiles the wiki via `sage-wiki compile` subprocess (generates search indexes, cross-references, etc.)
+5. Creates root `wiki/` symlink pointing to compiled output for convenient access
 
 ### Key Configuration
 
 | Config option | Location | Effect |
 |---------------|----------|--------|
 | `wiki.type` | `folio.yaml` > `wiki` | Which backend: `sage_wiki` or `null` |
-| `wiki.sage_wiki_pack` | `folio.yaml` > `wiki` | Pack name for sage-wiki (default: `arts-org`) |
+| `wiki.sage_wiki.pack` | `folio.yaml` > `wiki` | Pack name for sage-wiki (default: `arts-org`, v1.1) |
 | `paths.wiki_project` | `folio.yaml` > `paths` | Where the wiki project is created (default: `./.folio/sage-wiki/`) |
 | `paths.rewrite_md` | `folio.yaml` > `paths` | Source directory for documents added to wiki |
 

@@ -1,0 +1,169 @@
+name: arts-org
+version: 1.1.0
+description: Ontology and prompts for arts organizations — grant applications, exhibitions, programs, governance, financial records, personnel, venues, equipment, web pages, and events
+author: InterAccess
+license: MIT
+tags:
+  - arts
+  - nonprofit
+  - grants
+  - exhibitions
+  - gallery
+  - artist-run-centre
+  - funding
+  - governance
+  - programs
+  - events
+  - workshops
+  - festivals
+  - web
+config:
+  compiler:
+    max_parallel: 4
+    debounce_seconds: 2
+    summary_max_tokens: 3000
+    article_max_tokens: 32000
+    extract_max_tokens: 65536
+    extract_batch_size: 8
+    auto_commit: true
+    auto_lint: true
+    mode: standard
+  search:
+    hybrid_weight_bm25: 0.7
+    hybrid_weight_vector: 0.3
+    default_limit: 15
+    chunk_size: 500
+  trust:
+    article_confidence_threshold: medium
+ontology:
+  relation_types:
+    - name: funded_by
+      synonyms: [funded by, granted by, awarded by, supported by, backed by, financed by]
+      valid_sources: [exhibition, program, grant_program, concept, financial_fact, partner_organization, workshop, event, festival, residency]
+      valid_targets: [funder, grant_program]
+    - name: reports_to
+      synonyms: [reports to, accountable to, files with, answers to, submits to]
+      valid_sources: [concept, grant_program, partner_organization]
+      valid_targets: [funder, concept]
+    - name: employs
+      synonyms: [employs, staffs, hires, retains, contracts, engages]
+      valid_sources: [concept, partner_organization]
+      valid_targets: [organizational_role, artist]
+    - name: scheduled_for
+      synonyms: [due on, deadline of, scheduled for, required by, must be filed by]
+      valid_sources: [concept, grant_program, deadline, exhibition, program, workshop, event, festival]
+      valid_targets: [deadline, concept, grant_program, exhibition, program]
+    - name: measured_in
+      synonyms: [quantified as, reported as, tracked via, documented in, recorded in]
+      valid_sources: [statistic, financial_fact]
+      valid_targets: [concept, source]
+    - name: exhibited_at
+      synonyms: [shown at, displayed at, presented at, held at, hosted by, staged at]
+      valid_sources: [exhibition, program, concept, artist, workshop, event, festival]
+      valid_targets: [venue, concept]
+    - name: participates_in
+      synonyms: [contributes to, takes part in, involved in, engaged with, presented at]
+      valid_sources: [artist, concept, partner_organization]
+      valid_targets: [exhibition, program, concept, workshop, event, festival]
+    - name: governs
+      synonyms: [oversees, directs, manages, steers, guides, coordinates]
+      valid_sources: [organizational_role]
+      valid_targets: [concept, partner_organization, exhibition, program]
+    - name: curated_by
+      synonyms: [curated by, organized by, selected by, programmed by, assembled by]
+      valid_sources: [exhibition, program, event, festival]
+      valid_targets: [artist, concept]
+    - name: partnered_with
+      synonyms: [partnered with, presented with, in collaboration with, co-presented by, collaborated with, worked with]
+      valid_sources: [exhibition, program, concept, partner_organization, workshop, event, festival]
+      valid_targets: [partner_organization, concept]
+    - name: donated_by
+      synonyms: [donated by, sponsored by, contributed by, gifted by, underwritten by]
+      valid_sources: [concept, exhibition, program, financial_fact, workshop, event, festival]
+      valid_targets: [donor, concept]
+    - name: member_of
+      synonyms: [member of, belongs to, holds membership with, joined]
+      valid_sources: [person, artist, volunteer, concept]
+      valid_targets: [membership, concept, partner_organization]
+    - name: board_member_of
+      synonyms: [board member of, serves on, director of, trustee of, chairs]
+      valid_sources: [person, artist, organizational_role]
+      valid_targets: [organizational_role, concept, partner_organization]
+    - name: volunteers_for
+      synonyms: [volunteers for, volunteers at, volunteers with, volunteer for]
+      valid_sources: [person, volunteer, artist, concept]
+      valid_targets: [concept, exhibition, program, workshop, event, festival]
+    - name: speaks_at
+      synonyms: [speaks at, presents at, lectures at, talks at, gives talk at, panels at]
+      valid_sources: [person, artist]
+      valid_targets: [event, festival, workshop, concept]
+    - name: teaches
+      synonyms: [teaches, instructs, leads workshop, facilitates, runs workshop, mentors]
+      valid_sources: [person, artist]
+      valid_targets: [workshop, program, residency, concept]
+    - name: part_of
+      synonyms: [part of, segment of, component of, feature of, included in, belongs to program]
+      valid_sources: [event, workshop, exhibition]
+      valid_targets: [festival, program, concept]
+    - name: submitted_to
+      synonyms: [submitted to, applied to, responded to, entered]
+      valid_sources: [artist, person]
+      valid_targets: [call_for_submissions, grant_program, concept]
+    - name: announces
+      synonyms: [announces, publishes, posts, releases, shares, communicates]
+      valid_sources: [concept, partner_organization]
+      valid_targets: [news_announcement, concept]
+  entity_types:
+    - name: funder
+      description: A grant-making organization or funding body (government arts council, foundation, corporate sponsor)
+    - name: donor
+      description: A donor, sponsor, private foundation, or individual contributor providing financial support outside government grant programs
+    - name: grant_program
+      description: A specific funding program, stream, or award (e.g., Operating Grant, Project Grant, Multi-Year)
+    - name: financial_fact
+      description: A specific dollar amount, budget line item, deficit, surplus, or grant award figure with exact numbers
+    - name: organizational_role
+      description: A staff position, board officer role, volunteer coordinator, or personnel category
+    - name: statistic
+      description: A specific demographic percentage, attendance figure, membership count, or quantitative metric
+    - name: deadline
+      description: An application deadline, reporting deadline, or compliance due date
+    - name: exhibition
+      description: An art exhibition, show, screening, or public presentation
+    - name: program
+      description: An educational program, workshop series, residency, mentorship, or community initiative. For individual events use 'event', for hands-on sessions use 'workshop', for artist residencies use 'residency', and for multi-event series use 'festival'.
+    - name: person
+      description: An individual person — board member, staff, contractor, volunteer, member, donor, or community participant (use artist for individuals engaged in creative or curatorial practice)
+    - name: artist
+      description: An individual artist, collective, curator, or creative practitioner (use person for individuals not engaged in creative practice)
+    - name: venue
+      description: A physical space, gallery location, facility, or site
+    - name: equipment
+      description: Technical equipment, fabrication tools, media arts hardware, or studio resources
+    - name: policy
+      description: An organizational policy, fee schedule, accessibility standard, or governance rule
+    - name: membership
+      description: A membership structure, category, tier, dues amount, or membership program
+    - name: volunteer
+      description: A volunteer position, volunteer hours, volunteer coordinator role, or volunteer program
+    - name: partner_organization
+      description: A collaborating organization, co-presenter, community partner, or institutional ally
+    - name: event
+      description: A panel, artist talk, lecture, performance, screening, or one-off public program. Fields typically include title, date, time, location, speakers/panelists, and description.
+    - name: workshop
+      description: A hands-on educational session. Fields typically include title, instructor, date, skills taught, tools used, prerequisites, capacity, and cost.
+    - name: call_for_submissions
+      description: An open call for artists, curators, or participants. Fields typically include title, deadline, eligibility criteria, theme, submission format, and compensation details.
+    - name: residency
+      description: An artist-in-residence program. Fields typically include artist name, duration, location, and deliverables.
+    - name: festival
+      description: A multi-event program such as Vector Festival. Fields typically include name, year, theme, and constituent events.
+    - name: news_announcement
+      description: An organizational news item. Fields typically include title, date, and category (hiring, AGM, policy change, closure, award, etc.).
+prompts:
+  - extract-concepts.md
+  - extract-webpage-concepts.md
+  - summarize-article.md
+  - summarize-paper.md
+  - summarize-webpage.md
+  - write-article.md
