@@ -71,6 +71,7 @@ def init_project(
 
     if not dry_run:
         _write_yaml(output_path, merged)
+        _write_gitignore()
 
     return {
         "config_path": str(output_path.resolve()),
@@ -231,6 +232,20 @@ def _write_yaml(output_path: Path, config: dict) -> None:
         f.write("# Edit this file to customize your pipeline.\n")
         f.write("\n")
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+
+def _write_gitignore() -> None:
+    gitignore = Path(".gitignore")
+    if gitignore.exists():
+        return
+    gitignore.write_text(
+        "# Secrets\n"
+        ".env\n"
+        "\n"
+        "# Pipeline intermediates — regenerable via `folio pipeline`\n"
+        ".folio/converted/\n"
+        ".folio/cleaned/\n"
+    )
 
 
 def _write_env_key(api_key: str) -> None:
