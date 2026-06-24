@@ -771,6 +771,90 @@ agreements. We expect to reach 500 community members through our programming.
         assert scan["status"] == "ok"
         assert scan["files"] == 3
 
+    def test_pipeline_files_parameter_limits_processing(self, tmp_path):
+        """When files is set, resume is skipped and stages process only those files."""
+        from folio.config.loader import load_project_config
+        from folio.core.pipeline import run_pipeline
+
+        config_path = self._create_test_archive(tmp_path)
+        config = load_project_config(config_path)
+
+        raw_md = tmp_path / ".folio" / "converted"
+        clean_md = tmp_path / ".folio" / "cleaned"
+        raw_md.mkdir(parents=True, exist_ok=True)
+        clean_md.mkdir(parents=True, exist_ok=True)
+
+        (raw_md / "keep.md").write_text("# Keep this file\n\nContent for keep.", encoding="utf-8")
+        (raw_md / "skip.md").write_text("# Skip this file\n\nContent for skip.", encoding="utf-8")
+
+        report = run_pipeline(
+            config_path=config_path,
+            stages=["clean"],
+            dry_run=False,
+            files=["keep.md"],
+        )
+
+        assert report["stages"]["clean"]["status"] == "ok"
+        assert report["stages"]["clean"]["files"] == 1
+
+        assert (clean_md / "keep.md").exists()
+        assert not (clean_md / "skip.md").exists()
+
+    def test_pipeline_files_overrides_resume(self, tmp_path):
+        """When files is set, resume is ignored even if manifest says stages are ok."""
+        from folio.config.loader import load_project_config
+        from folio.core.manifest import create_manifest, save_manifest
+        from folio.core.pipeline import run_pipeline
+
+        config_path = self._create_test_archive(tmp_path)
+        config = load_project_config(config_path)
+
+        rewrite_dir = tmp_path / "markdown"
+        rewrite_dir.mkdir(parents=True, exist_ok=True)
+        raw_md = tmp_path / ".folio" / "converted"
+        raw_md.mkdir(parents=True, exist_ok=True)
+        (raw_md / "new.md").write_text("# Just a test\n\nBody.", encoding="utf-8")
+
+        manifest = create_manifest("Test Org")
+        manifest["stages"] = {
+            "clean": {"status": "ok", "files": 3, "cost_usd": 0.0, "time_seconds": 1.0},
+        }
+        manifest_path = rewrite_dir / "manifest.json"
+        save_manifest(manifest, manifest_path)
+
+        report = run_pipeline(
+            config_path=config_path,
+            stages=["clean"],
+            dry_run=False,
+            resume=True,
+            files=["new.md"],
+        )
+
+        assert report["stages"]["clean"]["status"] == "ok"
+        assert report["stages"]["clean"]["files"] == 1
+
+    def test_pipeline_files_empty_list_noop(self, tmp_path):
+        """Empty files list is treated same as None — batch mode processes all."""
+        from folio.config.loader import load_project_config
+        from folio.core.pipeline import run_pipeline
+
+        config_path = self._create_test_archive(tmp_path)
+        config = load_project_config(config_path)
+
+        raw_md = tmp_path / ".folio" / "converted"
+        raw_md.mkdir(parents=True, exist_ok=True)
+        (raw_md / "exist.md").write_text("# exists\n\nContent", encoding="utf-8")
+
+        report = run_pipeline(
+            config_path=config_path,
+            stages=["clean"],
+            dry_run=False,
+            files=[],
+        )
+
+        assert report["stages"]["clean"]["status"] == "ok"
+        assert report["stages"]["clean"]["files"] == 1
+
     def test_pipeline_with_real_markdown_files(self, tmp_path):
         """Pipeline dry-run with realistic markdown files in archive."""
         from folio.config.loader import load_project_config

@@ -479,6 +479,28 @@ class TestIngestWebsite:
         assert result["pipeline"]["status"] == "error"
         assert "Boom" in result["pipeline"]["error"]
 
+    @patch("folio.core.website.run_pipeline")
+    def test_pipeline_receives_staged_filenames(self, mock_run, tmp_path):
+        mock_run.return_value = {"stages": {"clean": {"status": "ok", "files": 1}}}
+        src = tmp_path / "source"
+        src.mkdir()
+        (src / "page1.md").write_text(_make_test_content(url="https://example.com/about"))
+        (src / "page2.md").write_text(_make_test_content(url="https://example.com/contact"))
+
+        config_file = tmp_path / "folio.yaml"
+        _write_minimal_folio_yaml(config_file, tmp_path)
+
+        result = ingest_website(src, config_path=str(config_file), stages=["clean"])
+        assert result["pipeline"] is not None
+
+        mock_run.assert_called_once()
+        kwargs = mock_run.call_args[1]
+        assert "files" in kwargs
+        assert kwargs["files"] is not None
+        assert len(kwargs["files"]) == 2
+        for fname in kwargs["files"]:
+            assert "__webpage.md" in str(fname)
+
 
 # ── CLI tests ───────────────────────────────────────────────────────────────
 

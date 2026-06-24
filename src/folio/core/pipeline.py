@@ -34,6 +34,7 @@ def run_pipeline(
     stages: list[str] | None = None,
     dry_run: bool = False,
     resume: bool = True,
+    files: list[str] | None = None,
 ) -> dict:
     """Run the full folio pipeline.
 
@@ -45,6 +46,10 @@ def run_pipeline(
         stages: List of stages to run (default: all enabled stages).
         dry_run: Preview without making changes or API calls.
         resume: Skip already-completed stages (from manifest).
+            Ignored when ``files`` is specified.
+        files: Limit processing to specific filenames (not paths).
+            When set, resume is ignored and each stage processes only
+            matching files in its respective directory.
 
     Returns:
         Pipeline report dict with per-stage results and aggregate stats.
@@ -87,7 +92,7 @@ def run_pipeline(
     for stage_name in enabled:
         stage_num = stage_index.get(stage_name, len(AVAILABLE_STAGES)) + 1
 
-        if resume and manifest["stages"].get(stage_name, {}).get("status") in ("ok", "warning"):
+        if resume and not files and manifest["stages"].get(stage_name, {}).get("status") in ("ok", "warning"):
             stage_data = manifest["stages"][stage_name]
             print(
                 f"Stage {stage_num}/{total_stages}: {stage_name} \u2014 skipped"
@@ -101,7 +106,7 @@ def run_pipeline(
         print(f"Stage {stage_num}/{total_stages}: {stage_name}")
 
         start = time.time()
-        result = _run_stage(stage_name, config, dry_run, resume=resume, manifest=manifest)
+        result = _run_stage(stage_name, config, dry_run, resume=resume, manifest=manifest, files=files)
         elapsed = time.time() - start
 
         result["time_seconds"] = round(elapsed, 1)
@@ -240,6 +245,7 @@ def _run_stage(
     dry_run: bool,
     resume: bool = True,
     manifest: dict | None = None,
+    files: list[str] | None = None,
 ) -> dict:
     if dry_run:
         return _estimate_stage(stage_name, config)
@@ -248,19 +254,19 @@ def _run_stage(
         if stage_name == "scan":
             return _run_scan(config)
         elif stage_name == "convert":
-            return _run_convert(config, manifest=manifest, resume=resume)
+            return _run_convert(config, manifest=manifest, resume=resume, files=files)
         elif stage_name == "clean":
-            return _run_clean(config)
+            return _run_clean(config, files=files)
         elif stage_name == "canonicalize":
-            return _run_canonicalize(config)
+            return _run_canonicalize(config, files=files)
         elif stage_name == "classify":
-            return _run_classify(config)
+            return _run_classify(config, files=files)
         elif stage_name == "rewrite":
-            return _run_rewrite(config)
+            return _run_rewrite(config, files=files)
         elif stage_name == "prioritize":
-            return _run_prioritize(config)
+            return _run_prioritize(config, files=files)
         elif stage_name == "wiki":
-            return _run_wiki(config)
+            return _run_wiki(config, files=files)
         else:
             return {"status": "error", "error": f"Unknown stage: {stage_name}"}
     except Exception as exc:
@@ -383,7 +389,7 @@ def _run_scan(config: ProjectConfig) -> dict:
     }
 
 
-def _run_convert(config: ProjectConfig, manifest: dict | None = None, resume: bool = True) -> dict:
+def _run_convert(config: ProjectConfig, manifest: dict | None = None, resume: bool = True, files: list[str] | None = None) -> dict:
     from folio.adapters.converters import get_converter
     from folio.adapters.sources import get_source
 
@@ -394,11 +400,11 @@ def _run_convert(config: ProjectConfig, manifest: dict | None = None, resume: bo
 
     raw_root = Path(config.paths.raw_archive).resolve()
 
-    files = source.list_files()
+    source_files = source.list_files()
     convertible_exts = {ext.lower() for ext in converter.supported_extensions}
     convertible = [
         ref
-        for ref in files
+        for ref in source_files
         if Path(ref.name).suffix.lower() in convertible_exts
     ]
 
@@ -518,8 +524,8 @@ def _check_common_conversion_failures(converted: int, failures: list[dict]) -> N
         )
 
 
-def _run_clean(config: ProjectConfig) -> dict:
-    from folio.core.cleaner import clean_file
+def _run_clean(config: ProjectConfig, files: list[str] | None = None) -> dict:
+    from folio.core.cleaner import clean_file, clean_markdown
 
     raw_md_dir = Path(config.paths.raw_md)
     clean_md_dir = Path(config.paths.clean_md)
@@ -530,6 +536,29 @@ def _run_clean(config: ProjectConfig) -> dict:
             "status": "warning",
             "warning": f"raw_md directory not found: {raw_md_dir}",
             "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    if files:
+        classification = config.classification if hasattr(config, "classification") else {}
+        if not isinstance(classification, dict):
+            classification = {}
+        clean_md_dir.mkdir(parents=True, exist_ok=True)
+        processed = 0
+        for filename in files:
+            src = raw_md_dir / filename
+            dest = clean_md_dir / filename
+            if not src.exists():
+                continue
+            content = src.read_text(encoding="utf-8", errors="replace")
+            cleaned = clean_markdown(content, classification)
+            dest.write_text(cleaned, encoding="utf-8")
+            processed += 1
+        print(f"  Cleaned {processed}/{len(files)} files")
+        return {
+            "stage": "clean",
+            "status": "ok",
+            "files": processed,
             "cost_usd": 0.0,
         }
 
@@ -555,7 +584,7 @@ def _run_clean(config: ProjectConfig) -> dict:
     }
 
 
-def _run_canonicalize(config: ProjectConfig) -> dict:
+def _run_canonicalize(config: ProjectConfig, files: list[str] | None = None) -> dict:
     from folio.core.canonicalizer import DEFAULT_CANONICALIZE_CONFIG, canonicalize_directory
 
     clean_dir = Path(config.paths.clean_md)
@@ -605,8 +634,8 @@ def _run_canonicalize(config: ProjectConfig) -> dict:
     }
 
 
-def _run_classify(config: ProjectConfig) -> dict:
-    from folio.core.classifier import build_classify_config, classify_directory
+def _run_classify(config: ProjectConfig, files: list[str] | None = None) -> dict:
+    from folio.core.classifier import build_classify_config, classify_directory, classify_file
 
     clean_dir = Path(config.paths.clean_md)
 
@@ -616,6 +645,23 @@ def _run_classify(config: ProjectConfig) -> dict:
             "status": "warning",
             "warning": f"clean_md directory not found: {clean_dir}",
             "files": 0,
+            "cost_usd": 0.0,
+        }
+
+    classify_config = build_classify_config(config)
+
+    if files:
+        existing = [f for f in files if (clean_dir / f).exists()]
+        results = {f: classify_file(clean_dir / f, classify_config) for f in existing}
+        summary = _build_classify_summary(results)
+        print(f"  Classified {len(results)}/{len(files)} files")
+        return {
+            "stage": "classify",
+            "status": "ok",
+            "files": len(results),
+            "by_tier": summary.get("by_tier", {}),
+            "by_status": summary.get("by_status", {}),
+            "by_funder": summary.get("by_funder", {}),
             "cost_usd": 0.0,
         }
 
@@ -631,8 +677,6 @@ def _run_classify(config: ProjectConfig) -> dict:
 
     print(f"  Classifying {len(md_files)} files...")
 
-    classify_config = build_classify_config(config)
-
     manifest = classify_directory(clean_dir, classify_config)
     summary = manifest.get("summary", {})
 
@@ -647,9 +691,29 @@ def _run_classify(config: ProjectConfig) -> dict:
     }
 
 
-def _run_rewrite(config: ProjectConfig) -> dict:
+def _build_classify_summary(results: dict) -> dict:
+    tiers: dict[str, int] = {}
+    statuses: dict[str, int] = {}
+    funders: dict[str, int] = {}
+    for result in results.values():
+        tier = result.get("tier", "unknown")
+        tiers[tier] = tiers.get(tier, 0) + 1
+        status = result.get("status", "unknown")
+        statuses[status] = statuses.get(status, 0) + 1
+        funder = result.get("funder")
+        if funder:
+            funders[funder] = funders.get(funder, 0) + 1
+    return {
+        "total_files": len(results),
+        "by_tier": tiers,
+        "by_status": statuses,
+        "by_funder": funders,
+    }
+
+
+def _run_rewrite(config: ProjectConfig, files: list[str] | None = None) -> dict:
     try:
-        from folio.core.rewriter import rewrite_directory
+        from folio.core.rewriter import rewrite_directory, rewrite_file
     except ImportError:
         return {
             "stage": "rewrite",
@@ -663,13 +727,36 @@ def _run_rewrite(config: ProjectConfig) -> dict:
     rewrite_dir = Path(config.paths.rewrite_md)
 
     try:
+        if files:
+            existing = [f for f in files if (clean_dir / f).exists()]
+            total_cost = 0.0
+            ok_count = 0
+            for filename in existing:
+                src = clean_dir / filename
+                try:
+                    result = rewrite_file(src, config)
+                    if isinstance(result, dict) and result.get("status") == "ok":
+                        total_cost += result.get("cost_usd", 0.0)
+                        ok_count += 1
+                    else:
+                        logger.warning("Rewrite returned non-ok for %s: %s", filename, result)
+                except Exception as exc:
+                    logger.warning("Rewrite failed for %s: %s", filename, exc)
+            print(f"  Rewrote {ok_count}/{len(existing)} files" if existing else "  No files to rewrite")
+            return {
+                "stage": "rewrite",
+                "status": "ok" if ok_count > 0 or not existing else "warning",
+                "files": ok_count,
+                "cost_usd": total_cost,
+            }
+
         manifest_path = Path(config.paths.rewrite_md) / "manifest.json"
         result = rewrite_directory(clean_dir, config, manifest_path=manifest_path, dest=rewrite_dir)
-        files = len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0
+        files_count = len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0
         return {
             "stage": "rewrite",
             "status": "ok",
-            "files": files,
+            "files": files_count,
             "cost_usd": result.get("total_cost_usd", 0.0) if isinstance(result, dict) else 0.0,
         }
     except Exception as exc:
@@ -682,9 +769,9 @@ def _run_rewrite(config: ProjectConfig) -> dict:
         }
 
 
-def _run_prioritize(config: ProjectConfig) -> dict:
+def _run_prioritize(config: ProjectConfig, files: list[str] | None = None) -> dict:
     try:
-        from folio.core.prioritizer import prioritize_directory
+        from folio.core.prioritizer import prioritize_directory, prioritize_file
     except ImportError:
         return {
             "stage": "prioritize",
@@ -697,6 +784,29 @@ def _run_prioritize(config: ProjectConfig) -> dict:
     rewrite_dir = Path(config.paths.rewrite_md)
 
     try:
+        if files:
+            existing = [f for f in files if (rewrite_dir / f).exists()]
+            total_cost = 0.0
+            ok_count = 0
+            for filename in existing:
+                src = rewrite_dir / filename
+                try:
+                    result = prioritize_file(src, config)
+                    if isinstance(result, dict) and result.get("priority") is not None:
+                        total_cost += result.get("cost_usd", 0.0)
+                        ok_count += 1
+                    else:
+                        logger.warning("Prioritize returned no priority for %s: %s", filename, result)
+                except Exception as exc:
+                    logger.warning("Prioritize failed for %s: %s", filename, exc)
+            print(f"  Prioritized {ok_count}/{len(existing)} files" if existing else "  No files to prioritize")
+            return {
+                "stage": "prioritize",
+                "status": "ok" if ok_count > 0 or not existing else "warning",
+                "files": ok_count,
+                "cost_usd": total_cost,
+            }
+
         result = prioritize_directory(rewrite_dir, config)
         return {
             "stage": "prioritize",
@@ -714,7 +824,7 @@ def _run_prioritize(config: ProjectConfig) -> dict:
         }
 
 
-def _run_wiki(config: ProjectConfig) -> dict:
+def _run_wiki(config: ProjectConfig, files: list[str] | None = None) -> dict:
     import os
 
     from folio.adapters.wiki import get_wiki_backend
