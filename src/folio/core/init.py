@@ -242,9 +242,19 @@ def _write_gitignore() -> None:
         "# Secrets\n"
         ".env\n"
         "\n"
+        "# Raw source documents (PDFs/DOCX — not version-controlled)\n"
+        "archive/\n"
+        "\n"
         "# Pipeline intermediates — regenerable via `folio pipeline`\n"
         ".folio/converted/\n"
         ".folio/cleaned/\n"
+        "markdown/manifest.json\n"
+        "markdown/prioritize_progress.json\n"
+        "\n"
+        "# Runtime / agent artifacts\n"
+        ".opencode/\n"
+        ".sage/\n"
+        "hermes/\n"
     )
 
 
