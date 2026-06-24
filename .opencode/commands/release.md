@@ -42,6 +42,9 @@ git status --short
 
 # Current version in pyproject.toml
 grep '^version' pyproject.toml
+
+# Current __version__ in __init__.py (must match pyproject.toml)
+grep '__version__' src/folio/__init__.py
 ```
 
 Display to the user:
@@ -191,14 +194,18 @@ Verify the edit was applied by reading the first 30 lines back.
 
 ---
 
-## Step 6 — Bump version in pyproject.toml
+## Step 6 — Bump version in pyproject.toml and __init__.py
 
 ```bash
 # Update version field in pyproject.toml
 sed -i 's/^version = ".*"/version = "{new}"/' pyproject.toml
 
+# Update __version__ in __init__.py (folio --version reads this at runtime)
+sed -i 's/__version__ = ".*"/__version__ = "{new}"/' src/folio/__init__.py
+
 # Verify
 grep '^version' pyproject.toml
+grep '__version__' src/folio/__init__.py
 ```
 
 Where `{new}` is the bare version without `v` prefix (e.g. `0.1.0`).
@@ -208,7 +215,7 @@ Where `{new}` is the bare version without `v` prefix (e.g. `0.1.0`).
 ## Step 7 — Commit the changelog and version bump
 
 ```bash
-git add CHANGELOG.md pyproject.toml
+git add CHANGELOG.md pyproject.toml src/folio/__init__.py
 git commit -m "chore(release): bump to v{new}
 
 Generated-by: deepseek-v4-pro"
@@ -266,6 +273,7 @@ Install:
 Files modified:
   CHANGELOG.md              (v{new} entry added)
   pyproject.toml            (version bumped to {new})
+  src/folio/__init__.py     (__version__ bumped to {new})
   dist/RELEASE_NOTES_DRAFT.md  (can be deleted)
 ```
 
