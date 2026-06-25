@@ -10,7 +10,9 @@ and per-stage cost/timing tracking.
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,6 +29,39 @@ AVAILABLE_STAGES = [
     "scan", "convert", "clean", "canonicalize", "classify",
     "rewrite", "prioritize", "wiki",
 ]
+
+
+def _acquire_pipeline_lock(lock_path: Path) -> None:
+    """Acquire a PID-based pipeline lock. Fails gracefully on stale locks.
+
+    Writes the current PID to *lock_path*. On startup, if the lock exists
+    and the recorded PID is still alive, exit with an error.  If the
+    recorded PID is dead (stale lock after a crash), remove it and proceed.
+    """
+    if lock_path.exists():
+        try:
+            existing_pid = int(lock_path.read_text().strip())
+        except (ValueError, OSError):
+            lock_path.unlink(missing_ok=True)
+        else:
+            try:
+                os.kill(existing_pid, 0)
+            except OSError:
+                lock_path.unlink(missing_ok=True)
+            else:
+                print(
+                    f"Error: Pipeline is already running (PID {existing_pid}).\n"
+                    f"  If you are certain no pipeline is running, delete {lock_path}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path.write_text(str(os.getpid()))
+
+
+def _release_pipeline_lock(lock_path: Path) -> None:
+    lock_path.unlink(missing_ok=True)
 
 
 def run_pipeline(
@@ -60,96 +95,104 @@ def run_pipeline(
         p = Path(getattr(config.paths, path_attr))
         p.mkdir(parents=True, exist_ok=True)
 
-    manifest_path = Path(config.paths.rewrite_md) / "manifest.json"
-    manifest = load_manifest(manifest_path)
+    lock_path = Path(config.paths.rewrite_md).parent / "pipeline.lock"
+    if not dry_run:
+        _acquire_pipeline_lock(lock_path)
 
-    if stages is None:
-        enabled = list(AVAILABLE_STAGES)
-    else:
-        enabled = [s for s in AVAILABLE_STAGES if s in stages]
+    try:
+        manifest_path = Path(config.paths.rewrite_md) / "manifest.json"
+        manifest = load_manifest(manifest_path)
 
-    report: dict = {
-        "project": config.org.name,
-        "started": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "stages": {},
-        "total_cost_usd": 0.0,
-        "total_time_seconds": 0.0,
-    }
+        if stages is None:
+            enabled = list(AVAILABLE_STAGES)
+        else:
+            enabled = [s for s in AVAILABLE_STAGES if s in stages]
 
-    if "stages" not in manifest:
-        manifest["stages"] = {}
+        report: dict = {
+            "project": config.org.name,
+            "started": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "stages": {},
+            "total_cost_usd": 0.0,
+            "total_time_seconds": 0.0,
+        }
 
-    print(f"folio pipeline \u2014 {config.org.name} Grant Archive")
-    print("=" * 50)
-    print()
+        if "stages" not in manifest:
+            manifest["stages"] = {}
 
-    total_stages = len(AVAILABLE_STAGES)
-    total_cost = 0.0
-    total_time = 0.0
+        print(f"folio pipeline \u2014 {config.org.name} Grant Archive")
+        print("=" * 50)
+        print()
 
-    stage_index = {name: i for i, name in enumerate(AVAILABLE_STAGES)}
+        total_stages = len(AVAILABLE_STAGES)
+        total_cost = 0.0
+        total_time = 0.0
 
-    for stage_name in enabled:
-        stage_num = stage_index.get(stage_name, len(AVAILABLE_STAGES)) + 1
+        stage_index = {name: i for i, name in enumerate(AVAILABLE_STAGES)}
 
-        if resume and not files and manifest["stages"].get(stage_name, {}).get("status") in ("ok", "warning"):
-            stage_data = manifest["stages"][stage_name]
-            print(
-                f"Stage {stage_num}/{total_stages}: {stage_name} \u2014 skipped"
-                f" (already complete)"
-            )
-            report["stages"][stage_name] = stage_data
-            total_cost += stage_data.get("cost_usd", 0.0)
-            total_time += stage_data.get("time_seconds", 0.0)
-            continue
+        for stage_name in enabled:
+            stage_num = stage_index.get(stage_name, len(AVAILABLE_STAGES)) + 1
 
-        print(f"Stage {stage_num}/{total_stages}: {stage_name}")
+            if resume and not files and manifest["stages"].get(stage_name, {}).get("status") in ("ok", "warning"):
+                stage_data = manifest["stages"][stage_name]
+                print(
+                    f"Stage {stage_num}/{total_stages}: {stage_name} \u2014 skipped"
+                    f" (already complete)"
+                )
+                report["stages"][stage_name] = stage_data
+                total_cost += stage_data.get("cost_usd", 0.0)
+                total_time += stage_data.get("time_seconds", 0.0)
+                continue
 
-        start = time.time()
-        result = _run_stage(stage_name, config, dry_run, resume=resume, manifest=manifest, files=files)
-        elapsed = time.time() - start
+            print(f"Stage {stage_num}/{total_stages}: {stage_name}")
 
-        result["time_seconds"] = round(elapsed, 1)
-        result.setdefault("cost_usd", 0.0)
+            start = time.time()
+            result = _run_stage(stage_name, config, dry_run, resume=resume, manifest=manifest, files=files)
+            elapsed = time.time() - start
 
-        total_cost += result.get("cost_usd", 0.0)
-        total_time += elapsed
+            result["time_seconds"] = round(elapsed, 1)
+            result.setdefault("cost_usd", 0.0)
 
-        report["stages"][stage_name] = result
+            total_cost += result.get("cost_usd", 0.0)
+            total_time += elapsed
 
-        manifest["stages"][stage_name] = result
-        save_manifest(manifest, manifest_path)
+            report["stages"][stage_name] = result
 
-        _print_stage_summary(stage_name, result)
+            manifest["stages"][stage_name] = result
+            save_manifest(manifest, manifest_path)
 
-    report["completed"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    report["total_cost_usd"] = round(total_cost, 2)
-    report["total_time_seconds"] = round(total_time, 1)
+            _print_stage_summary(stage_name, result)
 
-    print()
-    print("=" * 50)
-    print("Pipeline complete!")
+        report["completed"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        report["total_cost_usd"] = round(total_cost, 2)
+        report["total_time_seconds"] = round(total_time, 1)
 
-    total_files = sum(
-        s.get("files", 0) or s.get("converted", 0) or 0
-        for s in report["stages"].values()
-        if s.get("status") == "ok"
-        and s.get("stage") not in ("scan", "convert", "rewrite", "prioritize")
-    )
-    if total_files == 0 and "classify" in report["stages"]:
-        total_files = report["stages"]["classify"].get("files", 0)
+        print()
+        print("=" * 50)
+        print("Pipeline complete!")
 
-    total_files_est = 0
-    if "scan" in report["stages"]:
-        total_files_est = report["stages"]["scan"].get("files", 0)
-    if total_files == 0:
-        total_files = total_files_est
+        total_files = sum(
+            s.get("files", 0) or s.get("converted", 0) or 0
+            for s in report["stages"].values()
+            if s.get("status") == "ok"
+            and s.get("stage") not in ("scan", "convert", "rewrite", "prioritize")
+        )
+        if total_files == 0 and "classify" in report["stages"]:
+            total_files = report["stages"]["classify"].get("files", 0)
 
-    print(f"  Files processed: {total_files}")
-    print(f"  Total cost: ${report['total_cost_usd']:.2f}")
-    print(f"  Total time: {_format_time(report['total_time_seconds'])}")
+        total_files_est = 0
+        if "scan" in report["stages"]:
+            total_files_est = report["stages"]["scan"].get("files", 0)
+        if total_files == 0:
+            total_files = total_files_est
 
-    return report
+        print(f"  Files processed: {total_files}")
+        print(f"  Total cost: ${report['total_cost_usd']:.2f}")
+        print(f"  Total time: {_format_time(report['total_time_seconds'])}")
+
+        return report
+    finally:
+        if not dry_run:
+            _release_pipeline_lock(lock_path)
 
 
 def _estimate_pipeline(config: ProjectConfig) -> dict:
