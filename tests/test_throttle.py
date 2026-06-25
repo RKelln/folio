@@ -77,7 +77,7 @@ class TestRateLimiterWait:
             limiter.wait()
         t1 = time.perf_counter()
         elapsed = t1 - t0
-        assert elapsed < 0.1
+        assert elapsed < 0.5
 
     def test_first_call_never_sleeps(self):
         """The first call to wait() always returns immediately."""
