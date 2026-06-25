@@ -325,6 +325,13 @@ def canonicalize_directory(
     if not files:
         return {}
 
+    # Webpages are inherently unique documents (different URLs) — skip
+    # canonicalization entirely to avoid false positives from draft markers
+    # appearing in URL slugs (e.g. "_working_" in event titles) and from
+    # content-based dedup on shared site boilerplate.
+    webpages = {p for p in files if _is_webpage(p)}
+    files = [p for p in files if p not in webpages]
+
     # ── Phase 1: parse every file ───────────────────────────────────────────
     file_data = _parse_all_files(files, config)
 
@@ -360,6 +367,9 @@ def canonicalize_directory(
             "status": "canonical" if info["canonical"] else "non_canonical",
             "reason": info["reason"] or "",
         }
+    # Include skipped webpages as canonical
+    for wp in webpages:
+        result[wp.name] = {"status": "canonical", "reason": "webpage — skipped canonicalization"}
 
     # ── Move non-canonical files ────────────────────────────────────────────
     if not dry_run and archive_dir:
