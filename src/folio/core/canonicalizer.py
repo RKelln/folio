@@ -16,6 +16,7 @@ from collections import defaultdict
 from difflib import SequenceMatcher
 from pathlib import Path
 
+from folio.core.frontmatter import parse_frontmatter
 from folio.core.prioritizer import _parse_llm_response
 
 logger = logging.getLogger(__name__)
@@ -342,7 +343,10 @@ def canonicalize_directory(
 
     # ── Phase 4: deduplicate within canonical set ───────────────────────────
     canonical_paths = [info["path"] for info in file_data.values() if info["canonical"]]
-    dup_pairs = _detect_duplicates(canonical_paths, config)
+    # Webpages are inherently unique documents (different URLs); dedup on them
+    # produces false positives from shared site boilerplate.
+    dedup_paths = [p for p in canonical_paths if not _is_webpage(p)]
+    dup_pairs = _detect_duplicates(dedup_paths, config)
     _resolve_duplicates(dup_pairs, file_data, config)
 
     # ── Phase 5: LLM ambiguous resolution (optional) ────────────────────────
@@ -673,6 +677,18 @@ def _load_snippets(infos: list[dict], directory: Path, max_chars: int = 2000) ->
         except (OSError, UnicodeDecodeError):
             logger.warning("Cannot load snippet from %s", fpath, exc_info=True)
             fi["content_snippet"] = ""
+
+
+def _is_webpage(path: Path) -> bool:
+    """Return True if *path* is a website page, checking filename then frontmatter."""
+    if path.name.endswith("__webpage.md"):
+        return True
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    fm, _body = parse_frontmatter(text)
+    return bool(fm and fm.get("type") == "webpage")
 
 
 def _normalize_for_comparison(text: str) -> str:
