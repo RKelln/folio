@@ -248,6 +248,8 @@ def _write_gitignore() -> None:
         "# Pipeline intermediates — regenerable via `folio pipeline`\n"
         ".folio/converted/\n"
         ".folio/cleaned/\n"
+        ".folio/non_canonical/\n"
+        ".folio/pipeline.lock\n"
         "markdown/manifest.json\n"
         "markdown/prioritize_progress.json\n"
         "\n"
