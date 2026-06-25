@@ -631,7 +631,7 @@ def _run_canonicalize(config: ProjectConfig, files: list[str] | None = None) -> 
     from folio.core.canonicalizer import DEFAULT_CANONICALIZE_CONFIG, canonicalize_directory
 
     clean_dir = Path(config.paths.clean_md)
-    archive_dir = Path(config.paths.rewrite_md) / ".non_canonical"
+    archive_dir = Path(config.paths.clean_md).parent / "non_canonical"
 
     if not clean_dir.is_dir():
         return {
