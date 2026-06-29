@@ -102,13 +102,13 @@ def _check_sage_wiki_binary(config) -> dict:
     return _check("sage-wiki", "error", "sage-wiki not found on PATH (go install github.com/xoai/sage-wiki/cmd/sage-wiki@latest)")
 
 
-def _check_symlinks(config) -> list[dict]:
+def _check_symlinks(config, config_dir: Path) -> list[dict]:
     """Verify root symlinks are intact."""
     results = []
     wiki_type = getattr(config.wiki, "type", "null") if hasattr(config, "wiki") else "null"
 
     if wiki_type == "sage-wiki":
-        public_link = Path("wiki")
+        public_link = config_dir / "wiki"
         wiki_path = Path(config.paths.wiki_project) / "wiki"
         if public_link.is_symlink():
             target = public_link.readlink()
@@ -221,7 +221,7 @@ def _run_wiki_doctor(config) -> list[dict]:
     return results
 
 
-def _run_all_checks(config, config_path: str) -> list[dict]:
+def _run_all_checks(config, config_path: str, config_dir: Path) -> list[dict]:
     """Run all health checks and return a flat list of results."""
     checks = []
 
@@ -240,7 +240,7 @@ def _run_all_checks(config, config_path: str) -> list[dict]:
     checks.append(_check_sage_wiki_binary(config))
 
     # 5. Symlinks
-    checks.extend(_check_symlinks(config))
+    checks.extend(_check_symlinks(config, config_dir))
 
     # 6. Pipeline directory state
     checks.extend(_check_pipeline_state(config))
@@ -371,6 +371,7 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     config_path = args.config
+    config_dir = Path(config_path).resolve().parent
 
     if not Path(config_path).exists():
         checks = [_check_config(config_path)]
@@ -385,7 +386,7 @@ def main(argv: list[str] | None = None) -> None:
         print(_format_output(checks, json_output=args.json_output), end="")
         sys.exit(1)
 
-    checks = _run_all_checks(config, config_path)
+    checks = _run_all_checks(config, config_path, config_dir)
     print(_format_output(checks, json_output=args.json_output), end="")
 
 
