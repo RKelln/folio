@@ -8,34 +8,13 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import re
+from pathlib import Path
 
 import pytest
 
 from folio import __version__
-
-CLI_MODULES = {
-    "clean": "folio.cli.clean",
-    "classify": "folio.cli.classify",
-    "rewrite": "folio.cli.rewrite",
-    "prioritize": "folio.cli.prioritize",
-    "canonicalize": "folio.cli.canonicalize",
-    "ingest": "folio.cli.ingest",
-    "audit": "folio.cli.audit",
-    "scan": "folio.cli.scan",
-    "pipeline": "folio.cli.pipeline",
-    "init": "folio.cli.init",
-    "skills": "folio.cli.skills",
-    "guide": "folio.cli.guide",
-    "teach": "folio.cli.teach",
-    "convert": "folio.cli.convert",
-    "repack": "folio.cli.repack",
-    "test-skills": "folio.cli.test_skills",
-    "wiki": "folio.cli.wiki",
-    "doctor": "folio.cli.doctor",
-    "install-agent": "folio.cli.install_agent",
-    "validate": "folio.cli.validate",
-    "website": "folio.cli.website",
-}
+from folio.cli.main import _COMMANDS as CLI_MODULES
 
 
 # ---------------------------------------------------------------------------
@@ -1309,3 +1288,77 @@ def test_doctor_json_output(minimal_folio_yaml, capsys):
         assert "status" in check
         assert "message" in check
         assert check["status"] in ("ok", "warn", "error", "info")
+
+
+# ---------------------------------------------------------------------------
+# 19. test_agents_md_module_table_consistency
+# ---------------------------------------------------------------------------
+
+_TABLE_ROW_RE = re.compile(r'^\|\s*`([^`]+)`\s*\|')
+
+
+def _parse_agents_md_table() -> dict[str, str]:
+    """Parse the module table from AGENTS.md.
+
+    Returns dict of {relative_path: path}. Paths ending in / are directory groups;
+    paths ending in .py are individual files.
+    """
+    agents_md = Path(__file__).resolve().parent.parent.parent / "AGENTS.md"
+    content = agents_md.read_text()
+
+    entries: dict[str, str] = {}
+    in_table = False
+    for line in content.splitlines():
+        if line.strip().startswith("| Module | Job |"):
+            in_table = True
+            continue
+        if in_table and line.strip().startswith("|--------|"):
+            continue
+        if in_table:
+            m = _TABLE_ROW_RE.match(line)
+            if m:
+                path = m.group(1)
+                entries[path] = path
+            else:
+                break  # table ended
+    return entries
+
+
+def _cli_module_path_from_command(name: str) -> str:
+    """Map a _COMMANDS name to its relative source path, e.g. 'wiki' -> 'cli/wiki.py'."""
+    module = CLI_MODULES[name]
+    return module.replace("folio.", "").replace(".", "/") + ".py"
+
+
+def test_agents_md_table_paths_exist():
+    """Every file path in AGENTS.md module table points to a real source file."""
+    src = Path(__file__).resolve().parent.parent.parent / "src" / "folio"
+    entries = _parse_agents_md_table()
+
+    for path in entries:
+        if path.endswith(".py"):
+            full = src / path
+            assert full.exists(), f"AGENTS.md lists '{path}' but file not found at {full}"
+
+
+def test_agents_md_table_covers_all_cli_commands():
+    """Every CLI command in _COMMANDS is covered by AGENTS.md module table."""
+    entries = _parse_agents_md_table()
+
+    # The 'cli/' group row covers all CLI modules collectively.
+    # Individual entries (cli/guide.py, cli/doctor.py, etc.) highlight
+    # modules that need extra documentation; they aren't required for coverage.
+    if "cli/" in entries:
+        return  # covered by group row
+
+    missing: list[str] = []
+    for name in sorted(CLI_MODULES):
+        mod_path = _cli_module_path_from_command(name)
+        if mod_path not in entries:
+            missing.append(mod_path)
+
+    assert not missing, (
+        "AGENTS.md module table is missing entries for these CLI modules:\n  "
+        + "\n  ".join(missing)
+        + "\n\nEither add a `cli/` group row or individual entries."
+    )
