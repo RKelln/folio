@@ -1038,6 +1038,64 @@ def test_wiki_doctor_does_not_clobber_config(folio_wiki_dir, capsys):
     )
 
 
+def test_build_wiki_llm_config_normalizes_deepseek_url(tmp_path):
+    """_build_wiki_llm_config appends /v1 to bare DeepSeek base URLs."""
+    from unittest.mock import patch
+
+    from folio.cli.wiki import _build_wiki_llm_config
+    from folio.config.loader import load_project_config
+
+    folio_yaml = tmp_path / "folio.yaml"
+    folio_yaml.write_text(FOLIO_YAML_WITH_SAGE_WIKI.replace(
+        "https://api.example.com", "https://api.deepseek.com"
+    ))
+    config = load_project_config(folio_yaml)
+
+    with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "test-key"}):
+        result = _build_wiki_llm_config(config)
+
+    assert result["api"]["base_url"] == "https://api.deepseek.com/v1"
+    assert "provider" in result["api"]
+    assert "models" in result
+    assert "embed" in result
+
+
+def test_build_wiki_llm_config_preserves_existing_v1_suffix(tmp_path):
+    """_build_wiki_llm_config does not double-append /v1."""
+    from unittest.mock import patch
+
+    from folio.cli.wiki import _build_wiki_llm_config
+    from folio.config.loader import load_project_config
+
+    folio_yaml = tmp_path / "folio.yaml"
+    folio_yaml.write_text(FOLIO_YAML_WITH_SAGE_WIKI.replace(
+        "https://api.example.com", "https://api.deepseek.com/v1"
+    ))
+    config = load_project_config(folio_yaml)
+
+    with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "test-key"}):
+        result = _build_wiki_llm_config(config)
+
+    assert result["api"]["base_url"] == "https://api.deepseek.com/v1"
+
+
+def test_build_wiki_llm_config_leaves_non_deepseek_url_unchanged(tmp_path):
+    """_build_wiki_llm_config does not modify non-DeepSeek URLs."""
+    from unittest.mock import patch
+
+    from folio.cli.wiki import _build_wiki_llm_config
+    from folio.config.loader import load_project_config
+
+    folio_yaml = tmp_path / "folio.yaml"
+    folio_yaml.write_text(FOLIO_YAML_WITH_SAGE_WIKI)
+    config = load_project_config(folio_yaml)
+
+    with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "test-key"}):
+        result = _build_wiki_llm_config(config)
+
+    assert result["api"]["base_url"] == "https://api.example.com"
+
+
 # ---------------------------------------------------------------------------
 # 16. test_repack
 # ---------------------------------------------------------------------------

@@ -38,9 +38,12 @@ def _build_wiki_llm_config(config) -> dict:
     api_key = os.environ.get(llm.api_key_env, "")
     if api_key:
         os.environ.setdefault(llm.api_key_env, api_key)
+    base_url = str(llm.base_url).rstrip("/")
+    if "deepseek" in base_url and not base_url.endswith("/v1"):
+        base_url = base_url + "/v1"
     result["api"] = {
         "provider": "openai-compatible" if "deepseek" in str(llm.base_url) else llm.provider,
-        "base_url": llm.base_url,
+        "base_url": base_url,
         "api_key": f"${{{llm.api_key_env}}}",
     }
     result["models"] = {
