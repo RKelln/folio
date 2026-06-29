@@ -31,6 +31,7 @@ CLI_MODULES = {
     "repack": "folio.cli.repack",
     "test-skills": "folio.cli.test_skills",
     "wiki": "folio.cli.wiki",
+    "doctor": "folio.cli.doctor",
     "install-agent": "folio.cli.install_agent",
     "validate": "folio.cli.validate",
     "website": "folio.cli.website",
@@ -906,7 +907,7 @@ def test_wiki_missing_config(capsys):
 # 15. wiki config preservation (regression: _init_backend must not clobber config.yaml)
 # ---------------------------------------------------------------------------
 
-FOOLIO_YAML_WITH_SAGE_WIKI = """\
+FOLIO_YAML_WITH_SAGE_WIKI = """\
 project:
   name: Test Project
 org:
@@ -966,10 +967,10 @@ embed:
 
 
 @pytest.fixture
-def folioli_yaml_with_wiki(tmp_path):
+def folio_wiki_dir(tmp_path):
     """Write a folio.yaml configured for sage-wiki to tmp_path and return the path."""
     config_path = tmp_path / "folio.yaml"
-    config_path.write_text(FOOLIO_YAML_WITH_SAGE_WIKI)
+    config_path.write_text(FOLIO_YAML_WITH_SAGE_WIKI)
     wiki_dir = tmp_path / ".folio" / "sage-wiki"
     wiki_dir.mkdir(parents=True, exist_ok=True)
     wiki_config = wiki_dir / "config.yaml"
@@ -977,18 +978,18 @@ def folioli_yaml_with_wiki(tmp_path):
     return tmp_path
 
 
-def test_init_backend_does_not_clobber_config(folioli_yaml_with_wiki):
+def test_init_backend_does_not_clobber_config(folio_wiki_dir):
     """_init_backend preserves pre-existing sage-wiki config.yaml content."""
     from unittest.mock import patch
 
     from folio.cli.wiki import _init_backend
     from folio.config.loader import load_project_config
 
-    wiki_dir = folioli_yaml_with_wiki / ".folio" / "sage-wiki"
+    wiki_dir = folio_wiki_dir / ".folio" / "sage-wiki"
     config_file = wiki_dir / "config.yaml"
     original = config_file.read_text()
 
-    config = load_project_config(folioli_yaml_with_wiki / "folio.yaml")
+    config = load_project_config(folio_wiki_dir / "folio.yaml")
 
     with patch("shutil.which", return_value="/fake/sage-wiki"):
         _init_backend(config, wiki_dir)
@@ -1010,7 +1011,7 @@ def test_init_backend_writes_full_config_when_none_exists(tmp_path):
     from folio.config.loader import load_project_config
 
     folio_yaml = tmp_path / "folio.yaml"
-    folio_yaml.write_text(FOOLIO_YAML_WITH_SAGE_WIKI)
+    folio_yaml.write_text(FOLIO_YAML_WITH_SAGE_WIKI)
 
     wiki_dir = tmp_path / ".folio" / "sage-wiki"
     wiki_dir.mkdir(parents=True, exist_ok=True)
@@ -1030,19 +1031,19 @@ def test_init_backend_writes_full_config_when_none_exists(tmp_path):
     assert "provider: openai_compatible" in content
 
 
-def test_wiki_doctor_does_not_clobber_config(folioli_yaml_with_wiki, capsys):
+def test_wiki_doctor_does_not_clobber_config(folio_wiki_dir, capsys):
     """Running folio wiki doctor must not overwrite an existing config.yaml."""
     from unittest.mock import patch
 
     from folio.cli.wiki import main
 
-    wiki_dir = folioli_yaml_with_wiki / ".folio" / "sage-wiki"
+    wiki_dir = folio_wiki_dir / ".folio" / "sage-wiki"
     config_file = wiki_dir / "config.yaml"
     original = config_file.read_text()
 
     orig_cwd = os.getcwd()
     try:
-        os.chdir(str(folioli_yaml_with_wiki))
+        os.chdir(str(folio_wiki_dir))
         with patch("shutil.which", return_value="/fake/sage-wiki"):
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value.stdout = "All checks passed."
@@ -1215,3 +1216,96 @@ def test_install_agent_no_config(capsys):
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "not found" in captured.err
+
+
+# ---------------------------------------------------------------------------
+# 18. test_doctor
+# ---------------------------------------------------------------------------
+
+
+def test_doctor_dry_run(minimal_folio_yaml, capsys):
+    """folio doctor --dry-run prints checks without executing."""
+    from folio.cli.doctor import main
+
+    orig = os.getcwd()
+    try:
+        os.chdir(str(minimal_folio_yaml))
+        main(["--dry-run", "--config", str(minimal_folio_yaml / "folio.yaml")])
+    finally:
+        os.chdir(orig)
+    captured = capsys.readouterr()
+    assert "Would run the following checks" in captured.out
+    assert "config:" in captured.out
+    assert "api:" in captured.out
+    assert "converter:" in captured.out
+    assert "sage-wiki:" in captured.out
+    assert "symlinks:" in captured.out
+    assert "pipeline:" in captured.out
+
+
+def test_doctor_dry_run_json(minimal_folio_yaml, capsys):
+    """folio doctor --dry-run --json outputs valid JSON."""
+    from folio.cli.doctor import main
+
+    main([
+        "--dry-run", "--json",
+        "--config", str(minimal_folio_yaml / "folio.yaml"),
+    ])
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert data["dry_run"] is True
+    assert len(data["checks"]) == 7
+
+
+def test_doctor_missing_config(capsys):
+    """folio doctor with nonexistent config exits 1 and reports error."""
+    from folio.cli.doctor import main
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--config", "/nonexistent/config.yaml"])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "not found" in captured.out or "not found" in captured.err
+
+
+def test_doctor_runs_all_checks(minimal_folio_yaml, capsys):
+    """folio doctor runs through all check categories and produces a summary."""
+    from folio.cli.doctor import main
+
+    orig = os.getcwd()
+    try:
+        os.chdir(str(minimal_folio_yaml))
+        main(["--config", str(minimal_folio_yaml / "folio.yaml")])
+    finally:
+        os.chdir(orig)
+    captured = capsys.readouterr()
+    output = captured.out
+
+    assert "folio doctor" in output
+    assert "Summary:" in output
+    assert "OK" in output or "WARN" in output or "ERROR" in output
+    assert "config:" in output
+    assert "api:" in output
+    assert "converter:" in output
+
+
+def test_doctor_json_output(minimal_folio_yaml, capsys):
+    """folio doctor --json outputs valid JSON with checks array and summary."""
+    from folio.cli.doctor import main
+
+    orig = os.getcwd()
+    try:
+        os.chdir(str(minimal_folio_yaml))
+        main(["--json", "--config", str(minimal_folio_yaml / "folio.yaml")])
+    finally:
+        os.chdir(orig)
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert "checks" in data
+    assert "summary" in data
+    assert len(data["checks"]) > 0
+    for check in data["checks"]:
+        assert "name" in check
+        assert "status" in check
+        assert "message" in check
+        assert check["status"] in ("ok", "warn", "error", "info")

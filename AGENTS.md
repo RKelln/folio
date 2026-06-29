@@ -103,6 +103,7 @@ Each module does one job well:
 | `cli/` | CLI entry points (thin wrappers around core) |
 | `cli/guide.py` | Built-in agent reference guide (argparse-based with --dry-run and --json) |
 | `cli/convert_bench.py` | `folio convert-bench` — thin wrapper wiring `core/bench/*` (spec → corpus → runner → report) |
+| `cli/doctor.py` | `folio doctor` — system health check: config, binaries, API keys, wiki, symlinks, pipeline state |
 
 ### 8. Use standard libraries where possible
 

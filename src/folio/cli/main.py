@@ -34,6 +34,7 @@ _COMMANDS = {
     "repack": "folio.cli.repack",
     "test-skills": "folio.cli.test_skills",
     "wiki": "folio.cli.wiki",
+    "doctor": "folio.cli.doctor",
     "install-agent": "folio.cli.install_agent",
     "validate": "folio.cli.validate",
     "corpus": "folio.cli.corpus",

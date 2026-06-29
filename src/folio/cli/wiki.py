@@ -27,6 +27,33 @@ from folio.config.loader import load_project_config
 logger = logging.getLogger(__name__)
 
 
+def _build_wiki_llm_config(config) -> dict:
+    """Build api, models, embed sections for sage-wiki config from folio config."""
+    result = {}
+    llm = getattr(config, "llm", None)
+    if not llm or not hasattr(llm, "provider"):
+        return result
+    fetch_model = getattr(llm, "fast_model", None)
+    write_model = getattr(llm, "quality_model", None)
+    api_key = os.environ.get(llm.api_key_env, "")
+    if api_key:
+        os.environ.setdefault(llm.api_key_env, api_key)
+    result["api"] = {
+        "provider": "openai-compatible" if "deepseek" in str(llm.base_url) else llm.provider,
+        "base_url": llm.base_url,
+        "api_key": f"${{{llm.api_key_env}}}",
+    }
+    result["models"] = {
+        "summarize": fetch_model or write_model or "deepseek-chat",
+        "extract": fetch_model or write_model or "deepseek-chat",
+        "write": write_model or fetch_model or "deepseek-chat",
+        "lint": fetch_model or write_model or "deepseek-chat",
+        "query": write_model or fetch_model or "deepseek-chat",
+    }
+    result["embed"] = {"provider": "auto"}
+    return result
+
+
 def _init_backend(config, project_dir: Path):
     backend = get_wiki_backend(config)
 
@@ -43,26 +70,7 @@ def _init_backend(config, project_dir: Path):
         "sources": [{"path": "raw", "type": "auto", "watch": False}],
         "output": "wiki",
     }
-    llm = getattr(config, "llm", None)
-    if llm and hasattr(llm, "provider"):
-        fetch_model = getattr(llm, "fast_model", None)
-        write_model = getattr(llm, "quality_model", None)
-        api_key = os.environ.get(llm.api_key_env, "")
-        if api_key:
-            os.environ.setdefault(llm.api_key_env, api_key)
-        wiki_config["api"] = {
-            "provider": "openai-compatible" if "deepseek" in str(llm.base_url) else llm.provider,
-            "base_url": llm.base_url,
-            "api_key": f"${{{llm.api_key_env}}}",
-        }
-        wiki_config["models"] = {
-            "summarize": fetch_model or write_model or "deepseek-chat",
-            "extract": fetch_model or write_model or "deepseek-chat",
-            "write": write_model or fetch_model or "deepseek-chat",
-            "lint": fetch_model or write_model or "deepseek-chat",
-            "query": write_model or fetch_model or "deepseek-chat",
-        }
-        wiki_config["embed"] = {"provider": "auto"}
+    wiki_config.update(_build_wiki_llm_config(config))
     backend.init(project_dir, wiki_config)
     return backend
 
@@ -81,26 +89,7 @@ def _do_compile(config, wiki_dir: Path, backend) -> None:
         "sources": [{"path": "raw", "type": "auto", "watch": False}],
         "output": "wiki",
     }
-    llm = getattr(config, "llm", None)
-    if llm and hasattr(llm, "provider"):
-        fetch_model = getattr(llm, "fast_model", None)
-        write_model = getattr(llm, "quality_model", None)
-        api_key = os.environ.get(llm.api_key_env, "")
-        if api_key:
-            os.environ.setdefault(llm.api_key_env, api_key)
-        wiki_config["api"] = {
-            "provider": "openai-compatible" if "deepseek" in str(llm.base_url) else llm.provider,
-            "base_url": llm.base_url,
-            "api_key": f"${{{llm.api_key_env}}}",
-        }
-        wiki_config["models"] = {
-            "summarize": fetch_model or write_model or "deepseek-chat",
-            "extract": fetch_model or write_model or "deepseek-chat",
-            "write": write_model or fetch_model or "deepseek-chat",
-            "lint": fetch_model or write_model or "deepseek-chat",
-            "query": write_model or fetch_model or "deepseek-chat",
-        }
-        wiki_config["embed"] = {"provider": "auto"}
+    wiki_config.update(_build_wiki_llm_config(config))
     backend.init(wiki_dir, wiki_config, source_dir=rewrite_dir)
 
     # Install and apply the pack from folio's templates
