@@ -41,22 +41,99 @@ def _check_config(config_path: str) -> dict:
     return _check("config", "ok", f"Config file loaded: {config_path}")
 
 
-def _check_api_keys(config) -> dict:
+def _check_config_completeness(config) -> list[dict]:
+    """Check that folio.yaml has been customized from defaults."""
+    results = []
+
+    # org name should be set
+    org_name = getattr(config.org, "name", "My Organization")
+    if org_name == "My Organization":
+        results.append(_check("config: org.name", "warn", "org.name is still the default 'My Organization'"))
+
+    # funders should be populated
+    funders = getattr(config, "funders", {})
+    if not funders:
+        results.append(_check("config: funders", "warn", "No funders configured — grant matching disabled"))
+    else:
+        results.append(_check("config: funders", "ok", f"{len(funders)} funder(s) configured"))
+
+    # doc_types should be populated
+    doc_types = getattr(config, "doc_types", [])
+    if not doc_types:
+        results.append(_check("config: doc_types", "warn", "No document types configured — classification disabled"))
+    else:
+        results.append(_check("config: doc_types", "ok", f"{len(doc_types)} document type(s)"))
+
+    # wiki type must be one of the valid options
+    wiki_type = getattr(config.wiki, "type", "sage-wiki") if hasattr(config, "wiki") else "sage-wiki"
+    if wiki_type not in ("sage-wiki", "null"):
+        results.append(_check("config: wiki.type", "error", f"Invalid wiki type '{wiki_type}' — must be 'sage-wiki' or 'null'"))
+
+    # converter type should be a known value
+    if hasattr(config, "converter"):
+        conv_type = config.converter.type
+        known = {"liteparse", "pandoc", "datalab", "docling", "marker", "cascade"}
+        if conv_type not in known:
+            results.append(_check("config: converter.type", "error", f"Unknown converter type '{conv_type}' — valid: {', '.join(sorted(known))}"))
+
+    return results
+
+
+def _check_api_keys(config, config_dir: Path) -> list[dict]:
     """Verify required API key env vars are set."""
+    results = []
     llm = getattr(config, "llm", None)
     if llm is None or not hasattr(llm, "api_key_env"):
-        return _check("api", "warn", "No LLM provider configured")
+        results.append(_check("api", "warn", "No LLM provider configured"))
+    else:
+        key_env = llm.api_key_env
+        if os.environ.get(key_env):
+            results.append(_check("api", "ok", f"{key_env} is set"))
+        else:
+            results.append(_check("api", "warn", f"{key_env} not set — LLM features will fail"))
 
-    key_env = llm.api_key_env
-    if os.environ.get(key_env):
-        return _check("api", "ok", f"{key_env} is set")
-    return _check("api", "warn", f"{key_env} not set — LLM features will fail")
+    # Check datalab API key if converter type is datalab or cascade includes it
+    if hasattr(config, "converter"):
+        conv_type = config.converter.type
+        cascade_uses_datalab = conv_type == "datalab" or (conv_type == "cascade" and "datalab" in getattr(config.converter, "cascade", []))
+        if cascade_uses_datalab:
+            datalab_env = getattr(config.converter, "datalab_api_key_env", "DATALAB_API_KEY")
+            if os.environ.get(datalab_env):
+                results.append(_check("api: datalab", "ok", f"{datalab_env} is set"))
+            else:
+                results.append(_check("api: datalab", "warn", f"{datalab_env} not set — datalab converter will fail"))
+
+    # Check .env file exists
+    env_file = config_dir / ".env"
+    if env_file.exists():
+        results.append(_check("env file", "ok", ".env found"))
+    else:
+        results.append(_check("env file", "warn", ".env not found — API keys may not be loaded"))
+
+    return results
 
 
-def _check_converter(config) -> dict:
+def _check_converter(config) -> list[dict]:
     """Check converter binary or SDK availability."""
+    results = []
     conv_type = getattr(config.converter, "type", "liteparse") if hasattr(config, "converter") else "liteparse"
 
+    if conv_type == "cascade":
+        tiers = getattr(config.converter, "cascade", [])
+        results.append(_check("converter", "ok", f"cascade converter ({', '.join(tiers)})"))
+        for tier in tiers:
+            tier_config = type(config.converter)(type=tier)
+            tier_result = _check_single_converter(tier_config)
+            results.append(_check(f"converter: cascade/{tier}", tier_result["status"], tier_result["message"]))
+    else:
+        results.append(_check_single_converter(config.converter))
+
+    return results
+
+
+def _check_single_converter(conv) -> dict:
+    """Check a single converter type (not cascade)."""
+    conv_type = getattr(conv, "type", "liteparse")
     if conv_type == "liteparse":
         try:
             import liteparse  # noqa: F401
@@ -85,8 +162,6 @@ def _check_converter(config) -> dict:
             return _check("converter", "ok", "marker available")
         except ImportError:
             return _check("converter", "error", "marker not installed")
-    elif conv_type == "cascade":
-        return _check("converter", "ok", f"cascade converter ({', '.join(getattr(config.converter, 'cascade', []))})")
     return _check("converter", "warn", f"Unknown converter type: {conv_type}")
 
 
@@ -96,10 +171,25 @@ def _check_sage_wiki_binary(config) -> dict:
     if wiki_type == "null":
         return _check("sage-wiki", "info", "wiki backend is null — sage-wiki not required")
 
-    binary = shutil.which("sage-wiki")
+    binary_name = getattr(config.wiki, "sage_wiki_binary", "sage-wiki")
+    binary = shutil.which(binary_name)
     if binary:
-        return _check("sage-wiki", "ok", f"sage-wiki on PATH: {binary}")
-    return _check("sage-wiki", "error", "sage-wiki not found on PATH (go install github.com/xoai/sage-wiki/cmd/sage-wiki@latest)")
+        return _check("sage-wiki", "ok", f"{binary_name} on PATH: {binary}")
+    return _check("sage-wiki", "error", f"{binary_name} not found on PATH (go install github.com/xoai/sage-wiki/cmd/sage-wiki@latest)")
+
+
+def _check_agentmap(config) -> dict:
+    """Check agentmap binary if enabled."""
+    if not hasattr(config, "agentmap"):
+        return _check("agentmap", "info", "agentmap not configured")
+    if not getattr(config.agentmap, "enabled", False):
+        return _check("agentmap", "info", "agentmap disabled — not required")
+
+    binary_name = getattr(config.agentmap, "binary_path", "agentmap")
+    binary = shutil.which(binary_name)
+    if binary:
+        return _check("agentmap", "ok", f"{binary_name} on PATH: {binary}")
+    return _check("agentmap", "error", f"{binary_name} not found on PATH (go install github.com/xoai/agentmap@latest)")
 
 
 def _check_symlinks(config, config_dir: Path) -> list[dict]:
@@ -230,16 +320,22 @@ def _run_all_checks(config, config_path: str, config_dir: Path) -> list[dict]:
     if checks[-1]["status"] == "error":
         return checks  # can't continue without valid config
 
-    # 2. API keys
-    checks.append(_check_api_keys(config))
+    # 1b. Config completeness
+    checks.extend(_check_config_completeness(config))
+
+    # 2. API keys and .env
+    checks.extend(_check_api_keys(config, config_dir))
 
     # 3. Converter
-    checks.append(_check_converter(config))
+    checks.extend(_check_converter(config))
 
     # 4. Sage-wiki binary
     checks.append(_check_sage_wiki_binary(config))
 
-    # 5. Symlinks
+    # 5. Agentmap binary
+    checks.append(_check_agentmap(config))
+
+    # 6. Symlinks
     checks.extend(_check_symlinks(config, config_dir))
 
     # 6. Pipeline directory state
