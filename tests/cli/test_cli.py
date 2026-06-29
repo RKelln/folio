@@ -1233,7 +1233,7 @@ def test_doctor_dry_run_json(minimal_folio_yaml, capsys):
     captured = capsys.readouterr()
     data = json.loads(captured.out)
     assert data["dry_run"] is True
-    assert len(data["checks"]) == 7
+    assert len(data["checks"]) == 8
 
 
 def test_doctor_missing_config(capsys):

@@ -16,7 +16,9 @@ import argparse
 import json
 import logging
 import os
+import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -178,6 +180,34 @@ def _check_sage_wiki_binary(config) -> dict:
     return _check("sage-wiki", "error", f"{binary_name} not found on PATH (go install github.com/xoai/sage-wiki/cmd/sage-wiki@latest)")
 
 
+def _check_go_version(config) -> list[dict]:
+    """Check Go version meets sage-wiki minimum requirement."""
+    wiki_type = getattr(config.wiki, "type", "null") if hasattr(config, "wiki") else "null"
+    if wiki_type == "null":
+        return [_check("go", "info", "wiki backend is null — Go not required")]
+
+    go_bin = shutil.which("go")
+    if not go_bin:
+        return [_check("go", "error", "Go not found on PATH — required to install/run sage-wiki")]
+
+    try:
+        output = subprocess.run([go_bin, "version"], capture_output=True, text=True, check=True, timeout=10).stdout
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return [_check("go", "error", "Go found but version check failed")]
+
+    m = re.search(r"go(\d+)\.(\d+)", output)
+    if not m:
+        return [_check("go", "warn", f"Go found but could not parse version from: {output.strip()}")]
+
+    major, minor = int(m.group(1)), int(m.group(2))
+    go_version = f"go{major}.{minor}"
+    sage_min = (1, 26)
+
+    if (major, minor) >= sage_min:
+        return [_check("go", "ok", f"{go_version} >= go1.26 (meets sage-wiki minimum)")]
+    return [_check("go", "error", f"{go_version} < go1.26 — sage-wiki requires go >= 1.26.1")]
+
+
 def _check_agentmap(config) -> dict:
     """Check agentmap binary if enabled."""
     if not hasattr(config, "agentmap"):
@@ -332,6 +362,9 @@ def _run_all_checks(config, config_path: str, config_dir: Path) -> list[dict]:
     # 4. Sage-wiki binary
     checks.append(_check_sage_wiki_binary(config))
 
+    # 4b. Go version (required by sage-wiki)
+    checks.extend(_check_go_version(config))
+
     # 5. Agentmap binary
     checks.append(_check_agentmap(config))
 
@@ -449,6 +482,7 @@ def main(argv: list[str] | None = None) -> None:
             "api: check required env vars are set",
             "converter: verify converter binary/SDK availability",
             "sage-wiki: check binary on PATH",
+            "go: verify Go version meets sage-wiki minimum (go >= 1.26)",
             "symlinks: verify root symlinks (wiki/)",
             "pipeline: check directory consistency across stages",
             "wiki doctor: delegate to sage-wiki doctor subchecks",
