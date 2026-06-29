@@ -4,6 +4,68 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.0] — System health checks & wiki compilation — 2026-06-29
+
+The `folio doctor` command debuts as a comprehensive system health checker,
+alongside a standalone `folio wiki compile` subcommand for direct wiki
+recompilation. Several stability fixes shore up the config pipeline and
+canonicalizer.
+
+### Added
+
+- **`folio doctor` — system health check command.** Runs a full diagnostic
+  sweep: validates `folio.yaml` completeness (org name, funders, doc types,
+  wiki/converter settings), checks API keys and `.env` presence, verifies
+  converter/SDK availability (cascade tiers checked individually), confirms
+  `sage-wiki` and `agentmap` binaries are on PATH, inspects the `wiki/`
+  symlink integrity, audits pipeline directory state (file counts across
+  stages), and delegates to `sage-wiki doctor` for deep wiki validation.
+  Supports `--dry-run`, `--json`, and `--version` like all folio commands.
+- **`folio wiki compile` subcommand** — recompiles the wiki from `markdown/`
+  sources without invoking the full pipeline. Handles config initialization,
+  raw symlink refresh, pack install/apply, and root `wiki/` symlink creation.
+- **Config completeness validation in `folio doctor`** — warns when org name
+  is unchanged from default, funders or doc types are empty, wiki type is
+  invalid, or converter type is unrecognized.
+- **Agentmap binary check in `folio doctor`** — verifies `agentmap` is on
+  PATH when `agentmap.enabled: true` in config.
+- **`.env` file check in `folio doctor`** — warns when `.env` is missing.
+- **AGENTS.md module table consistency tests** — two automated tests ensure
+  every file path in the module table exists and the `cli/` group row covers
+  all `_COMMANDS` entries. CLI_MODULES in tests now imports directly from
+  `main.py` (single source of truth).
+- **Expanded `.gitignore` on `folio init`** — now excludes archive files,
+  runtime artifacts, and pipeline state files by default.
+
+### Fixed
+
+- **Wiki config clobbering bug** — `folio wiki doctor`, `folio wiki status`,
+  and all other `folio wiki *` subcommands no longer overwrite sage-wiki's
+  `config.yaml` with a bare skeleton. The `_init_backend` function now
+  preserves an existing config and writes `api`/`models`/`embed` sections
+  when creating a fresh one.
+- **`folio doctor` symlink check resolved wrong directory** — the `wiki/`
+  symlink check now resolves relative to the config file's directory rather
+  than the current working directory.
+- **Sage-wiki binary check reads from config** — `folio doctor` now uses
+  `config.wiki.sage_wiki_binary` instead of hardcoding `"sage-wiki"`.
+- **Canonicalizer excludes webpages from all phases**, not just dedup. Moves
+  `.non_canonical` output from `markdown/` to `.folio/non_canonical/`.
+- **Sage-wiki install command fixed in docs** — corrected to
+  `go install github.com/xoai/sage-wiki/cmd/sage-wiki@latest` (missing
+  `/cmd/sage-wiki` in the import path).
+- **Pipeline PID-based concurrency lock** prevents parallel pipeline runs.
+- **Throttle test timing assertion** relaxed to de-flake CI.
+
+### Infrastructure
+
+- `CLI_MODULES` in `test_cli.py` now imports from `folio.cli.main._COMMANDS`
+  (DRY — single command registry).
+- 4 regression tests for wiki config preservation.
+- 5 new tests for `folio doctor` (dry-run, json, missing config, full run,
+  json output validation).
+- 2 AGENTS.md module table sync tests.
+
 ## [v0.3.1] — Bug fixes — 2026-06-24
 
 ### Fixed
