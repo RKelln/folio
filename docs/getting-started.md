@@ -377,4 +377,4 @@ See the grant-writing skill for the full agentmap NAV workflow, or `agentmap --h
 
 **Costs higher than expected** — Review your classification config in `folio.yaml`. Files classified as `full` tier use more expensive LLM calls. Adjust thresholds or increase `skip` rules to reduce costs.
 
-**Wiki not compiling** — Check `sage-wiki --version`. If not installed, set `wiki.type: "null"` in folio.yaml for markdown-only mode. Or install it: `go install github.com/xoai/sage-wiki@latest`.
+**Wiki not compiling** — Check `sage-wiki --version`. If not installed, set `wiki.type: "null"` in folio.yaml for markdown-only mode. Or install it: `go install github.com/xoai/sage-wiki/cmd/sage-wiki@latest`.

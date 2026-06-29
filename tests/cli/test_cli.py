@@ -835,6 +835,21 @@ def test_wiki_dry_run_verify(minimal_folio_yaml, capsys):
     assert "all" in captured.out
 
 
+def test_wiki_dry_run_compile(minimal_folio_yaml, capsys):
+    """wiki compile --dry-run previews without executing."""
+    from folio.cli.wiki import main
+
+    orig = os.getcwd()
+    try:
+        os.chdir(str(minimal_folio_yaml))
+        main(["--dry-run", "compile"])
+    finally:
+        os.chdir(orig)
+    captured = capsys.readouterr()
+    assert "compile" in captured.out
+    assert "wiki" in captured.out.lower()
+
+
 def test_wiki_json_output(minimal_folio_yaml, capsys):
     """wiki status --json produces valid JSON via dry-run."""
     from folio.cli.wiki import main
@@ -888,7 +903,163 @@ def test_wiki_missing_config(capsys):
 
 
 # ---------------------------------------------------------------------------
-# 15. test_repack
+# 15. wiki config preservation (regression: _init_backend must not clobber config.yaml)
+# ---------------------------------------------------------------------------
+
+FOOLIO_YAML_WITH_SAGE_WIKI = """\
+project:
+  name: Test Project
+org:
+  name: Test Org
+  abbreviation: TEST
+paths:
+  raw_archive: ./archive/
+  raw_md: ./.folio/raw_md/
+  clean_md: ./.folio/clean_md/
+  rewrite_md: ./markdown/
+  wiki_project: ./.folio/sage-wiki/
+funders:
+  TAC: Toronto Arts Council
+doc_types:
+  - application
+  - report
+llm:
+  provider: openai_compatible
+  models:
+    fast: test-model-fast
+    quality: test-model-pro
+  base_url: https://api.example.com
+  pricing:
+    input_per_million: 0.14
+    output_per_million: 0.28
+converter:
+  type: marker
+wiki:
+  type: sage-wiki
+  sage_wiki:
+    binary_path: sage-wiki
+    pack: arts-org
+"""
+
+PREAMBLE = """\
+version: 1
+project: Test Project
+pack: arts-org
+sources:
+- path: raw
+  type: auto
+  watch: false
+output: wiki
+api:
+  provider: openai_compatible
+  base_url: https://api.example.com
+  api_key: ${MY_KEY}
+models:
+  summarize: gpt-fast
+  extract: gpt-fast
+  write: gpt-pro
+  lint: gpt-fast
+  query: gpt-pro
+embed:
+  provider: auto
+"""
+
+
+@pytest.fixture
+def folioli_yaml_with_wiki(tmp_path):
+    """Write a folio.yaml configured for sage-wiki to tmp_path and return the path."""
+    config_path = tmp_path / "folio.yaml"
+    config_path.write_text(FOOLIO_YAML_WITH_SAGE_WIKI)
+    wiki_dir = tmp_path / ".folio" / "sage-wiki"
+    wiki_dir.mkdir(parents=True, exist_ok=True)
+    wiki_config = wiki_dir / "config.yaml"
+    wiki_config.write_text(PREAMBLE)
+    return tmp_path
+
+
+def test_init_backend_does_not_clobber_config(folioli_yaml_with_wiki):
+    """_init_backend preserves pre-existing sage-wiki config.yaml content."""
+    from unittest.mock import patch
+
+    from folio.cli.wiki import _init_backend
+    from folio.config.loader import load_project_config
+
+    wiki_dir = folioli_yaml_with_wiki / ".folio" / "sage-wiki"
+    config_file = wiki_dir / "config.yaml"
+    original = config_file.read_text()
+
+    config = load_project_config(folioli_yaml_with_wiki / "folio.yaml")
+
+    with patch("shutil.which", return_value="/fake/sage-wiki"):
+        _init_backend(config, wiki_dir)
+
+    after = config_file.read_text()
+    assert after == original, (
+        "_init_backend must NOT overwrite an existing config.yaml.\n"
+        f"Original ({len(original)} chars) vs after ({len(after)} chars)"
+    )
+    assert "api:" in after
+    assert "provider: openai_compatible" in after
+
+
+def test_init_backend_writes_full_config_when_none_exists(tmp_path):
+    """_init_backend writes api/models/embed when creating a fresh config.yaml."""
+    from unittest.mock import patch
+
+    from folio.cli.wiki import _init_backend
+    from folio.config.loader import load_project_config
+
+    folio_yaml = tmp_path / "folio.yaml"
+    folio_yaml.write_text(FOOLIO_YAML_WITH_SAGE_WIKI)
+
+    wiki_dir = tmp_path / ".folio" / "sage-wiki"
+    wiki_dir.mkdir(parents=True, exist_ok=True)
+    config_file = wiki_dir / "config.yaml"
+    assert not config_file.exists(), "Precondition: no config.yaml yet"
+
+    config = load_project_config(folio_yaml)
+
+    with patch("shutil.which", return_value="/fake/sage-wiki"):
+        _init_backend(config, wiki_dir)
+
+    assert config_file.exists()
+    content = config_file.read_text()
+    assert "api:" in content, "Fresh config must include api section"
+    assert "models:" in content, "Fresh config must include models section"
+    assert "embed:" in content, "Fresh config must include embed section"
+    assert "provider: openai_compatible" in content
+
+
+def test_wiki_doctor_does_not_clobber_config(folioli_yaml_with_wiki, capsys):
+    """Running folio wiki doctor must not overwrite an existing config.yaml."""
+    from unittest.mock import patch
+
+    from folio.cli.wiki import main
+
+    wiki_dir = folioli_yaml_with_wiki / ".folio" / "sage-wiki"
+    config_file = wiki_dir / "config.yaml"
+    original = config_file.read_text()
+
+    orig_cwd = os.getcwd()
+    try:
+        os.chdir(str(folioli_yaml_with_wiki))
+        with patch("shutil.which", return_value="/fake/sage-wiki"):
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value.stdout = "All checks passed."
+                main(["doctor"])
+    finally:
+        os.chdir(orig_cwd)
+
+    after = config_file.read_text()
+    assert after == original, (
+        "folio wiki doctor must NOT overwrite existing config.yaml.\n"
+        f"Original ({len(original)} chars) vs after ({len(after)} chars)\n"
+        f"Diff: original has api={('api:' in original)}, after has api={('api:' in after)}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 16. test_repack
 # ---------------------------------------------------------------------------
 
 @pytest.fixture

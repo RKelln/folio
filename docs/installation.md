@@ -70,7 +70,7 @@ See [docs/converters.md](converters.md) for detailed comparison and configuratio
 [sage-wiki](https://github.com/xoai/sage-wiki) compiles markdown into a searchable knowledge base with concept articles, ontology, and hybrid BM25 + vector search.
 
 ```bash
-go install github.com/xoai/sage-wiki@latest
+go install github.com/xoai/sage-wiki/cmd/sage-wiki@latest
 ```
 
 Verify: `sage-wiki --version` (requires `go` on PATH).
@@ -127,7 +127,7 @@ uv pip install liteparse
 
 # Wiki (needs Go)
 sudo snap install go --classic    # or: sudo apt install golang-go
-go install github.com/xoai/sage-wiki@latest
+go install github.com/xoai/sage-wiki/cmd/sage-wiki@latest
 
 # Agentmap
 go install github.com/xoai/agentmap@latest
@@ -151,7 +151,7 @@ uv pip install liteparse
 
 # Wiki (needs Go)
 brew install go
-go install github.com/xoai/sage-wiki@latest
+go install github.com/xoai/sage-wiki/cmd/sage-wiki@latest
 
 # Agentmap
 go install github.com/xoai/agentmap@latest
