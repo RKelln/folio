@@ -1125,7 +1125,7 @@ wheels = [
 
 [[package]]
 name = "folio"
-version = "0.3.1"
+version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "openai" },

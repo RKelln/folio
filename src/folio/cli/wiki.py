@@ -56,9 +56,9 @@ def _build_wiki_llm_config(config) -> dict:
         "query": wiki_models.get("query") or write_model or fetch_model or "deepseek-chat",
     }
     result["embed"] = {"provider": "auto"}
-    wiki_properties = getattr(llm, "wiki_properties", None) or {}
-    if wiki_properties:
-        result["properties"] = dict(wiki_properties)
+    wiki_extra_params = getattr(llm, "wiki_extra_params", None) or {}
+    if wiki_extra_params:
+        result["extra_params"] = dict(wiki_extra_params)
     return result
 
 

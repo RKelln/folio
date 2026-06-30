@@ -302,6 +302,8 @@ Controls the LLM provider used for rewriting and prioritization. Uses an OpenAI-
 | `llm.pricing.input_per_million` | `float` | `0.14` | Cost in USD per 1M input tokens (used for dry-run cost estimates) |
 | `llm.pricing.cached_input_per_million` | `float` | `0.0028` | Cost in USD per 1M cached input tokens |
 | `llm.pricing.output_per_million` | `float` | `0.28` | Cost in USD per 1M output tokens |
+| `llm.wiki.models` | `dict[str, str]` | `{}` | Per-task model overrides for wiki compilation (see below) |
+| `llm.wiki.extra_params` | `dict[str, dict]` | `{}` | Per-task API parameters passed to sage-wiki (see below) |
 
 Example (DeepSeek):
 
@@ -333,6 +335,63 @@ llm:
     input_per_million: 0.15
     output_per_million: 0.60
 ```
+
+### Per-task model overrides for wiki compilation
+
+When `wiki.type: sage-wiki`, the compiler uses your LLM models across five distinct tasks:
+
+| Task | Default model | Requires strict JSON? | Notes |
+|---|---|---|---|
+| `extract` | `models.fast` | **Yes** | Concept extraction parses `json.Unmarshal`; reasoning models must either use `deepseek-chat` or set `thinking: disabled` |
+| `summarize` | `models.fast` | No | Free-text summaries; reasoning is beneficial |
+| `write` | `models.quality` | No | Article prose; reasoning is beneficial |
+| `lint` | `models.fast` | No | Structural checks; no JSON parsing |
+| `query` | `models.quality` | No | Directed queries; reasoning is beneficial |
+
+Override individual tasks via `llm.wiki.models`:
+
+```yaml
+llm:
+  models:
+    fast: "deepseek-v4-flash"
+    quality: "deepseek-v4-pro"
+  wiki:
+    models:
+      extract: "deepseek-chat"     # non-reasoning, strict JSON support
+```
+
+Any task not listed inherits its default (fast or quality).
+
+### Per-task API extra params
+
+Pass per-task API parameters via `llm.wiki.extra_params`. Written to sage-wiki's `config.yaml` as `extra_params` for per-task consumption (forward-looking — sage-wiki currently reads `api.extra_params` globally, not per-task).
+
+**Disable reasoning for DeepSeek extraction:**
+
+```yaml
+llm:
+  wiki:
+    models:
+      extract: "deepseek-v4-flash"
+    extra_params:
+      extract:
+        thinking:
+          type: disabled
+        temperature: 0
+      summarize:
+        temperature: 0.3
+```
+
+The `extra_params` dict is forwarded verbatim; sage-wiki applies the parameters during API calls for the matching task. Unlisted tasks use the model's default behavior.
+
+### Why this matters
+
+Reasoning models (deepseek-v4-flash, deepseek-v4-pro) emit chain-of-thought prose alongside their structured output. sage-wiki's concept extraction parses the response as JSON, and any non-JSON text causes a parse failure (`invalid character 'K' after object key:value pair`). The two mitigations are:
+
+1. **Model substitution** — use a non-reasoning model (`deepseek-chat`) for extraction
+2. **Disable reasoning** — pass `thinking: {type: disabled}` via `extra_params` to force JSON-only output
+
+Only `extract` (and `reextract`) parse JSON. The other tasks (summarize, write, lint, query) are free-text and can safely use reasoning models.
 
 ---
 

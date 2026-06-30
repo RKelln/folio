@@ -941,9 +941,9 @@ def _run_wiki(config: ProjectConfig, files: list[str] | None = None) -> dict:
                 "query": wiki_models.get("query") or write_model or fetch_model or "deepseek-chat",
             }
             wiki_config["embed"] = {"provider": "auto"}
-            wiki_properties = getattr(llm, "wiki_properties", None) or {}
-            if wiki_properties:
-                wiki_config["properties"] = dict(wiki_properties)
+            wiki_extra_params = getattr(llm, "wiki_extra_params", None) or {}
+            if wiki_extra_params:
+                wiki_config["extra_params"] = dict(wiki_extra_params)
         backend.init(wiki_dir, wiki_config, source_dir=rewrite_dir)
 
         # Install and apply the pack from folio's templates

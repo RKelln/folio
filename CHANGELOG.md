@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.1] — Per-task wiki model config & DeepSeek base_url fix — 2026-06-29
+
+### Added
+- **Per-task model overrides for wiki compilation.** `llm.wiki.models` lets
+  you override the model per wiki task (extract, summarize, write, lint, query)
+  without changing `models.fast`/`models.quality`. Essential for using a
+  non-reasoning model (`deepseek-chat`) for concept extraction while keeping
+  reasoning models for prose tasks.
+- **Per-task extra params for wiki compilation.** `llm.wiki.extra_params` passes
+  per-task API parameters (e.g. `thinking: {type: disabled}`) through to sage-wiki
+  config.yaml.
+- **Go version check in `folio doctor`.** Verifies `go` is on PATH and meets
+  sage-wiki's minimum version (go >= 1.26).
+
+### Fixed
+- **DeepSeek base_url normalized before sage-wiki config.** DeepSeek URLs
+  without `/v1` suffix now get `/v1` appended before writing to sage-wiki's
+  `config.yaml`. Fixes 401 "Authentication Fails (governor)" from sage-wiki's
+  Go client hitting the wrong DeepSeek endpoint.
+- **Mypy type-check errors** in CI (missing `result` annotation, `_project_dir`
+  attr-defined on base WikiBackend type).
+
+### Docs
+- `docs/config.md`: Documented `llm.wiki.models`, `llm.wiki.extra_params`,
+  wiki task table with JSON/strict-output requirements, and reasoning-model
+  mitigation guidance.
+
 ## [v0.4.0] — System health checks & wiki compilation — 2026-06-29
 
 The `folio doctor` command debuts as a comprehensive system health checker,

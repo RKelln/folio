@@ -1153,14 +1153,14 @@ wiki:
     assert m["query"] == "test-model-pro"         # falls back to quality
 
 
-def test_build_wiki_llm_config_properties(tmp_path):
-    """_build_wiki_llm_config writes llm.wiki.properties to sage-wiki config."""
+def test_build_wiki_llm_config_extra_params(tmp_path):
+    """_build_wiki_llm_config writes llm.wiki.extra_params to sage-wiki config."""
     from unittest.mock import patch
 
     from folio.cli.wiki import _build_wiki_llm_config
     from folio.config.loader import load_project_config
 
-    yaml_with_properties = """\
+    yaml_with_params = """\
 project:
   name: Test Project
 org:
@@ -1184,7 +1184,7 @@ llm:
     quality: test-model-pro
   base_url: https://api.example.com
   wiki:
-    properties:
+    extra_params:
       extract:
         thinking:
           type: disabled
@@ -1200,16 +1200,16 @@ wiki:
     pack: arts-org
 """
     folio_yaml = tmp_path / "folio.yaml"
-    folio_yaml.write_text(yaml_with_properties)
+    folio_yaml.write_text(yaml_with_params)
     config = load_project_config(folio_yaml)
 
     with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "test-key"}):
         result = _build_wiki_llm_config(config)
 
-    assert "properties" in result
-    assert result["properties"]["extract"]["thinking"]["type"] == "disabled"
-    assert result["properties"]["extract"]["temperature"] == 0
-    assert result["properties"]["summarize"]["temperature"] == 0.3
+    assert "extra_params" in result
+    assert result["extra_params"]["extract"]["thinking"]["type"] == "disabled"
+    assert result["extra_params"]["extract"]["temperature"] == 0
+    assert result["extra_params"]["summarize"]["temperature"] == 0.3
 
 
 # ---------------------------------------------------------------------------
