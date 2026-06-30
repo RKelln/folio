@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 from folio import __version__
 from folio.adapters.wiki import get_wiki_backend
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 def _build_wiki_llm_config(config) -> dict:
     """Build api, models, embed sections for sage-wiki config from folio config."""
-    result = {}
+    result: dict[str, Any] = {}
     llm = getattr(config, "llm", None)
     if not llm or not hasattr(llm, "provider"):
         return result
@@ -63,7 +64,7 @@ def _init_backend(config, project_dir: Path):
     # Preserve existing config.yaml if present (pipeline may have written a full one)
     config_file = project_dir / "config.yaml"
     if config_file.exists():
-        backend._project_dir = project_dir
+        backend._project_dir = project_dir  # type: ignore[attr-defined]
         return backend
 
     wiki_config = {

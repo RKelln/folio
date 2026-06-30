@@ -312,7 +312,7 @@ def _run_wiki_doctor(config) -> list[dict]:
 
     config_file = wiki_dir / "config.yaml"
     if config_file.exists():
-        backend._project_dir = wiki_dir
+        backend._project_dir = wiki_dir  # type: ignore[attr-defined]
     else:
         return [_check("wiki doctor", "warn", f"No sage-wiki config at {config_file} — run folio wiki compile")]
 
