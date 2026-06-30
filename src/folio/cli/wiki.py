@@ -36,6 +36,7 @@ def _build_wiki_llm_config(config) -> dict:
         return result
     fetch_model = getattr(llm, "fast_model", None)
     write_model = getattr(llm, "quality_model", None)
+    wiki_models = getattr(llm, "wiki_models", None) or {}
     api_key = os.environ.get(llm.api_key_env, "")
     if api_key:
         os.environ.setdefault(llm.api_key_env, api_key)
@@ -48,13 +49,16 @@ def _build_wiki_llm_config(config) -> dict:
         "api_key": f"${{{llm.api_key_env}}}",
     }
     result["models"] = {
-        "summarize": fetch_model or write_model or "deepseek-chat",
-        "extract": fetch_model or write_model or "deepseek-chat",
-        "write": write_model or fetch_model or "deepseek-chat",
-        "lint": fetch_model or write_model or "deepseek-chat",
-        "query": write_model or fetch_model or "deepseek-chat",
+        "summarize": wiki_models.get("summarize") or fetch_model or write_model or "deepseek-chat",
+        "extract": wiki_models.get("extract") or fetch_model or write_model or "deepseek-chat",
+        "write": wiki_models.get("write") or write_model or fetch_model or "deepseek-chat",
+        "lint": wiki_models.get("lint") or fetch_model or write_model or "deepseek-chat",
+        "query": wiki_models.get("query") or write_model or fetch_model or "deepseek-chat",
     }
     result["embed"] = {"provider": "auto"}
+    wiki_properties = getattr(llm, "wiki_properties", None) or {}
+    if wiki_properties:
+        result["properties"] = dict(wiki_properties)
     return result
 
 

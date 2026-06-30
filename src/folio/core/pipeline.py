@@ -919,6 +919,7 @@ def _run_wiki(config: ProjectConfig, files: list[str] | None = None) -> dict:
         if llm and hasattr(llm, "provider"):
             fetch_model = getattr(llm, "fast_model", None)
             write_model = getattr(llm, "quality_model", None)
+            wiki_models = getattr(llm, "wiki_models", None) or {}
             # Ensure the API key env var is set in the current process so
             # the sage-wiki subprocess inherits it for ${ENV_VAR} expansion.
             api_key = os.environ.get(llm.api_key_env, "")
@@ -933,13 +934,16 @@ def _run_wiki(config: ProjectConfig, files: list[str] | None = None) -> dict:
                 "api_key": f"${{{llm.api_key_env}}}",
             }
             wiki_config["models"] = {
-                "summarize": fetch_model or write_model or "deepseek-chat",
-                "extract": fetch_model or write_model or "deepseek-chat",
-                "write": write_model or fetch_model or "deepseek-chat",
-                "lint": fetch_model or write_model or "deepseek-chat",
-                "query": write_model or fetch_model or "deepseek-chat",
+                "summarize": wiki_models.get("summarize") or fetch_model or write_model or "deepseek-chat",
+                "extract": wiki_models.get("extract") or fetch_model or write_model or "deepseek-chat",
+                "write": wiki_models.get("write") or write_model or fetch_model or "deepseek-chat",
+                "lint": wiki_models.get("lint") or fetch_model or write_model or "deepseek-chat",
+                "query": wiki_models.get("query") or write_model or fetch_model or "deepseek-chat",
             }
             wiki_config["embed"] = {"provider": "auto"}
+            wiki_properties = getattr(llm, "wiki_properties", None) or {}
+            if wiki_properties:
+                wiki_config["properties"] = dict(wiki_properties)
         backend.init(wiki_dir, wiki_config, source_dir=rewrite_dir)
 
         # Install and apply the pack from folio's templates

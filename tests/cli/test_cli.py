@@ -1096,6 +1096,122 @@ def test_build_wiki_llm_config_leaves_non_deepseek_url_unchanged(tmp_path):
     assert result["api"]["base_url"] == "https://api.example.com"
 
 
+def test_build_wiki_llm_config_per_task_override(tmp_path):
+    """_build_wiki_llm_config honors llm.wiki.models per-task overrides."""
+    from unittest.mock import patch
+
+    from folio.cli.wiki import _build_wiki_llm_config
+    from folio.config.loader import load_project_config
+
+    yaml_with_wiki_models = """\
+project:
+  name: Test Project
+org:
+  name: Test Org
+  abbreviation: TEST
+paths:
+  raw_archive: ./archive/
+  raw_md: ./.folio/raw_md/
+  clean_md: ./.folio/clean_md/
+  rewrite_md: ./markdown/
+  wiki_project: ./.folio/sage-wiki/
+funders:
+  TAC: Toronto Arts Council
+doc_types:
+  - application
+  - report
+llm:
+  provider: openai_compatible
+  models:
+    fast: test-model-fast
+    quality: test-model-pro
+  base_url: https://api.example.com
+  wiki:
+    models:
+      extract: my-extract-model
+      write: my-write-model
+converter:
+  type: marker
+wiki:
+  type: sage-wiki
+  sage_wiki:
+    binary_path: sage-wiki
+    pack: arts-org
+"""
+    folio_yaml = tmp_path / "folio.yaml"
+    folio_yaml.write_text(yaml_with_wiki_models)
+    config = load_project_config(folio_yaml)
+
+    with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "test-key"}):
+        result = _build_wiki_llm_config(config)
+
+    m = result["models"]
+    assert m["extract"] == "my-extract-model"
+    assert m["write"] == "my-write-model"
+    assert m["summarize"] == "test-model-fast"  # falls back to fast
+    assert m["lint"] == "test-model-fast"        # falls back to fast
+    assert m["query"] == "test-model-pro"         # falls back to quality
+
+
+def test_build_wiki_llm_config_properties(tmp_path):
+    """_build_wiki_llm_config writes llm.wiki.properties to sage-wiki config."""
+    from unittest.mock import patch
+
+    from folio.cli.wiki import _build_wiki_llm_config
+    from folio.config.loader import load_project_config
+
+    yaml_with_properties = """\
+project:
+  name: Test Project
+org:
+  name: Test Org
+  abbreviation: TEST
+paths:
+  raw_archive: ./archive/
+  raw_md: ./.folio/raw_md/
+  clean_md: ./.folio/clean_md/
+  rewrite_md: ./markdown/
+  wiki_project: ./.folio/sage-wiki/
+funders:
+  TAC: Toronto Arts Council
+doc_types:
+  - application
+  - report
+llm:
+  provider: openai_compatible
+  models:
+    fast: test-model-fast
+    quality: test-model-pro
+  base_url: https://api.example.com
+  wiki:
+    properties:
+      extract:
+        thinking:
+          type: disabled
+        temperature: 0
+      summarize:
+        temperature: 0.3
+converter:
+  type: marker
+wiki:
+  type: sage-wiki
+  sage_wiki:
+    binary_path: sage-wiki
+    pack: arts-org
+"""
+    folio_yaml = tmp_path / "folio.yaml"
+    folio_yaml.write_text(yaml_with_properties)
+    config = load_project_config(folio_yaml)
+
+    with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "test-key"}):
+        result = _build_wiki_llm_config(config)
+
+    assert "properties" in result
+    assert result["properties"]["extract"]["thinking"]["type"] == "disabled"
+    assert result["properties"]["extract"]["temperature"] == 0
+    assert result["properties"]["summarize"]["temperature"] == 0.3
+
+
 # ---------------------------------------------------------------------------
 # 16. test_repack
 # ---------------------------------------------------------------------------
