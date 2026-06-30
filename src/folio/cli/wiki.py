@@ -131,7 +131,7 @@ def _do_compile(config, wiki_dir: Path, backend) -> None:
             print(f"  Wiki linked to {len(md_files)} documents in {rewrite_dir}")
 
     print("  Compiling wiki...")
-    backend.compile()
+    backend.compile(log_file=wiki_dir / "compile.log")
     print("  Wiki compiled successfully")
 
     compiled_wiki = wiki_dir / "wiki"

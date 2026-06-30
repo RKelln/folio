@@ -9,6 +9,8 @@ from __future__ import annotations
 import logging
 import shutil
 import subprocess
+import sys
+import threading
 from pathlib import Path
 
 import yaml
@@ -77,17 +79,44 @@ class SageWikiBackend(WikiBackend):
     def add_documents(self, source_paths: list[Path]) -> None:
         pass
 
-    def compile(self) -> None:
+    def compile(self, log_file: Path | None = None) -> None:
+        """Run sage-wiki compile, streaming stdout/stderr to terminal and optionally to a log file."""
         if self._project_dir is None:
             raise RuntimeError("Wiki not initialized. Call init() first.")
-        try:
-            subprocess.run(
-                ["sage-wiki", "compile"],
-                cwd=str(self._project_dir),
-                check=True,
-            )
-        except subprocess.CalledProcessError:
-            raise
+
+        proc = subprocess.Popen(
+            ["sage-wiki", "compile"],
+            cwd=str(self._project_dir),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+
+        log_fh = None
+        if log_file is not None:
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            log_fh = open(log_file, "w")
+
+        def _tee(pipe, log_fh):
+            try:
+                for line in pipe:
+                    sys.stdout.write(line)
+                    sys.stdout.flush()
+                    if log_fh:
+                        log_fh.write(line)
+                        log_fh.flush()
+            finally:
+                if log_fh:
+                    log_fh.close()
+
+        tee_thread = threading.Thread(target=_tee, args=(proc.stdout, log_fh), daemon=True)
+        tee_thread.start()
+
+        ret = proc.wait()
+        tee_thread.join()
+
+        if ret != 0:
+            raise subprocess.CalledProcessError(ret, ["sage-wiki", "compile"])
 
     def search(self, query: str) -> str:
         return self._run_wiki_command("sage-wiki", "search", query, timeout=60)
