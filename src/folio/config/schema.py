@@ -44,6 +44,7 @@ class WikiConfig:
     type: str = "sage-wiki"
     sage_wiki_binary: str = "sage-wiki"
     sage_wiki_pack: str = "arts-org"  # default pack, bundled in folio templates/packs (v1.1)
+    compiler: dict = field(default_factory=dict)
 
 @dataclass
 class AgentmapConfig:

@@ -98,6 +98,9 @@ def _do_compile(config, wiki_dir: Path, backend) -> None:
         "output": "wiki",
     }
     wiki_config.update(_build_wiki_llm_config(config))
+    wiki_compiler = getattr(config.wiki, "compiler", None) or {}
+    if wiki_compiler:
+        wiki_config["compiler"] = dict(wiki_compiler)
     backend.init(wiki_dir, wiki_config, source_dir=rewrite_dir)
 
     # Install and apply the pack from folio's templates

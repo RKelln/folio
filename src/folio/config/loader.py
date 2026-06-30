@@ -91,10 +91,12 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
 
     wiki_data = data.get("wiki", {})
     wiki_sage = wiki_data.get("sage_wiki", {})
+    wiki_compiler = wiki_data.get("compiler", {}) if isinstance(wiki_data, dict) else {}
     wiki = WikiConfig(
         type=wiki_data.get("type", "sage-wiki"),
         sage_wiki_binary=wiki_sage.get("binary_path", "sage-wiki"),
         sage_wiki_pack=wiki_sage.get("pack", "arts-org"),
+        compiler=wiki_compiler,
     )
 
     agentmap_data = data.get("agentmap", {})
