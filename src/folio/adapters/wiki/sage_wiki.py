@@ -84,7 +84,6 @@ class SageWikiBackend(WikiBackend):
             subprocess.run(
                 ["sage-wiki", "compile"],
                 cwd=str(self._project_dir),
-                timeout=3600,
                 check=True,
                 capture_output=True,
                 text=True,
@@ -92,14 +91,6 @@ class SageWikiBackend(WikiBackend):
         except subprocess.CalledProcessError as e:
             if e.stderr:
                 logger.error("sage-wiki compile stderr:\n%s", e.stderr.strip())
-            raise
-        except subprocess.TimeoutExpired as e:
-            if e.stderr:
-                logger.error(
-                    "sage-wiki compile timed out after %ds — stderr:\n%s",
-                    e.timeout,
-                    e.stderr.decode() if isinstance(e.stderr, bytes) else str(e.stderr),
-                )
             raise
 
     def search(self, query: str) -> str:
