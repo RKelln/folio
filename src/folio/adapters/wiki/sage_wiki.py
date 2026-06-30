@@ -85,12 +85,8 @@ class SageWikiBackend(WikiBackend):
                 ["sage-wiki", "compile"],
                 cwd=str(self._project_dir),
                 check=True,
-                capture_output=True,
-                text=True,
             )
-        except subprocess.CalledProcessError as e:
-            if e.stderr:
-                logger.error("sage-wiki compile stderr:\n%s", e.stderr.strip())
+        except subprocess.CalledProcessError:
             raise
 
     def search(self, query: str) -> str:
