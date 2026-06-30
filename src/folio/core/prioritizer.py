@@ -703,6 +703,7 @@ def prioritize_directory(
     year: int | None = None,
     limit: int | None = None,
     resume: bool = True,
+    state_dir: Path | None = None,
 ) -> dict:
     """Prioritize all files in a directory, grouped by year.
 
@@ -718,6 +719,9 @@ def prioritize_directory(
         year: Restrict processing to a specific year group.
         limit: Process at most this many year groups.
         resume: If ``True``, skip groups already in the manifest.
+        state_dir: If set, write manifest/state files to this directory
+            instead of *directory*. Use when *directory* is symlinked
+            (e.g. as a wiki source) to avoid leaking state files.
 
     Returns:
         A manifest dict with per-file results and a ``summary`` section
@@ -757,7 +761,9 @@ def prioritize_directory(
         sorted_items = sorted_items[:limit]
 
     total_files = sum(len(v) for _, v in sorted_items)
-    manifest_path = directory / "prioritize_progress.json"
+    manifest_dir = state_dir if state_dir is not None else directory
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = manifest_dir / "prioritize_progress.json"
 
     # ── Dry run ────────────────────────────────────────────────────────
     if dry_run:
@@ -969,7 +975,7 @@ def prioritize_directory(
 
     # Sync priority data back into the canonical manifest (manifest.json)
     # so recalculate_summary can include prioritize costs and priorities.
-    canonical_path = directory / "manifest.json"
+    canonical_path = manifest_dir / "manifest.json"
     if canonical_path.exists():
         canonical = load_manifest(canonical_path)
         for group_key, group_result in manifest.get("completed_groups", {}).items():

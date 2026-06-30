@@ -86,7 +86,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--manifest",
         type=Path,
-        help="Path to manifest.json for tier/status lookup (default: rewrite_md/manifest.json)",
+        help="Path to manifest.json for tier/status lookup (default: .folio/manifest.json)",
     )
     parser.add_argument(
         "--version", action="version",

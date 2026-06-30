@@ -1077,7 +1077,7 @@ class TestConvertStageManifest:
             config_path=config_path, stages=["convert"], dry_run=False, resume=True
         )
 
-        manifest = load_manifest(tmp_path / "markdown" / "manifest.json")
+        manifest = load_manifest(tmp_path / ".folio" / "manifest.json")
         entry = get_file(manifest, "doc_0.md")
         assert entry is not None
         assert entry["converter_tier"] == "tier1"
@@ -1099,7 +1099,7 @@ class TestConvertStageManifest:
             config_path=config_path, stages=["convert"], dry_run=False, resume=True
         )
 
-        manifest = load_manifest(tmp_path / "markdown" / "manifest.json")
+        manifest = load_manifest(tmp_path / ".folio" / "manifest.json")
         entry = get_file(manifest, "a.md")
         assert entry is not None
         assert entry["converter_tier"] == "solo"

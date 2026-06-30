@@ -78,7 +78,7 @@ PIPELINE STAGES (in order)
   Preview only:         folio pipeline --dry-run
 
   Every stage respects --dry-run and --json. Pipeline checkpoints save
-  to {paths.rewrite_md}/manifest.json after each stage.
+  to .folio/manifest.json after each stage.
 
 ORG LIBRARY CONVENTION
 ──────────────────────

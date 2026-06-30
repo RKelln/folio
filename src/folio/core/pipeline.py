@@ -100,7 +100,7 @@ def run_pipeline(
         _acquire_pipeline_lock(lock_path)
 
     try:
-        manifest_path = Path(config.paths.rewrite_md) / "manifest.json"
+        manifest_path = Path(config.paths.rewrite_md).parent / ".folio" / "manifest.json"
         manifest = load_manifest(manifest_path)
 
         if stages is None:
@@ -800,7 +800,7 @@ def _run_rewrite(config: ProjectConfig, files: list[str] | None = None) -> dict:
                 "cost_usd": total_cost,
             }
 
-        manifest_path = Path(config.paths.rewrite_md) / "manifest.json"
+        manifest_path = Path(config.paths.rewrite_md).parent / ".folio" / "manifest.json"
         result = rewrite_directory(clean_dir, config, manifest_path=manifest_path, dest=rewrite_dir)
         files_count = len(list(rewrite_dir.glob("*.md"))) if rewrite_dir.is_dir() else 0
         return {
@@ -857,7 +857,7 @@ def _run_prioritize(config: ProjectConfig, files: list[str] | None = None) -> di
                 "cost_usd": total_cost,
             }
 
-        result = prioritize_directory(rewrite_dir, config)
+        result = prioritize_directory(rewrite_dir, config, state_dir=rewrite_dir.parent / ".folio")
         return {
             "stage": "prioritize",
             "status": "ok",
