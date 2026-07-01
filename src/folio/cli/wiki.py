@@ -279,7 +279,13 @@ def main(argv: list[str] | None = None) -> None:
             backend = get_wiki_backend(config)
             print(f"  Would compile from: {Path(config.paths.rewrite_md)}")
             print(f"  Wiki dir: {wiki_dir}")
-            print(f"  Resolved config:")
+            print(f"  Resolved sage-wiki config.yaml (from folio.yaml):")
+            print(f"    # models   ← llm.wiki.models + llm.models.{{fast,quality}}")
+            print(f"    # api      ← llm.{{provider,base_url,api_key_env}}")
+            print(f"    # api.extra_params  ← llm.wiki.api_params")
+            print(f"    # extra_params      ← llm.wiki.extra_params")
+            print(f"    # compiler ← wiki.compiler")
+            print(f"    ---")
             import yaml as _yaml
             wiki_config = {
                 "version": 1,
