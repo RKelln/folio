@@ -110,6 +110,7 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
     llm_wiki = llm_data.get("wiki", {})
     llm_wiki_models = llm_wiki.get("models", {}) if isinstance(llm_wiki, dict) else {}
     llm_wiki_extra_params = llm_wiki.get("extra_params", {}) if isinstance(llm_wiki, dict) else {}
+    llm_wiki_api_params = llm_wiki.get("api_params", {}) if isinstance(llm_wiki, dict) else {}
     llm_pricing = llm_data.get("pricing", {})
     try:
         input_price = float(llm_pricing.get("input_per_million", 0.14))
@@ -136,6 +137,7 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
         output_price_per_m=output_price,
         wiki_models=llm_wiki_models,
         wiki_extra_params=llm_wiki_extra_params,
+        wiki_api_params=llm_wiki_api_params,
     )
 
     processing_data = data.get("processing", {})

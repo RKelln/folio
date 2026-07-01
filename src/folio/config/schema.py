@@ -30,6 +30,7 @@ class LLMConfig:
     output_price_per_m: float = 0.28
     wiki_models: dict[str, str] = field(default_factory=dict)
     wiki_extra_params: dict[str, dict] = field(default_factory=dict)
+    wiki_api_params: dict = field(default_factory=dict)
 
 @dataclass
 class ConverterConfig:

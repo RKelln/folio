@@ -933,6 +933,9 @@ def _run_wiki(config: ProjectConfig, files: list[str] | None = None) -> dict:
                 "base_url": base_url,
                 "api_key": f"${{{llm.api_key_env}}}",
             }
+            wiki_api_params = getattr(llm, "wiki_api_params", None) or {}
+            if wiki_api_params:
+                wiki_config["api"]["extra_params"] = dict(wiki_api_params)  # type: ignore[index]
             wiki_config["models"] = {
                 "summarize": wiki_models.get("summarize") or fetch_model or write_model or "deepseek-chat",
                 "extract": wiki_models.get("extract") or fetch_model or write_model or "deepseek-chat",

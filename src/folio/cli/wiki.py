@@ -48,6 +48,9 @@ def _build_wiki_llm_config(config) -> dict:
         "base_url": base_url,
         "api_key": f"${{{llm.api_key_env}}}",
     }
+    wiki_api_params = getattr(llm, "wiki_api_params", None) or {}
+    if wiki_api_params:
+        result["api"]["extra_params"] = dict(wiki_api_params)
     result["models"] = {
         "summarize": wiki_models.get("summarize") or fetch_model or write_model or "deepseek-chat",
         "extract": wiki_models.get("extract") or fetch_model or write_model or "deepseek-chat",
