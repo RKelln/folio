@@ -79,13 +79,16 @@ class SageWikiBackend(WikiBackend):
     def add_documents(self, source_paths: list[Path]) -> None:
         pass
 
-    def compile(self, log_file: Path | None = None) -> None:
+    def compile(self, log_file: Path | None = None, dry_run: bool = False) -> None:
         """Run sage-wiki compile, streaming stdout/stderr to terminal and optionally to a log file."""
         if self._project_dir is None:
             raise RuntimeError("Wiki not initialized. Call init() first.")
 
+        cmd = ["sage-wiki", "compile"]
+        if dry_run:
+            cmd.append("--dry-run")
         proc = subprocess.Popen(
-            ["sage-wiki", "compile"],
+            cmd,
             cwd=str(self._project_dir),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,

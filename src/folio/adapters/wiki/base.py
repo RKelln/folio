@@ -20,7 +20,7 @@ class WikiBackend(ABC):
         ...
 
     @abstractmethod
-    def compile(self) -> None:
+    def compile(self, log_file: Path | None = None, dry_run: bool = False) -> None:
         """Compile the wiki (generate summaries, concepts, articles)."""
         ...
 

@@ -86,7 +86,7 @@ def _init_backend(config, project_dir: Path):
     return backend
 
 
-def _do_compile(config, wiki_dir: Path, backend) -> None:
+def _do_compile(config, wiki_dir: Path, backend, dry_run: bool = False) -> None:
     """Full wiki (re)compile: init config, install pack, compile, symlink."""
     rewrite_dir = Path(config.paths.rewrite_md)
     pack_name = getattr(config.wiki, "sage_wiki_pack", "arts-org")
@@ -137,14 +137,20 @@ def _do_compile(config, wiki_dir: Path, backend) -> None:
             print(f"  Wiki linked to {len(md_files)} documents in {rewrite_dir}")
 
     print("  Compiling wiki...")
-    backend.compile(log_file=wiki_dir / "compile.log")
+    backend.compile(log_file=wiki_dir / "compile.log", dry_run=dry_run)
+    if dry_run:
+        return
     print("  Wiki compiled successfully")
 
     compiled_wiki = wiki_dir / "wiki"
     if compiled_wiki.is_dir():
         public_link = Path("wiki")
         if public_link.is_symlink() or public_link.exists():
-            public_link.unlink()
+            if public_link.is_dir() and not public_link.is_symlink():
+                import shutil
+                shutil.rmtree(public_link)
+            else:
+                public_link.unlink()
         public_link.symlink_to(compiled_wiki, target_is_directory=True)
         print(f"  Wiki output → {public_link}")
 
@@ -237,6 +243,8 @@ def main(argv: list[str] | None = None) -> None:
 
     compile_parser = subparsers.add_parser("compile", help="(Re)compile the wiki from markdown sources")
     compile_parser.add_argument("--config", "-c", default="folio.yaml", help=argparse.SUPPRESS)
+    compile_parser.add_argument("--json", action="store_true", dest="json_output", help="Output results as JSON")
+    compile_parser.add_argument("--dry-run", "-n", action="store_true", dest="compile_dry_run", help="Preview with sage-wiki compile --dry-run")
 
     parsed, remainder = parser.parse_known_args(argv)
 
@@ -253,7 +261,8 @@ def main(argv: list[str] | None = None) -> None:
     config = load_project_config(config_path)
     wiki_dir = Path(config.paths.wiki_project)
 
-    if parsed.dry_run:
+    is_dry_run = parsed.dry_run or getattr(parsed, "compile_dry_run", False)
+    if is_dry_run:
         result = {"subcommand": parsed.subcommand, "wiki_dir": str(wiki_dir), "dry_run": True}
         if parsed.subcommand == "lint":
             result["pass_name"] = parsed.pass_name
@@ -267,8 +276,10 @@ def main(argv: list[str] | None = None) -> None:
             return
         print(f"Dry run — would execute: sage-wiki {parsed.subcommand}")
         if parsed.subcommand == "compile":
+            backend = get_wiki_backend(config)
             print(f"  Would compile from: {Path(config.paths.rewrite_md)}")
             print(f"  Wiki dir: {wiki_dir}")
+            _do_compile(config, wiki_dir, backend, dry_run=True)
         elif parsed.subcommand == "lint":
             print(f"  --pass: {parsed.pass_name or '(all)'}")
             print(f"  --fix: {parsed.fix}")
@@ -281,7 +292,7 @@ def main(argv: list[str] | None = None) -> None:
     backend = _init_backend(config, wiki_dir)
 
     if parsed.subcommand == "compile":
-        _do_compile(config, wiki_dir, backend)
+        _do_compile(config, wiki_dir, backend, dry_run=getattr(parsed, "compile_dry_run", False))
         return
 
     if parsed.subcommand == "status":

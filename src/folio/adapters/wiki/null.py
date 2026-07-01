@@ -19,7 +19,7 @@ class NullWikiBackend(WikiBackend):
     def add_documents(self, source_paths: list[Path]) -> None:
         pass
 
-    def compile(self) -> None:
+    def compile(self, log_file: Path | None = None, dry_run: bool = False) -> None:
         pass
 
     def search(self, query: str) -> str:
