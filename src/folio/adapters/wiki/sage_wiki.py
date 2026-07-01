@@ -128,7 +128,7 @@ class SageWikiBackend(WikiBackend):
         return self._run_wiki_command("sage-wiki", "query", question, timeout=60)
 
     def status(self) -> str:
-        return self._run_wiki_command("sage-wiki", "status", "--json", timeout=300)
+        return self._run_wiki_command("sage-wiki", "status", "--format", "json", timeout=300)
 
     def doctor(self) -> str:
         return self._run_wiki_command("sage-wiki", "doctor", timeout=300)
@@ -145,7 +145,7 @@ class SageWikiBackend(WikiBackend):
         return self._run_wiki_command("sage-wiki", "coverage", timeout=300)
 
     def diff(self) -> str:
-        return self._run_wiki_command("sage-wiki", "diff", "--json", timeout=300)
+        return self._run_wiki_command("sage-wiki", "diff", "--format", "json", timeout=300)
 
     def verify(self, all_files: bool = False, since: str | None = None, limit: int | None = None) -> str:
         cmd = ["sage-wiki", "verify"]
