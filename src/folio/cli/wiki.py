@@ -279,6 +279,20 @@ def main(argv: list[str] | None = None) -> None:
             backend = get_wiki_backend(config)
             print(f"  Would compile from: {Path(config.paths.rewrite_md)}")
             print(f"  Wiki dir: {wiki_dir}")
+            print(f"  Resolved config:")
+            import yaml as _yaml
+            wiki_config = {
+                "version": 1,
+                "project": config.org.name,
+                "pack": getattr(config.wiki, "sage_wiki_pack", "arts-org"),
+                "sources": [{"path": "raw", "type": "auto", "watch": False}],
+                "output": "wiki",
+            }
+            wiki_config.update(_build_wiki_llm_config(config))
+            wiki_compiler = getattr(config.wiki, "compiler", None) or {}
+            if wiki_compiler:
+                wiki_config["compiler"] = dict(wiki_compiler)
+            print(_yaml.dump(wiki_config, default_flow_style=False, indent=2))
             _do_compile(config, wiki_dir, backend, dry_run=True)
         elif parsed.subcommand == "lint":
             print(f"  --pass: {parsed.pass_name or '(all)'}")
