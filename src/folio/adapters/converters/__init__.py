@@ -4,7 +4,7 @@ Pluggable interface with implementations for:
 - LiteParse (default — fast, local, non-LLM, Rust-based)
 - Datalab (proprietary, best quality for grant forms)
 - Docling (IBM, open source)
-- Marker (open source, local)
+- Marker 2 (open source, local, multi-mode)
 - Pandoc (universal, lowest quality)
 """
 

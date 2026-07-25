@@ -141,21 +141,36 @@ export DATALAB_API_KEY="your-key"
 
 ---
 
-### 4. Marker
+### 4. Marker 2
 
-Open-source `marker-pdf` package. Runs entirely offline. Converts PDF to markdown with good table and layout handling.
+Open-source `marker-pdf` package (v2, July 2026 — full rewrite by Datalab). Converts PDF, image, PPTX, DOCX, XLSX, HTML, and EPUB to markdown, JSON, HTML, or chunks. Runs offline with three quality/speed modes, and has a CPU-only path requiring no GPU.
+
+**Three conversion modes:**
+
+| Mode | olmOCR-bench | Throughput | Hardware |
+|------|:--------:|:--------:|----------|
+| `balanced` | **76.0%** | 2.9 pg/s (B200 GPU) | GPU — Surya VLM handles layout + re-OCR |
+| `fast` | 66.6% | 7.4 pg/s | GPU or CPU — lightweight layout detector, minimal VLM |
+| `--disable-ocr` | 43.6% | **23.7 pg/s** | **CPU only** — pure text-layer extraction, no VLM |
+
+Mode is device-aware by default: `balanced` on GPU, `fast` on CPU/MPS. `--disable-ocr` runs entirely on CPU with no inference server — a 20M-param layout model still recovers columns, tables, and headers.
+
+**Benchmark context:** The olmOCR-bench score (76.0% balanced, 83.5% on born-digital) beats Docling (50.3%) and MinerU (72.7%) on accuracy while sustaining 5× MinerU's throughput. For scans and math-heavy pages, the VLM tier (Chandra 2 at 85.8%) remains superior, but Marker 2's balanced mode narrows the gap to within 0.4 points of Gemini Flash 3.5.
+
+**Weight license:** Apache 2.0 code + a modified AI Pubs OpenRAIL-M for model weights — free for research, personal use, and startups under $5M funding/revenue. Beyond that, weight use requires a paid license. See the [Marker 2 license](https://github.com/datalab-org/marker) for details.
 
 | Property | Value |
 |----------|-------|
 | Class | `MarkerConverter` |
-| Supported extensions | `.pdf` |
-| Pricing | Free |
-| Requires network | No |
+| Supported extensions | `.pdf`, `.docx`, `.xlsx`, `.pptx`, `.png`, `.jpg`, `.jpeg`, `.html`, `.epub` |
+| Pricing | **Free** (local, offline). Weights: OpenRAIL-M (free under $5M) |
+| Requires network | No (runs entirely offline) |
+| Status | **Ready** (v2.0.0+) — requires `marker-pdf>=2.0` |
 
 **Installation:**
 
 ```bash
-uv add marker-pdf
+uv add "marker-pdf>=2.0"
 ```
 
 Or with the optional dependency group:
@@ -169,9 +184,12 @@ uv pip install "folio[marker]"
 ```yaml
 converter:
   type: "marker"
+  marker:
+    mode: "fast"              # balanced | fast | disable-ocr
+    # disable_ocr: true       # alternative: set to True for CPU-only mode
 ```
 
-**Note:** Implementation is not yet complete. This converter is best for archives that contain only PDF files and need offline processing.
+**Implementation note:** Marker 2 uses `uv` internally for packaging (was Poetry before). The `pip install marker-pdf` interface is unchanged. The structured-extraction converter and extractors were removed in v2 — use `--use_llm` workflow or the hosted API instead.
 
 ---
 
@@ -302,20 +320,21 @@ Cascade is **config-driven only**. `cascade` appears in the `folio convert --con
 
 ### Comparison
 
-| Converter | PDF | DOCX | XLSX | PPTX | Images | Pricing | Offline | Status |
-|-----------|-----|------|------|------|--------|---------|---------|--------|
-| LiteParse | Yes | Yes  | Yes  | Yes  | Yes    | Free   | Yes | Ready |
-| Docling  | Yes | Yes  | Yes  | Yes  | No     | Free   | Yes | Ready |
-| Datalab  | Yes | Yes  | Yes  | Yes  | Yes    | ~$0.02/page | No  | Ready |
-| Pandoc   | No  | Yes  | No   | No   | No     | Free   | Yes | Ready |
-| Marker   | Yes | No   | No   | No   | No     | Free   | Yes | Planned |
-| Null     | N/A | N/A  | N/A  | N/A  | N/A    | Free   | N/A | Ready |
-| Cascade  | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Ready |
+|| Converter | PDF | DOCX | XLSX | PPTX | Images | HTML | EPUB | Pricing | Offline | Status |
+||-----------|-----|------|------|------|--------|------|------|---------|---------|--------|
+|| LiteParse | Yes | Yes  | Yes  | Yes  | Yes    | —    | —    | Free    | Yes | Ready |
+|| Docling  | Yes | Yes  | Yes  | Yes  | No     | —    | —    | Free    | Yes | Ready |
+|| **Marker 2** | **Yes** | **Yes** | **Yes** | **Yes** | **Yes** | **Yes** | **Yes** | **Free (local)** | **Yes** | **Ready (v2)** |
+|| Datalab  | Yes | Yes  | Yes  | Yes  | Yes    | —    | —    | ~$0.02/page | No  | Ready |
+|| Pandoc   | No  | Yes  | No   | No   | No     | Yes  | Yes  | Free    | Yes | Ready |
+|| Null     | N/A | N/A  | N/A  | N/A  | N/A    | N/A  | N/A  | Free    | N/A | Ready |
+|| Cascade  | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Per tiers | Ready |
 
 ### Choosing a Converter
 
 - **Most archives** -> LiteParse (default, fast, local, no API key, multi-format)
 - **Need Docling's table extraction** -> Docling
+- **Best offline accuracy for PDF-heavy archives** -> **Marker 2** (76.0% olmOCR-bench, multi-mode, local, no cloud calls — `balanced` for quality, `fast` for speed, `--disable-ocr` for CPU-only)
 - **Maximum fidelity for complex grant forms** -> Datalab
 - **DOCX/HTML/ODT/EPUB only, want a fast free offline baseline** -> Pandoc
 - **Mostly-clean archive with a few hard documents** -> Cascade (free tier first, paid fallback only when quality fails)
