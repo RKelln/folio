@@ -16,7 +16,7 @@ from pathlib import Path
 
 from folio import __version__
 from folio.config.loader import load_project_config
-from folio.core.auditor import audit_wiki
+from folio.core.auditor import _apply_fixes, _scan_articles, audit_wiki
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,11 @@ def main(argv: list[str] | None = None) -> None:
         help="Preview what would be audited without running audit",
     )
     parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="Apply deterministic, safe fixes for flagged issues",
+    )
+    parser.add_argument(
         "--version", action="version",
         version=f"%(prog)s v{__version__}",
     )
@@ -84,6 +89,14 @@ def main(argv: list[str] | None = None) -> None:
             "missing_sections",
             "suspicious_concepts",
             "stale_content",
+            "provenance",
+            "low_confidence",
+            "placeholder_phrasing",
+            "speculative_phrasing",
+            "truncation_suspects",
+            "weak_sections",
+            "link_noise",
+            "name_collisions",
         ]
         result = {"files": len(md_files), "checks": checks, "dry_run": True}
         if args.json_output:
@@ -133,6 +146,14 @@ def main(argv: list[str] | None = None) -> None:
         ("missing_sections", "Missing Sections"),
         ("suspicious_concepts", "Suspicious Concepts"),
         ("stale_content", "Stale Content"),
+        ("provenance", "Sourceless Articles"),
+        ("low_confidence", "Low-Confidence Articles"),
+        ("placeholder_phrasing", "Placeholder Phrasing"),
+        ("speculative_phrasing", "Speculative Phrasing"),
+        ("truncation_suspects", "Truncation Suspects"),
+        ("weak_sections", "Weak Sections"),
+        ("link_noise", "Link/Syntax Noise"),
+        ("name_collisions", "Name Collisions"),
     ]
 
     for key, label in sections_display:
@@ -144,7 +165,7 @@ def main(argv: list[str] | None = None) -> None:
                     fname = item.get("file", "?")
                     line = item.get("line", "?")
                     target = item.get("target", "?")
-                    print(f"  {fname}:{line} → {target}")
+                    print(f"  {fname}:{line} -> {target}")
                 elif key == "thin_articles":
                     fname = item.get("file", "?")
                     lines = item.get("lines", 0)
@@ -154,7 +175,7 @@ def main(argv: list[str] | None = None) -> None:
                     fa = item.get("file_a", "?")
                     fb = item.get("file_b", "?")
                     sim = item.get("similarity", 0)
-                    print(f"  {fa} ≈ {fb} ({sim:.2f})")
+                    print(f"  {fa} = {fb} ({sim:.2f})")
                 elif key == "missing_sections":
                     fname = item.get("file", "?")
                     missing = ", ".join(item.get("missing", []))
@@ -163,9 +184,52 @@ def main(argv: list[str] | None = None) -> None:
                     print(f"  {item.get('file', '?')}: {item.get('subtype', '?')}")
                 elif key == "stale_content":
                     print(f"  {item.get('file', '?')}: {item.get('reason', '?')}")
+                elif key == "provenance":
+                    print(f"  {item.get('file', '?')}: {item.get('source_count', '?')} sources")
+                elif key == "low_confidence":
+                    print(f"  {item.get('file', '?')}: confidence={item.get('confidence', '?')}")
+                elif key == "placeholder_phrasing":
+                    fname = item.get("file", "?")
+                    phrase = item.get("phrase", "?")
+                    line = item.get("line", "?")
+                    print(f"  {fname}:{line} \"{phrase}\"")
+                elif key == "speculative_phrasing":
+                    fname = item.get("file", "?")
+                    phrase = item.get("phrase", "?")
+                    line = item.get("line", "?")
+                    print(f"  {fname}:{line} \"{phrase}\"")
+                elif key == "truncation_suspects":
+                    fname = item.get("file", "?")
+                    phrase = item.get("phrase", "?")
+                    reason = item.get("reason", "?")
+                    print(f"  {fname}: \"{phrase}\" ({reason})")
+                elif key == "weak_sections":
+                    fname = item.get("file", "?")
+                    section = item.get("section", "?")
+                    print(f"  {fname}: ## {section}")
+                elif key == "link_noise":
+                    fname = item.get("file", "?")
+                    token = item.get("token", "?")
+                    line = item.get("line", "?")
+                    print(f"  {fname}:{line} \"{token}\"")
+                elif key == "name_collisions":
+                    fa = item.get("file_a", "?")
+                    fb = item.get("file_b", "?")
+                    subtype = item.get("subtype", "?")
+                    print(f"  {fa} = {fb} ({subtype})")
             if len(items) > 10:
                 print(f"  ... and {len(items) - 10} more")
             print()
+
+    if args.fix:
+        print("Applying fixes...")
+        fix_result = _apply_fixes(
+            _scan_articles(wiki_dir / "wiki" / "concepts"), issues, audit_cfg
+        )
+        print(f"Fixed {fix_result['fixed_count']} files.")
+        for action in fix_result.get("actions", []):
+            if action.get("file") and action.get("action") == "fixed":
+                print(f"  - {action['file']}")
 
     summary = findings.get("summary", "")
     if summary:

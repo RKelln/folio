@@ -4,12 +4,25 @@ from pathlib import Path
 
 from folio.core.auditor import (
     DEFAULT_AUDIT_CONFIG,
+    _apply_fixes,
     _check_dead_links,
+    _check_link_noise,
+    _check_low_confidence,
     _check_missing_sections,
+    _check_name_collisions,
     _check_near_duplicates,
+    _check_placeholder_phrasing,
+    _check_provenance,
+    _check_speculative_phrasing,
     _check_stale_content,
     _check_suspicious_concepts,
     _check_thin_articles,
+    _check_truncation_suspects,
+    _check_weak_sections,
+    _find_truncation_second_signal,
+    _parse_sections,
+    _quality_score,
+    _rank_by_quality,
     _scan_articles,
     audit_summary_text,
     audit_wiki,
@@ -31,9 +44,12 @@ def write_article(concepts_dir: Path, name: str, body: str, frontmatter: dict | 
         lines.append("---")
         for k, v in frontmatter.items():
             if isinstance(v, list):
-                lines.append(f"{k}:")
-                for item in v:
-                    lines.append(f"  - {item}")
+                if len(v) == 0:
+                    lines.append(f"{k}: []")
+                else:
+                    lines.append(f"{k}:")
+                    for item in v:
+                        lines.append(f"  - {item}")
             else:
                 lines.append(f"{k}: {v}")
         lines.append("---")
@@ -791,3 +807,940 @@ class TestAuditWiki:
         assert isinstance(result["summary"], str)
         assert len(result["summary"]) > 0
         assert "Articles scanned" in result["summary"]
+
+
+# ── Unit: _check_provenance ──────────────────────────────────────────────────
+
+
+class TestCheckProvenance:
+    def test_sourceless_detected(self):
+        art = {
+            "name": "SourcelessPage",
+            "file": Path("/fake/SourcelessPage.md"),
+            "frontmatter": {"sources": []},
+        }
+        issues = _check_provenance([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["article"] == "SourcelessPage"
+        assert issues[0]["source_count"] == 0
+
+    def test_with_sources_not_flagged(self):
+        art = {
+            "name": "SourcedPage",
+            "file": Path("/fake/SourcedPage.md"),
+            "frontmatter": {"sources": ["source1.pdf", "source2.pdf"]},
+        }
+        issues = _check_provenance([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_no_sources_key_not_flagged(self):
+        art = {
+            "name": "NoSourcesKey",
+            "file": Path("/fake/NoSourcesKey.md"),
+            "frontmatter": {"title": "Something"},
+        }
+        issues = _check_provenance([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_disabled_by_config(self):
+        art = {
+            "name": "SourcelessPage",
+            "file": Path("/fake/SourcelessPage.md"),
+            "frontmatter": {"sources": []},
+        }
+        cfg = {**DEFAULT_AUDIT_CONFIG, "flag_sourceless": False}
+        issues = _check_provenance([art], cfg)
+        assert len(issues) == 0
+
+    def test_empty_input(self):
+        issues = _check_provenance([], DEFAULT_AUDIT_CONFIG)
+        assert issues == []
+
+
+# ── Unit: _check_low_confidence ──────────────────────────────────────────────
+
+
+class TestCheckLowConfidence:
+    def test_low_confidence_detected(self):
+        art = {
+            "name": "LowConfPage",
+            "file": Path("/fake/LowConfPage.md"),
+            "frontmatter": {"confidence": "low"},
+        }
+        issues = _check_low_confidence([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["confidence"] == "low"
+
+    def test_high_confidence_not_flagged(self):
+        art = {
+            "name": "HighConfPage",
+            "file": Path("/fake/HighConfPage.md"),
+            "frontmatter": {"confidence": "high"},
+        }
+        issues = _check_low_confidence([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_no_confidence_key_not_flagged(self):
+        art = {
+            "name": "NoConfPage",
+            "file": Path("/fake/NoConfPage.md"),
+            "frontmatter": {"title": "Something"},
+        }
+        issues = _check_low_confidence([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_disabled_by_config(self):
+        art = {
+            "name": "LowConfPage",
+            "file": Path("/fake/LowConfPage.md"),
+            "frontmatter": {"confidence": "low"},
+        }
+        cfg = {**DEFAULT_AUDIT_CONFIG, "flag_low_confidence": False}
+        issues = _check_low_confidence([art], cfg)
+        assert len(issues) == 0
+
+    def test_empty_input(self):
+        issues = _check_low_confidence([], DEFAULT_AUDIT_CONFIG)
+        assert issues == []
+
+
+# ── Unit: _check_placeholder_phrasing ────────────────────────────────────────
+
+
+class TestCheckPlaceholderPhrasing:
+    def test_placeholder_detected(self):
+        art = {
+            "name": "PlaceholderPage",
+            "file": Path("/fake/PlaceholderPage.md"),
+            "body_text": "The report contains no specific figures for the budget.",
+            "lines": ["The report contains no specific figures for the budget."],
+        }
+        issues = _check_placeholder_phrasing([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["phrase"] == "no specific"
+
+    def test_only_first_match_per_article(self):
+        art = {
+            "name": "MultiPlaceholder",
+            "file": Path("/fake/MultiPlaceholder.md"),
+            "body_text": "There is no specific data and no concrete information.",
+            "lines": ["There is no specific data and no concrete information."],
+        }
+        issues = _check_placeholder_phrasing([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+
+    def test_no_phrases_not_flagged(self):
+        art = {
+            "name": "CleanPage",
+            "file": Path("/fake/CleanPage.md"),
+            "body_text": "The report includes detailed figures for the budget.",
+            "lines": ["The report includes detailed figures for the budget."],
+        }
+        issues = _check_placeholder_phrasing([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_custom_phrases(self):
+        art = {
+            "name": "CustomPhrase",
+            "file": Path("/fake/CustomPhrase.md"),
+            "body_text": "This contains my custom bad phrase.",
+            "lines": ["This contains my custom bad phrase."],
+        }
+        cfg = {**DEFAULT_AUDIT_CONFIG, "placeholder_phrases": ["custom bad phrase"]}
+        issues = _check_placeholder_phrasing([art], cfg)
+        assert len(issues) == 1
+
+    def test_empty_input(self):
+        issues = _check_placeholder_phrasing([], DEFAULT_AUDIT_CONFIG)
+        assert issues == []
+
+
+# ── Unit: _check_speculative_phrasing ────────────────────────────────────────
+
+
+class TestCheckSpeculativePhrasing:
+    def test_speculative_detected(self):
+        art = {
+            "name": "SpecPage",
+            "file": Path("/fake/SpecPage.md"),
+            "body_text": "This likely represents the correct amount.",
+            "lines": ["This likely represents the correct amount."],
+        }
+        issues = _check_speculative_phrasing([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["phrase"] == "likely"
+
+    def test_only_first_match_per_article(self):
+        art = {
+            "name": "MultiSpec",
+            "file": Path("/fake/MultiSpec.md"),
+            "body_text": "This likely happened and possibly was incorrect.",
+            "lines": ["This likely happened and possibly was incorrect."],
+        }
+        issues = _check_speculative_phrasing([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+
+    def test_no_speculative_not_flagged(self):
+        art = {
+            "name": "CleanPage",
+            "file": Path("/fake/CleanPage.md"),
+            "body_text": "The report confirms the budget was approved.",
+            "lines": ["The report confirms the budget was approved."],
+        }
+        issues = _check_speculative_phrasing([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_empty_input(self):
+        issues = _check_speculative_phrasing([], DEFAULT_AUDIT_CONFIG)
+        assert issues == []
+
+
+# ── Unit: _check_truncation_suspects ─────────────────────────────────────────
+
+
+class TestCheckTruncationSuspects:
+    def test_truncation_with_second_signal_detected(self):
+        art = {
+            "name": "TruncPage",
+            "file": Path("/fake/TruncPage.md"),
+            "body_text": "The following data points are missing: budget totals",
+            "body_start": 1,
+            "lines": [
+                "---",
+                "title: Test",
+                "---",
+                "The following data points are missing: budget totals",
+            ],
+        }
+        issues = _check_truncation_suspects([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert "truncated_table" not in issues[0]["reason"]  # ends with "s" not triggered
+
+    def test_truncation_without_second_signal_not_flagged(self):
+        art = {
+            "name": "TruncNoSecond",
+            "file": Path("/fake/TruncNoSecond.md"),
+            "body_text": "The following data points are missing: budget totals.",
+            "body_start": 1,
+            "lines": [
+                "---",
+                "title: Test",
+                "---",
+                "The following data points are missing: budget totals.",
+            ],
+        }
+        issues = _check_truncation_suspects([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_truncation_incomplete_final_line(self):
+        art = {
+            "name": "IncompleteFinal",
+            "file": Path("/fake/IncompleteFinal.md"),
+            "body_text": "pending retrieval of documents",
+            "body_start": 0,
+            "lines": ["pending retrieval of documents from the archive"],
+        }
+        issues = _check_truncation_suspects([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["reason"] == "incomplete_final_line"
+
+    def test_truncation_missing_closing_frontmatter(self):
+        art = {
+            "name": "MissingFM",
+            "file": Path("/fake/MissingFM.md"),
+            "body_text": "pending retrieval of source records.",
+            "body_start": 0,
+            "lines": [
+                "---",
+                "title: Test",
+                "pending retrieval of source records.",
+            ],
+        }
+        issues = _check_truncation_suspects([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["reason"] == "missing_closing_frontmatter"
+
+    def test_truncated_table_signal(self):
+        art = {
+            "name": "TruncTable",
+            "file": Path("/fake/TruncTable.md"),
+            "body_text": "the following data points are missing: \n| col1 | col2 | col3",
+            "body_start": 0,
+            "lines": [
+                "the following data points are missing:",
+                "| col1 | col2 | col3",
+            ],
+        }
+        issues = _check_truncation_suspects([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["reason"] == "truncated_table"
+
+    def test_no_second_signal_requirement_disabled(self):
+        art = {
+            "name": "NoSecondSignal",
+            "file": Path("/fake/NoSecondSignal.md"),
+            "body_text": "The following data points are missing: budget totals.",
+            "body_start": 0,
+            "lines": ["The following data points are missing: budget totals."],
+        }
+        cfg = {**DEFAULT_AUDIT_CONFIG, "truncation_require_second_signal": False}
+        issues = _check_truncation_suspects([art], cfg)
+        assert len(issues) == 1
+
+    def test_empty_input(self):
+        issues = _check_truncation_suspects([], DEFAULT_AUDIT_CONFIG)
+        assert issues == []
+
+
+# ── Unit: _find_truncation_second_signal ─────────────────────────────────────
+
+
+class TestFindTruncationSecondSignal:
+    def test_incomplete_final_line(self):
+        art = {
+            "body_start": 0,
+            "lines": ["This sentence does not end properly"],
+        }
+        result = _find_truncation_second_signal(art)
+        assert result == "incomplete_final_line"
+
+    def test_complete_final_line_not_triggered(self):
+        art = {
+            "body_start": 0,
+            "lines": ["This sentence ends properly."],
+        }
+        result = _find_truncation_second_signal(art)
+        assert result is None
+
+    def test_missing_closing_frontmatter(self):
+        art = {
+            "body_start": 0,
+            "lines": ["---", "title: Test"],
+        }
+        result = _find_truncation_second_signal(art)
+        assert result == "missing_closing_frontmatter"
+
+    def test_closing_frontmatter_present(self):
+        art = {
+            "body_start": 3,
+            "lines": ["---", "title: Test", "---", "Body text here."],
+        }
+        result = _find_truncation_second_signal(art)
+        assert result is None
+
+    def test_truncated_table(self):
+        art = {
+            "body_start": 0,
+            "lines": ["| col1 | col2 | col3"],
+        }
+        result = _find_truncation_second_signal(art)
+        assert result == "truncated_table"
+
+    def test_no_signals(self):
+        art = {
+            "body_start": 0,
+            "lines": ["Normal paragraph."],
+        }
+        result = _find_truncation_second_signal(art)
+        assert result is None
+
+
+# ── Unit: _check_weak_sections ────────────────────────────────────────────────
+
+
+class TestCheckWeakSections:
+    def test_weak_section_empty_detected(self):
+        art = {
+            "name": "WeakPage",
+            "file": Path("/fake/WeakPage.md"),
+            "body_start": 0,
+            "lines": [
+                "## Key Figures",
+                "",
+                "## Body",
+                "Some real content here.",
+            ],
+        }
+        issues = _check_weak_sections([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["section"] == "Key Figures"
+
+    def test_weak_section_placeholder_only(self):
+        art = {
+            "name": "WeakPlaceholder",
+            "file": Path("/fake/WeakPlaceholder.md"),
+            "body_start": 0,
+            "lines": [
+                "## Key Figures",
+                "There is no specific data available.",
+                "",
+                "## Body",
+                "Real content.",
+            ],
+        }
+        issues = _check_weak_sections([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["section"] == "Key Figures"
+
+    def test_strong_section_not_flagged(self):
+        art = {
+            "name": "GoodPage",
+            "file": Path("/fake/GoodPage.md"),
+            "body_start": 0,
+            "lines": [
+                "## Key Figures",
+                "OAC provided $50,000 in 2024.",
+                "",
+                "## Body",
+                "More content.",
+            ],
+        }
+        issues = _check_weak_sections([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_non_weak_header_ignored(self):
+        art = {
+            "name": "OtherHeader",
+            "file": Path("/fake/OtherHeader.md"),
+            "body_start": 0,
+            "lines": [
+                "## Other Section",
+                "",
+                "## Body",
+                "Real content.",
+            ],
+        }
+        issues = _check_weak_sections([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_custom_weak_headers(self):
+        art = {
+            "name": "CustomWeak",
+            "file": Path("/fake/CustomWeak.md"),
+            "body_start": 0,
+            "lines": [
+                "## Custom Section",
+                "",
+                "## Body",
+                "Content.",
+            ],
+        }
+        cfg = {**DEFAULT_AUDIT_CONFIG, "weak_section_headers": ["Custom Section"]}
+        issues = _check_weak_sections([art], cfg)
+        assert len(issues) == 1
+
+    def test_empty_input(self):
+        issues = _check_weak_sections([], DEFAULT_AUDIT_CONFIG)
+        assert issues == []
+
+
+# ── Unit: _parse_sections ────────────────────────────────────────────────────
+
+
+class TestParseSections:
+    def test_parses_sections_from_body(self):
+        art = {
+            "name": "Test",
+            "body_start": 1,
+            "lines": [
+                "---",
+                "## First", "first content", "more first",
+                "## Second", "second content",
+                "## Third", "third content",
+            ],
+        }
+        sections = _parse_sections(art)
+        assert len(sections) == 3
+        assert sections[0]["header"] == "First"
+        assert "first content" in sections[0]["body"]
+        assert sections[1]["header"] == "Second"
+        assert sections[2]["header"] == "Third"
+
+    def test_respects_body_start(self):
+        art = {
+            "name": "Test",
+            "body_start": 3,
+            "lines": [
+                "## Ignored",
+                "ignored content",
+                "---",
+                "## Real", "real content",
+            ],
+        }
+        sections = _parse_sections(art)
+        assert len(sections) == 1
+        assert sections[0]["header"] == "Real"
+
+    def test_no_headings(self):
+        art = {
+            "name": "Test",
+            "body_start": 0,
+            "lines": ["Just some text without headings."],
+        }
+        sections = _parse_sections(art)
+        assert len(sections) == 0
+
+    def test_body_before_first_heading(self):
+        art = {
+            "name": "Test",
+            "body_start": 0,
+            "lines": ["leading text", "## First", "first content"],
+        }
+        sections = _parse_sections(art)
+        assert len(sections) == 1
+        assert sections[0]["header"] == "First"
+
+
+# ── Unit: _check_link_noise ──────────────────────────────────────────────────
+
+
+class TestCheckLinkNoise:
+    def test_link_noise_detected(self):
+        art = {
+            "name": "NoisePage",
+            "file": Path("/fake/NoisePage.md"),
+            "body_text": "See the data at [broken-reference for more.",
+            "lines": ["See the data at [broken-reference for more."],
+        }
+        issues = _check_link_noise([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert "[broken-reference" in issues[0]["token"]
+
+    def test_wikilink_not_flagged(self):
+        art = {
+            "name": "WikiPage",
+            "file": Path("/fake/WikiPage.md"),
+            "body_text": "See [[CanadaCouncil]] for more.",
+            "lines": ["See [[CanadaCouncil]] for more."],
+        }
+        issues = _check_link_noise([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_markdown_link_not_flagged(self):
+        art = {
+            "name": "MDPage",
+            "file": Path("/fake/MDPage.md"),
+            "body_text": "See [Canada Council](https://example.com).",
+            "lines": ["See [Canada Council](https://example.com)."],
+        }
+        issues = _check_link_noise([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_uppercase_not_flagged(self):
+        art = {
+            "name": "UpperPage",
+            "file": Path("/fake/UpperPage.md"),
+            "body_text": "The [UPPER-CASE token should not match.",
+            "lines": ["The [UPPER-CASE token should not match."],
+        }
+        issues = _check_link_noise([art], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_disabled_by_config(self):
+        art = {
+            "name": "NoisePage",
+            "file": Path("/fake/NoisePage.md"),
+            "body_text": "[broken-link in the text.",
+            "lines": ["[broken-link in the text."],
+        }
+        cfg = {**DEFAULT_AUDIT_CONFIG, "flag_link_noise": False}
+        issues = _check_link_noise([art], cfg)
+        assert len(issues) == 0
+
+    def test_empty_input(self):
+        issues = _check_link_noise([], DEFAULT_AUDIT_CONFIG)
+        assert issues == []
+
+
+# ── Unit: _check_name_collisions ─────────────────────────────────────────────
+
+
+class TestCheckNameCollisions:
+    def test_name_collision_detected(self):
+        art_a = {
+            "name": "TestPage",
+            "file": Path("/fake/TestPage.md"),
+            "body_text": "This is some content about test data and analytics.",
+            "frontmatter": {"confidence": "high"},
+            "lines": ["This is some content about test data and analytics."],
+            "body_start": 0,
+        }
+        art_b = {
+            "name": "test_page",
+            "file": Path("/fake/test_page.md"),
+            "body_text": "This is some content about test data and analytics.",
+            "frontmatter": {"confidence": "low"},
+            "lines": ["This is some content about test data and analytics."],
+            "body_start": 0,
+        }
+        issues = _check_name_collisions([art_a, art_b], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["subtype"] == "collision"
+
+    def test_content_divergent_detected(self):
+        art_a = {
+            "name": "SameStem",
+            "file": Path("/fake/SameStem.md"),
+            "body_text": "This is completely different content about apples and oranges.",
+            "frontmatter": {},
+            "lines": ["This is completely different content about apples and oranges."],
+            "body_start": 0,
+        }
+        art_b = {
+            "name": "same_stem",
+            "file": Path("/fake/same_stem.md"),
+            "body_text": "Zebras live in the African savannah where the climate is very hot.",
+            "frontmatter": {},
+            "lines": ["Zebras live in the African savannah where the climate is very hot."],
+            "body_start": 0,
+        }
+        issues = _check_name_collisions([art_a, art_b], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 1
+        assert issues[0]["subtype"] == "content_divergent"
+
+    def test_no_collision_different_stems(self):
+        art_a = {
+            "name": "PageOne",
+            "file": Path("/fake/PageOne.md"),
+            "body_text": "Same content.",
+            "frontmatter": {},
+            "lines": ["Same content."],
+            "body_start": 0,
+        }
+        art_b = {
+            "name": "PageTwo",
+            "file": Path("/fake/PageTwo.md"),
+            "body_text": "Same content.",
+            "frontmatter": {},
+            "lines": ["Same content."],
+            "body_start": 0,
+        }
+        issues = _check_name_collisions([art_a, art_b], DEFAULT_AUDIT_CONFIG)
+        assert len(issues) == 0
+
+    def test_disabled_by_config(self):
+        art_a = {
+            "name": "TestPage",
+            "file": Path("/fake/TestPage.md"),
+            "body_text": "Content A",
+            "frontmatter": {},
+            "lines": ["Content A"],
+            "body_start": 0,
+        }
+        art_b = {
+            "name": "test_page",
+            "file": Path("/fake/test_page.md"),
+            "body_text": "Content A",
+            "frontmatter": {},
+            "lines": ["Content A"],
+            "body_start": 0,
+        }
+        cfg = {**DEFAULT_AUDIT_CONFIG, "name_collision_enabled": False}
+        issues = _check_name_collisions([art_a, art_b], cfg)
+        assert len(issues) == 0
+
+    def test_multi_article_bucket(self):
+        art_a = {
+            "name": "Duplicate",
+            "file": Path("/fake/Duplicate.md"),
+            "body_text": "Content A same content repeated.",
+            "frontmatter": {"confidence": "high", "sources": ["s1.pdf"]},
+            "lines": ["Content A same content repeated."],
+            "body_start": 0,
+        }
+        art_b = {
+            "name": "duplicate",
+            "file": Path("/fake/Duplicate2.md"),
+            "body_text": "Content A same content repeated.",
+            "frontmatter": {"confidence": "low"},
+            "lines": ["Content A same content repeated."],
+            "body_start": 0,
+        }
+        art_c = {
+            "name": "duplicate",
+            "file": Path("/fake/Duplicate3.md"),
+            "body_text": "Content A same content repeated.",
+            "frontmatter": {},
+            "lines": ["Content A same content repeated."],
+            "body_start": 0,
+        }
+        issues = _check_name_collisions([art_a, art_b, art_c], DEFAULT_AUDIT_CONFIG)
+        # Should find pairs within the bucket
+        assert len(issues) >= 1
+
+    def test_empty_input(self):
+        issues = _check_name_collisions([], DEFAULT_AUDIT_CONFIG)
+        assert issues == []
+
+
+# ── Unit: _quality_score ─────────────────────────────────────────────────────
+
+
+class TestQualityScore:
+    def test_high_confidence_scores_higher(self):
+        art_high = {
+            "name": "test-page",
+            "file": Path("/fake/test-page.md"),
+            "frontmatter": {"confidence": "high", "sources": ["s1.pdf"]},
+            "body_text": "more content " * 50,
+            "body_start": 0,
+            "lines": ["## Section"] * 5,
+        }
+        art_low = {
+            "name": "TEST_page",
+            "file": Path("/fake/TEST_page.md"),
+            "frontmatter": {"confidence": "low"},
+            "body_text": "less content",
+            "body_start": 0,
+            "lines": ["## Section"],
+        }
+        assert _quality_score(art_high) > _quality_score(art_low)
+
+    def test_source_count_matters(self):
+        art_many = {
+            "name": "test-page",
+            "file": Path("/fake/test-page.md"),
+            "frontmatter": {"sources": ["s1.pdf", "s2.pdf", "s3.pdf"]},
+            "body_text": "content",
+            "body_start": 0,
+            "lines": [],
+        }
+        art_few = {
+            "name": "test-page",
+            "file": Path("/fake/test-page.md"),
+            "frontmatter": {"sources": []},
+            "body_text": "content",
+            "body_start": 0,
+            "lines": [],
+        }
+        assert _quality_score(art_many) > _quality_score(art_few)
+
+    def test_name_quality(self):
+        art_good = {
+            "name": "canada-council",
+            "file": Path("/fake/canada-council.md"),
+            "frontmatter": {},
+            "body_text": "content",
+            "body_start": 0,
+            "lines": [],
+        }
+        art_bad = {
+            "name": "CanadaCouncil",
+            "file": Path("/fake/CanadaCouncil.md"),
+            "frontmatter": {},
+            "body_text": "content",
+            "body_start": 0,
+            "lines": [],
+        }
+        assert _quality_score(art_good) > _quality_score(art_bad)
+
+
+# ── Unit: _apply_fixes ───────────────────────────────────────────────────────
+
+
+class TestApplyFixes:
+    def test_remove_empty_weak_section(self, tmp_path):
+        concepts = make_concept_dir(tmp_path)
+        fp = write_article(concepts, "WeakPage",
+            "## Key Figures\n\n## Body\nReal content here.\n")
+        art = _scan_articles(concepts)[0]
+        issues = {
+            "weak_sections": [{"file": str(fp), "section": "Key Figures"}],
+        }
+        result = _apply_fixes([art], issues)
+        assert result["fixed_count"] == 1
+        content_after = fp.read_text()
+        assert "Key Figures" not in content_after
+        assert "Real content here" in content_after
+
+    def test_escape_link_noise(self, tmp_path):
+        concepts = make_concept_dir(tmp_path)
+        fp = write_article(concepts, "NoisePage",
+            "See [broken-link in the text.\n## Body\nReal content.\n")
+        art = _scan_articles(concepts)[0]
+        issues = {
+            "link_noise": [{"file": str(fp), "token": "[broken-link"}],
+        }
+        result = _apply_fixes([art], issues)
+        assert result["fixed_count"] == 1
+        content_after = fp.read_text()
+        assert "\\[broken-link" in content_after
+
+    def test_no_changes_when_no_issues(self, tmp_path):
+        concepts = make_concept_dir(tmp_path)
+        fp = write_article(concepts, "CleanPage",
+            "## Body\nClean content.\n")
+        art = _scan_articles(concepts)[0]
+        issues: dict = {}
+        result = _apply_fixes([art], issues)
+        assert result["fixed_count"] == 0
+        assert result["changed_files"] == []
+
+    def test_strip_placeholder_paragraph(self, tmp_path):
+        concepts = make_concept_dir(tmp_path)
+        fp = write_article(concepts, "PlaceholderPage",
+            "## Body\nThis paragraph contains no specific data.\n\nNext paragraph has real content.\n")
+        art = _scan_articles(concepts)[0]
+        issues = {
+            "placeholder_phrasing": [{"file": str(fp), "phrase": "no specific"}],
+        }
+        result = _apply_fixes([art], issues)
+        assert result["fixed_count"] == 1
+        content_after = fp.read_text()
+        assert "no specific data" not in content_after.lower()
+
+    def test_empty_issues_no_errors(self, tmp_path):
+        concepts = make_concept_dir(tmp_path)
+        fp = write_article(concepts, "Page",
+            "## Body\nContent.\n")
+        art = _scan_articles(concepts)[0]
+        issues = {
+            "weak_sections": [],
+            "link_noise": [],
+            "placeholder_phrasing": [],
+        }
+        result = _apply_fixes([art], issues)
+        assert result["fixed_count"] == 0
+
+
+# ── Integration: audit_wiki with new checks ──────────────────────────────────
+
+
+class TestAuditWikiNewChecks:
+    def test_wiki_with_provenance_issues(self, tmp_path):
+        wiki_dir = tmp_path / "wiki"
+        concepts = wiki_dir / "wiki" / "concepts"
+        concepts.mkdir(parents=True)
+        write_article(concepts, "SourcelessPage",
+            "## Body\n" + "Content here.\n" * 6,
+            frontmatter={"sources": []})
+        result = audit_wiki(wiki_dir)
+        assert len(result["issues"]["provenance"]) == 1
+
+    def test_wiki_with_low_confidence(self, tmp_path):
+        wiki_dir = tmp_path / "wiki"
+        concepts = wiki_dir / "wiki" / "concepts"
+        concepts.mkdir(parents=True)
+        write_article(concepts, "LowConfPage",
+            "## Body\n" + "Content here.\n" * 6,
+            frontmatter={"confidence": "low"})
+        result = audit_wiki(wiki_dir)
+        assert len(result["issues"]["low_confidence"]) == 1
+
+    def test_wiki_with_placeholder_phrasing(self, tmp_path):
+        wiki_dir = tmp_path / "wiki"
+        concepts = wiki_dir / "wiki" / "concepts"
+        concepts.mkdir(parents=True)
+        write_article(concepts, "PlaceholderPage",
+            "## Body\nThis report contains no specific figures for the budget.\n")
+        result = audit_wiki(wiki_dir)
+        assert len(result["issues"]["placeholder_phrasing"]) == 1
+
+    def test_wiki_with_link_noise(self, tmp_path):
+        wiki_dir = tmp_path / "wiki"
+        concepts = wiki_dir / "wiki" / "concepts"
+        concepts.mkdir(parents=True)
+        write_article(concepts, "NoisePage",
+            "## Body\nSee the data at [broken-ref for more.\n"
+            + "Extra content.\n" * 6)
+        result = audit_wiki(wiki_dir)
+        assert len(result["issues"]["link_noise"]) == 1
+
+    def test_wiki_with_name_collisions(self, tmp_path):
+        wiki_dir = tmp_path / "wiki"
+        concepts = wiki_dir / "wiki" / "concepts"
+        concepts.mkdir(parents=True)
+        body = "## Body\n" + "Shared content across both articles.\n" * 10
+        write_article(concepts, "TestPage", body)
+        write_article(concepts, "test_page", body)
+        result = audit_wiki(wiki_dir)
+        assert len(result["issues"]["name_collisions"]) >= 1 or len(result["issues"]["near_duplicates"]) >= 1
+
+    def test_wiki_with_truncation_suspect(self, tmp_path):
+        wiki_dir = tmp_path / "wiki"
+        concepts = wiki_dir / "wiki" / "concepts"
+        concepts.mkdir(parents=True)
+        write_article(concepts, "TruncPage",
+            "## Body\nThe following data points are missing: budget data\n")
+        result = audit_wiki(wiki_dir)
+        assert len(result["issues"]["truncation_suspects"]) == 1
+
+    def test_wiki_with_weak_section(self, tmp_path):
+        wiki_dir = tmp_path / "wiki"
+        concepts = wiki_dir / "wiki" / "concepts"
+        concepts.mkdir(parents=True)
+        write_article(concepts, "WeakPage",
+            "## Key Figures\n\n## Body\nReal content here.\n" + "Extra line.\n" * 5)
+        result = audit_wiki(wiki_dir)
+        assert len(result["issues"]["weak_sections"]) == 1
+
+    def test_all_new_issues_present(self, tmp_path):
+        wiki_dir = tmp_path / "wiki"
+        concepts = wiki_dir / "wiki" / "concepts"
+        concepts.mkdir(parents=True)
+        write_article(concepts, "CleanPage",
+            "## Definition\ndef.\n## Key Figures\nfigures.\n## Body\n"
+            + "Content here.\n" * 6
+            + "## Context & Significance\nctx.\n## See also\nlinks.\n")
+        result = audit_wiki(wiki_dir)
+        issues = result["issues"]
+        for key in ["provenance", "low_confidence", "placeholder_phrasing",
+                     "speculative_phrasing", "truncation_suspects",
+                     "weak_sections", "link_noise", "name_collisions"]:
+            assert key in issues, f"Missing issue key: {key}"
+            assert isinstance(issues[key], list), f"Issue key {key} is not a list"
+
+
+# ── Unit: audit_summary_text with new categories ─────────────────────────────
+
+
+class TestAuditSummaryTextNew:
+    def test_new_categories_in_summary(self):
+        findings = {
+            "articles_scanned": 10,
+            "issues": {
+                "dead_links": [],
+                "thin_articles": [],
+                "near_duplicates": [],
+                "missing_sections": [],
+                "suspicious_concepts": [],
+                "stale_content": [],
+                "provenance": [{"file": "a.md"}],
+                "low_confidence": [{"file": "b.md"}],
+                "placeholder_phrasing": [],
+                "speculative_phrasing": [],
+                "truncation_suspects": [],
+                "weak_sections": [],
+                "link_noise": [{"file": "c.md"}],
+                "name_collisions": [{"file_a": "x", "file_b": "y"}],
+            },
+        }
+        result = audit_summary_text(findings)
+        assert "Sourceless articles: 1" in result
+        assert "Low-confidence articles: 1" in result
+        assert "Link/syntax noise: 1" in result
+        assert "Name collisions: 1" in result
+
+    def test_empty_new_categories(self):
+        findings = {
+            "articles_scanned": 0,
+            "issues": {
+                "dead_links": [],
+                "thin_articles": [],
+                "near_duplicates": [],
+                "missing_sections": [],
+                "suspicious_concepts": [],
+                "stale_content": [],
+                "provenance": [],
+                "low_confidence": [],
+                "placeholder_phrasing": [],
+                "speculative_phrasing": [],
+                "truncation_suspects": [],
+                "weak_sections": [],
+                "link_noise": [],
+                "name_collisions": [],
+            },
+        }
+        result = audit_summary_text(findings)
+        assert "Sourceless articles: 0" in result
+        assert "Total issues: 0" in result

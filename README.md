@@ -33,6 +33,7 @@ folio init --guided                           # 6 questions, creates folio.yaml
 folio scan                                    # Preview: files, costs, time
 folio pipeline --dry-run                      # Cost estimate
 folio pipeline                                # Run all 8 stages (~$0.04/10 files)
+folio audit                                   # Quality check: provenance, placeholders, dupes, links
 ```
 
 ## Org library structure
@@ -64,7 +65,7 @@ folio classify      # Quality scoring, tier assignment
 folio rewrite       # LLM re-authoring with tiered prompts
 folio canonicalize  # Version detection and dedup
 folio prioritize    # Archival priority scoring
-folio audit         # Wiki quality audit
+folio audit         # Wiki quality audit (14 checks, --fix for safe cleanup)
 folio corpus        # Generate a PII-free synthetic benchmark corpus
 folio guide         # Built-in agent reference
 ```
@@ -94,6 +95,8 @@ All commands support `--dry-run` and `--json`. Run `folio <cmd> --help` for deta
 **Why flat filenames?** `FUNDER__Year_Program__Type__Description.ext` is machine-parseable. The [file naming doc](docs/file-naming.md) explains why.
 
 **My archive is a mess of nested folders.** Use the pipeline step by step — start with `folio convert`, then `folio clean`, then review before `folio rewrite`. Use `folio repack` for nested → flat migration.
+
+**How do I catch AI-generated boilerplate?** `folio audit` checks for placeholder phrasing, speculative language, truncation, weak sections, and empty provenance across 14 categories. Run `folio audit --fix` for deterministic safe cleanup. Phrase lists and thresholds are all configurable under `audit:` in `folio.yaml`.
 
 ## For AI agents
 

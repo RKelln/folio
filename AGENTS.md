@@ -11,6 +11,7 @@ folio builds a knowledge base from an organization's document archive (grant app
 | An agent helping a new org set up folio | [docs/getting-started.md](docs/getting-started.md) — full walkthrough |
 | An agent using an already-built library to write grants | [README.md](README.md) — commands + doc links |
 | An agent modifying folio source code | This file — conventions, module table, rules |
+| An agent writing or editing agent skills | [skills/README.md](skills/README.md) — skill layers, naming conventions, generation |
 
 ## If you're helping an org set up folio for the first time
 
@@ -173,12 +174,14 @@ folio/
 │
 ├── skills/                Agent skills
 │   ├── core/              Platform-agnostic instruction content
-│   │   ├── _tool-file-search.md         (baseline file search)
-│   │   ├── _tool-sage-wiki.md           (wiki search, conditional)
-│   │   ├── _tool-agentmap.md            (agentmap search, conditional)
-│   │   ├── archive-search.md            (wrapper template)
-│   │   ├── grant-drafting.md
-│   │   └── grant-writing-craft.md
+│   │   ├── _librarian.md                  (master skill — all workflows)
+│   │   ├── _wiki-maintenance.md           (wiki health, folio audit)
+│   │   ├── _tool-file-search.md           (baseline file search)
+│   │   ├── _tool-sage-wiki.md             (wiki search, conditional)
+│   │   ├── _tool-agentmap.md              (agentmap search, conditional)
+│   │   ├── archive-search.md              (Layer 1 — search archive)
+│   │   ├── grant-drafting.md              (Layer 2 — assemble text)
+│   │   └── grant-writing-craft.md         (Layer 3 — persuasive writing)
 │   ├── platforms/         Platform-specific wrappers
 │   └── templates/         Org-specific fill-in templates
 │

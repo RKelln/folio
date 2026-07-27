@@ -11,6 +11,8 @@ Skills are organized in three layers under the `skills/` directory:
 ```
 skills/
 ├── core/                           # Core skill content (platform-agnostic)
+│   ├── _librarian.md               # Master skill — all workflows, tool composition
+│   ├── _wiki-maintenance.md        # Wiki health, folio audit, quality improvement
 │   ├── archive-search.md           # Archive search wrapper template
 │   ├── grant-drafting.md           # Grant drafting template
 │   ├── grant-writing-craft.md      # Grant writing craft template
@@ -35,6 +37,8 @@ Three markdown templates that form the instruction content, independent of any s
 
 | File | Layer | Purpose |
 |------|-------|---------|
+| `_librarian.md` | Master | Single-file entry point — all workflows (search, grant writing, research, maintenance). Composes tool helpers conditionally. |
+| `_wiki-maintenance.md` | Maintenance | Wiki health and quality improvement. Runs `folio audit` (14 check categories), documents `--fix` for deterministic cleanup. |
 | `archive-search.md` | Search | How to search the wiki and markdown archive. Covers funder tables, document types, and search patterns. Search tool instructions are injected via the `{tool_sections}` placeholder at generation time. |
 | `grant-drafting.md` | Draft | How to assemble searched information into grant text. Covers drafting principles (ground claims in sources, match funder tone, cite sources) and the output format with section/sources/key-facts structure. |
 | `grant-writing-craft.md` | Craft | Writing quality rules: the pre-writing checklist, Pass 1 (fact draft) / Pass 2 (narrative rewrite) workflow, the juror test, section-level rules (the "So What" test), and 15 anti-patterns to avoid. |
@@ -195,6 +199,8 @@ The default config path is `folio.yaml` in the current directory. In dry-run mod
 
 Edit files in `skills/core/` to change the instruction content that appears in all generated skills across all platforms:
 
+- `_librarian.md` — Master skill. Edit search, grant-writing, research, and maintenance workflows. Composes tool helpers conditionally via `{wiki_block}` placeholder.
+- `_wiki-maintenance.md` — Wiki health. Document `folio audit` checks, `--fix` mode, configuration under `audit:` in `folio.yaml`.
 - `archive-search.md` — Modify search workflows, add new search patterns. Uses `{tool_sections}` placeholder for tool instructions (injected at generation time).
 - `grant-drafting.md` — Adjust drafting principles, output format requirements, citation rules.
 - `grant-writing-craft.md` — Refine writing rules, add or remove anti-patterns, adjust the juror test.

@@ -10,6 +10,70 @@ sage-wiki doctor                    # validate config and connectivity
 sage-wiki coverage                  # compile status table per source
 ```
 
+### folio audit — Quality & Integrity Audit
+
+`folio audit` scans the compiled wiki for quality, provenance, and structural issues. It replaces the need for external dedup and cleanup scripts.
+
+**Run an audit:**
+```bash
+folio audit --wiki-dir {wiki_path}
+folio audit --wiki-dir {wiki_path} --json     # structured output
+folio audit --wiki-dir {wiki_path} --json | jq .issues.name_collisions
+folio audit --wiki-dir {wiki_path} --fix      # apply deterministic safe fixes
+```
+
+**New check categories (in addition to existing lint checks):**
+
+| Category | What it flags |
+|----------|---------------|
+| `provenance` | Articles with empty `sources: []` in frontmatter |
+| `low_confidence` | Articles marked `confidence: low` |
+| `placeholder_phrasing` | Body text containing known placeholder phrases (`"no specific"`, `"insufficient information exists"`, etc.) |
+| `speculative_phrasing` | Hedging language (`"likely"`, `"may have been"`, `"unknown"`, etc.) |
+| `truncation_suspects` | Generator boilerplate about missing data — requires a second signal (incomplete final line, missing closing `---`, or truncated table) to avoid false positives |
+| `weak_sections` | Sections under configurable headers (default: `"Key Figures"`) that are empty or contain only placeholder phrases |
+| `link_noise` | Malformed link-like tokens (`[text` without closing `]`) |
+| `name_collisions` | Articles whose filenames normalize to the same stem — subtyped as `collision` (same content) or `content_divergent` (different content, should be merged) |
+
+**Configuration via `folio.yaml` `audit:` section:**
+
+All checks are configurable. Override any threshold or phrase list:
+
+```yaml
+audit:
+  flag_sourceless: true
+  flag_low_confidence: true
+  placeholder_phrases:
+    - "no specific"
+    - "insufficient information exists"
+  speculative_phrases:
+    - "likely"
+    - "unknown"
+  truncation_require_second_signal: true
+  weak_section_headers:
+    - "Key Figures"
+  flag_link_noise: true
+  name_collision_enabled: true
+  name_collision_content_divergence_threshold: 0.30
+```
+
+**The `--fix` flag** applies deterministic, safe repairs:
+- Removes completely empty weak sections (header + nothing under it)
+- Strips paragraphs that consist entirely of placeholder phrases
+- Escapes link noise (`[text` → `\[text`)
+
+**Quality improvement workflow:**
+```bash
+folio audit --wiki-dir {wiki_path}              # 1. Run audit
+# 2. Review the report — see what needs attention
+folio audit --wiki-dir {wiki_path} --fix        # 3. Apply safe fixes
+folio audit --wiki-dir {wiki_path}              # 4. Re-run to verify
+```
+
+**Name collision detection** replaces external dedup scripts:
+- Same stem (e.g., `OntarioArtsCouncil` and `ontario_arts_council`) with similar content → `collision` subtype (quarantine the lower-quality copy)
+- Same stem with very different content → `content_divergent` subtype (merge manually, content is different)
+
 **Find issues before they appear in grant drafts:**
 ```bash
 cd {wiki_path}
@@ -55,7 +119,7 @@ sage-wiki compile
 ```
 
 **Typical maintenance cadence:**
-- After pipeline runs: `sage-wiki status && sage-wiki lint`
+- After pipeline runs: `folio audit --wiki-dir .` + `sage-wiki status && sage-wiki lint`
 - After adding new documents: `sage-wiki diff` then recompile
-- Weekly: `sage-wiki lint --pass staleness && sage-wiki verify --since 7d`
-- Monthly: full `sage-wiki lint` + review lintlog
+- Weekly: `folio audit --wiki-dir .` + `sage-wiki lint --pass staleness && sage-wiki verify --since 7d`
+- Monthly: full `folio audit --wiki-dir .` + `sage-wiki lint` + review lintlog

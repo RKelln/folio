@@ -164,6 +164,7 @@ def _build_config(data: dict, config_dir: Path | None = None) -> ProjectConfig:
         headings=data.get("headings", {}),
         rewrite=data.get("rewrite", {}),
         prioritize=data.get("prioritize", {}),
+        audit=data.get("audit", {}),
     )
 
 

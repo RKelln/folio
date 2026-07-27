@@ -85,3 +85,138 @@ processing:
   requests_per_second: 5
   max_retries: 3
   resume: true
+
+# ── Audit ───────────────────────────────────────────────────────────
+audit:
+  min_article_chars: 200
+  min_article_lines: 5
+  dedup_threshold: 0.85
+  word_overlap_threshold: 0.35
+  word_band_size: 30
+
+  # ── Provenance & confidence ─────────────────────────────────────
+  flag_sourceless: true
+  flag_low_confidence: true
+
+  # ── Placeholder phrasing ────────────────────────────────────────
+  placeholder_phrases:
+    - "no specific"
+    - "no data"
+    - "no quantitative"
+    - "no concrete"
+    - "no verifiable"
+    - "no corroborating"
+    - "insufficient information exists"
+    - "future updates should"
+    - "future archival research should"
+    - "future research should"
+    - "absence of source documentation"
+    - "no primary source materials were provided for this"
+    - "remains unconfirmed"
+    - "remain undocumented"
+    - "absence of specific figures"
+    - "absence of detailed documentation"
+    - "not been substantiated with detailed documentation"
+    - "no source material"
+    - "no specific numerical data"
+    - "no specific figures"
+    - "no specific numbers"
+    - "no specific amounts"
+    - "no source data"
+    - "no figures"
+    - "no statistics"
+    - "no attendance"
+    - "no dates"
+    - "no dollar amounts"
+    - "no percentages"
+    - "no count"
+
+  # ── Speculative phrasing ────────────────────────────────────────
+  speculative_phrases:
+    - "likely"
+    - "may have been"
+    - "could have"
+    - "possibly"
+    - "plausible"
+    - "presumed"
+    - "assumed"
+    - "it is plausible"
+    - "may represent"
+    - "might"
+    - "potentially"
+    - "without source verification"
+    - "untreated"
+    - "unknown"
+    - "remains unknown"
+    - "not documented"
+    - "cannot be determined"
+
+  # ── Truncation suspects ─────────────────────────────────────────
+  truncation_suspect_phrases:
+    - "the following data points are missing:"
+    - "pending retrieval of"
+    - "future updates should incorporate any available facts"
+    - "the absence of specific figures here reflects the current state of the source record"
+    - "all data above derives from publicly available information"
+  # Require a second signal (incomplete final line, missing closing ---, or truncated table)
+  # so generator boilerplate phrases don't cause false positives
+  truncation_require_second_signal: true
+
+  # ── Weak sections ───────────────────────────────────────────────
+  weak_section_headers:
+    - "key figures"
+  weak_section_phrases:
+    - "no specific"
+    - "no data"
+
+  # ── Link noise ──────────────────────────────────────────────────
+  flag_link_noise: true
+
+  # ── Name-based collisions (stem dedup) ─────────────────────────
+  name_collision_enabled: true
+  # Threshold for content detection: if two same-stem files have
+  # content similarity below this, they are content-divergent
+  # and should be merged, not quarantined
+  name_collision_content_divergence_threshold: 0.30
+
+  # ── Sections ────────────────────────────────────────────────────
+  expected_sections:
+    - "Definition"
+    - "Key Figures"
+    - "Body"
+    - "Context & Significance"
+    - "See also"
+  required_sections:
+    - "Body"
+
+  # ── Stale content ───────────────────────────────────────────────
+  stale_content_patterns: []
+  present_tense_indicators:
+    - "\\bis (?:the|a|an|currently|now|presently)\\b"
+    - "\\bcurrent(?:ly)?\\b"
+    - "\\bpresent(?:ly)?\\b"
+    - "\\bnow (?:located|housed|based|operating)\\b"
+    - "\\bas of (?:today|now)\\b"
+    - "\\btoday\\b"
+  timeline_keywords:
+    - "former"
+    - "previous"
+    - "relocated"
+    - "moved to"
+    - "moved from"
+    - "succeeded by"
+    - "replaced by"
+    - "until"
+    - "stepped down"
+    - "resigned"
+    - "left in"
+    - "departed"
+    - "transitioned"
+
+  # ── Suspicious concepts ─────────────────────────────────────────
+  suspicious_name_patterns:
+    - ["^\\d{3}-\\d{3}-\\d{4}$", "phone_number"]
+    - ["^application-id-\\d+", "application_id"]
+    - ["^file-no-\\d+.*", "file_number"]
+    - ["^ontario-corporation-number-\\d+", "org_number"]
+    - ["^rr-\\d+[a-z]+\\d+", "org_number"]
