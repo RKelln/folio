@@ -96,7 +96,7 @@ All commands support `--dry-run` and `--json`. Run `folio <cmd> --help` for deta
 
 **My archive is a mess of nested folders.** Use the pipeline step by step — start with `folio convert`, then `folio clean`, then review before `folio rewrite`. Use `folio repack` for nested → flat migration.
 
-**How do I catch AI-generated boilerplate?** `folio audit` checks for placeholder phrasing, speculative language, truncation, weak sections, and empty provenance across 14 categories. Run `folio audit --fix` for deterministic safe cleanup. Phrase lists and thresholds are all configurable under `audit:` in `folio.yaml`.
+**How do I catch AI-generated boilerplate?** `folio audit` checks for placeholder phrasing, speculative language, truncation, weak sections, and empty provenance across 14 categories. Run `folio audit --fix` for trivially safe cleanup (link noise, empty sections). Placeholder/speculative hits are advisory only — review those manually or with an LLM agent. All phrase lists and thresholds are configurable under `audit:` in `folio.yaml`.
 
 ## For AI agents
 

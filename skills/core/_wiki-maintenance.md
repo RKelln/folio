@@ -57,16 +57,17 @@ audit:
   name_collision_content_divergence_threshold: 0.30
 ```
 
-**The `--fix` flag** applies deterministic, safe repairs:
+**The `--fix` flag** applies only trivially safe, reversible transforms:
 - Removes completely empty weak sections (header + nothing under it)
-- Strips paragraphs that consist entirely of placeholder phrases
 - Escapes link noise (`[text` → `\[text`)
+
+Placeholder and speculative phrasing are **advisory scan results only** — `--fix` never deletes content matching these phrases. Short keywords like `"no specific"` appear in legitimate sentences and cannot be safely auto-removed. Review placeholder hits manually or with an LLM agent.
 
 **Quality improvement workflow:**
 ```bash
-folio audit --wiki-dir {wiki_path}              # 1. Run audit
-# 2. Review the report — see what needs attention
-folio audit --wiki-dir {wiki_path} --fix        # 3. Apply safe fixes
+folio audit --wiki-dir {wiki_path}              # 1. Run audit (all 14 checks)
+# 2. Review the report — placeholder/speculative hits need human/LLM judgment
+folio audit --wiki-dir {wiki_path} --fix        # 3. Apply safe fixes only (links, empty sections)
 folio audit --wiki-dir {wiki_path}              # 4. Re-run to verify
 ```
 

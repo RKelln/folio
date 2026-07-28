@@ -98,7 +98,10 @@ audit:
   flag_sourceless: true
   flag_low_confidence: true
 
-  # ── Placeholder phrasing ────────────────────────────────────────
+  # ── Placeholder phrasing (advisory only — NOT auto-fixed by --fix) ──
+  # Short phrases like "no specific" are too common in legitimate text
+  # to trust automated removal. These are reported in the scan for human
+  # or LLM review, but --fix never deletes matching content.
   placeholder_phrases:
     - "no specific"
     - "no data"

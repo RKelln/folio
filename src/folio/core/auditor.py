@@ -906,6 +906,14 @@ def _rank_by_quality(arts: list[dict]) -> list[dict]:
 def _apply_fixes(articles: list[dict], issues: dict, config: dict | None = None) -> dict:
     """Apply deterministic, safe fixes for audit issues.
 
+    Only trivially safe transforms are applied:
+    1. Remove entirely empty weak sections (no content at all under the header)
+    2. Escape bare link-noise tokens (e.g. [text → \\[text)
+
+    Placeholder and speculative phrasing are NOT auto-deleted — those are
+    advisory scan results only. Short phrases like "no specific" are too
+    common in legitimate sentences to trust automated removal.
+
     Returns {"fixed_count": int, "changed_files": [str], "actions": [{"file": str, "action": str}]}.
     """
     changed_files: set[str] = set()
@@ -919,11 +927,6 @@ def _apply_fixes(articles: list[dict], issues: dict, config: dict | None = None)
         fpath = issue["file"]
         weak_files.add(fpath)
         weak_sections_by_file.setdefault(fpath, []).append(issue)
-
-    # Collect files with placeholder phrasing
-    placeholder_files: set[str] = set()
-    for issue in issues.get("placeholder_phrasing", []):
-        placeholder_files.add(issue["file"])
 
     # Collect files with link noise
     link_noise_files: set[str] = set()
@@ -965,59 +968,7 @@ def _apply_fixes(articles: list[dict], issues: dict, config: dict | None = None)
                 lines = new_lines
                 actions.append({"file": fpath_str, "action": "removed_weak_sections"})
 
-        # 2. Strip placeholder paragraphs (standalone paragraph entirely composed of placeholder phrases)
-        if fpath_str in placeholder_files:
-            phrases = cfg.get("placeholder_phrases", [])
-            if phrases:
-                new_lines = []
-                paragraph_lines: list[str] = []
-                in_paragraph = False
-
-                def _is_placeholder_paragraph(para_lines: list[str]) -> bool:
-                    non_empty = [ln.strip().lower() for ln in para_lines if ln.strip()]
-                    if not non_empty:
-                        return False
-                    return all(
-                        any(phrase.lower() in ln for phrase in phrases)
-                        for ln in non_empty
-                    )
-
-                for i, line in enumerate(lines):
-                    stripped = line.strip()
-                    if i < art["body_start"]:
-                        new_lines.append(line)
-                        in_paragraph = False
-                        paragraph_lines = []
-                        continue
-                    if stripped.startswith("#"):
-                        new_lines.append(line)
-                        in_paragraph = False
-                        paragraph_lines = []
-                        continue
-                    if not stripped:
-                        if in_paragraph and _is_placeholder_paragraph(paragraph_lines):
-                            changed = True
-                        else:
-                            new_lines.extend(paragraph_lines)
-                            new_lines.append(line)
-                        in_paragraph = False
-                        paragraph_lines = []
-                        continue
-                    if not in_paragraph:
-                        in_paragraph = True
-                        paragraph_lines = [line]
-                    else:
-                        paragraph_lines.append(line)
-
-                if in_paragraph and _is_placeholder_paragraph(paragraph_lines):
-                    changed = True
-                else:
-                    new_lines.extend(paragraph_lines)
-                if changed:
-                    lines = new_lines
-                    actions.append({"file": fpath_str, "action": "stripped_placeholder_paragraphs"})
-
-        # 3. Escape link noise
+        # 2. Escape link noise
         if fpath_str in link_noise_files:
             new_lines = []
             for line in lines:

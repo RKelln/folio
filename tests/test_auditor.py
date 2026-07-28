@@ -1576,7 +1576,8 @@ class TestApplyFixes:
         assert result["fixed_count"] == 0
         assert result["changed_files"] == []
 
-    def test_strip_placeholder_paragraph(self, tmp_path):
+    def test_placeholder_phrasing_not_auto_fixed(self, tmp_path):
+        """Placeholder phrases are advisory only — --fix must NOT auto-delete them."""
         concepts = make_concept_dir(tmp_path)
         fp = write_article(concepts, "PlaceholderPage",
             "## Body\nThis paragraph contains no specific data.\n\nNext paragraph has real content.\n")
@@ -1585,9 +1586,9 @@ class TestApplyFixes:
             "placeholder_phrasing": [{"file": str(fp), "phrase": "no specific"}],
         }
         result = _apply_fixes([art], issues)
-        assert result["fixed_count"] == 1
+        assert result["fixed_count"] == 0
         content_after = fp.read_text()
-        assert "no specific data" not in content_after.lower()
+        assert "no specific data" in content_after.lower()
 
     def test_empty_issues_no_errors(self, tmp_path):
         concepts = make_concept_dir(tmp_path)
